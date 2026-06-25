@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import BigInteger, Column, Integer, MetaData, Table, Text, UUID
+from sqlalchemy import UUID, BigInteger, Column, Integer, MetaData, Table, Text
 
 metadata = MetaData(schema="chat")
 

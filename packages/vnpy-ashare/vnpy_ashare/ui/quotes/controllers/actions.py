@@ -184,7 +184,7 @@ class ActionsController:
         if item is None:
             return ""
         panel = getattr(page, "signal_panel", None)
-        if panel is None or not panel.enabled:
+        if panel is None:
             return ""
         if item.vt_symbol not in panel.symbols:
             return ""
@@ -535,8 +535,8 @@ class ActionsController:
         """信号区「AI 扫区」：批量解读名单内全部标的。"""
         page = self._p
         panel = getattr(page, "signal_panel", None)
-        if panel is None or not panel.enabled:
-            page._toast.warning("请先启用策略信号区")
+        if panel is None:
+            page._toast.warning("信号区不可用")
             return
         if not panel.symbols:
             page._toast.warning("信号区暂无监控标的")
@@ -555,8 +555,8 @@ class ActionsController:
         """信号区「AI 解读」：优先选中行，否则主表当前行（须在信号区名单内）。"""
         page = self._p
         panel = getattr(page, "signal_panel", None)
-        if panel is None or not panel.enabled:
-            page._toast.warning("请先启用策略信号区")
+        if panel is None:
+            page._toast.warning("信号区不可用")
             return
 
         target = (vt_symbol or "").strip()

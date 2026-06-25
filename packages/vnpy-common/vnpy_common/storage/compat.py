@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 from sqlalchemy.sql.expression import Executable
 

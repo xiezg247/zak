@@ -60,11 +60,7 @@ class StockNoteRepository(AppUserScopedRepository):
 
         def _write(conn) -> None:
             if self.exists_for_user(self._item_filter(symbol, exchange)):
-                conn.execute_stmt(
-                    update(snm)
-                    .where(self.scope(self._item_filter(symbol, exchange)))
-                    .values(body=text_body, updated_at=now)
-                )
+                conn.execute_stmt(update(snm).where(self.scope(self._item_filter(symbol, exchange))).values(body=text_body, updated_at=now))
             else:
                 self.insert_for_user(
                     conn,
@@ -130,9 +126,7 @@ class StockNoteRepository(AppUserScopedRepository):
         return self.delete_matching(self.scope_table(sne, sne.c.id == int(entry_id))) > 0
 
     def get_entry(self, entry_id: int) -> dict[str, str | int] | None:
-        rows = self.fetchall(
-            select(*_ENTRY_COLUMNS).where(self.scope_table(sne, sne.c.id == int(entry_id))).limit(1)
-        )
+        rows = self.fetchall(select(*_ENTRY_COLUMNS).where(self.scope_table(sne, sne.c.id == int(entry_id))).limit(1))
         if not rows:
             return None
         row = rows[0]

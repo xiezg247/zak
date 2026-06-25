@@ -9,7 +9,7 @@ from vnpy_ashare.config.preferences.watchlist_signal import SIGNAL_PANEL_MAX_SYM
 from vnpy_ashare.domain.symbols.stock import lookup_by_vt_symbol
 from vnpy_ashare.ui.quotes._host_widget import as_qwidget
 from vnpy_ashare.ui.quotes.page.roles import STRATEGY_MONITOR_PAGE, WATCHLIST_PAGE
-from vnpy_ashare.ui.quotes.page.strategy_bridge import add_items_to_strategy_monitor
+from vnpy_ashare.ui.quotes.page.strategy_bridge import add_items_to_strategy_monitor, focus_watchlist_symbol_from_page
 from vnpy_ashare.ui.quotes.watchlist_signals.splitter import apply_center_splitter_sizes
 
 if TYPE_CHECKING:
@@ -28,7 +28,6 @@ class WatchlistPanelsFeature:
         if panel is None:
             return
         panel.symbols_changed.connect(page._signals.on_symbols_changed)
-        panel.enabled_changed.connect(page._signals.on_panel_enabled_changed)
         panel.config_changed.connect(self.on_signal_panel_config_changed)
         panel.refresh_requested.connect(page.refresh_watchlist_signals)
         if page.page_name == STRATEGY_MONITOR_PAGE:
@@ -55,10 +54,6 @@ class WatchlistPanelsFeature:
 
     def on_signal_panel_expansion_changed(self, expanded: bool) -> None:
         apply_center_splitter_sizes(self._page)
-        if expanded and self._page._signals._symbols_missing_cache(self._page._signals._panel_symbols()):
-            self._page._signals.refresh(force=True)
-        elif expanded:
-            self._page._signals.refresh(force=False)
 
     def on_signal_panel_config_changed(self) -> None:
         page = self._page
@@ -174,7 +169,6 @@ class WatchlistPanelsFeature:
             if skipped:
                 message += f"，{skipped} 只因已达上限 {SIGNAL_PANEL_MAX_SYMBOLS} 未加入"
             page._toast.success(message)
-            page._signals.refresh(force=True)
         elif skipped:
             page._toast.warning(f"信号区已满（最多 {SIGNAL_PANEL_MAX_SYMBOLS} 只），请先移出后再加入")
         else:

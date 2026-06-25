@@ -8,8 +8,6 @@ from vnpy.event import EventEngine
 from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_common.ui.loading_overlay import ContentLoadingOverlay
-
 from vnpy_ashare.config.preferences.watchlist_position import WatchlistPositionConfig
 from vnpy_ashare.domain.market.depth_snapshot import DepthSnapshot
 from vnpy_ashare.domain.symbols.stock import StockItem
@@ -18,7 +16,6 @@ from vnpy_ashare.services.note import NoteService
 from vnpy_ashare.services.position import PositionService
 from vnpy_ashare.services.watchlist import WatchlistService
 from vnpy_ashare.ui.quotes.page.controller_attrs import QuotesPageControllerAttrs
-from vnpy_ashare.ui.quotes.page.roles import RADAR_PAGE, STRATEGY_MONITOR_PAGE, WATCHLIST_PAGE
 from vnpy_ashare.ui.quotes.page.header_chips import refresh_emotion_cycle_chip_for_page
 from vnpy_ashare.ui.quotes.page.layout_persistence import (
     on_quotes_page_resize,
@@ -82,6 +79,7 @@ from vnpy_ashare.ui.quotes.page.quote_refresh import (
 from vnpy_ashare.ui.quotes.page.quote_refresh import (
     quote_auto_refresh_paused_for_hours as page_quote_auto_refresh_paused_for_hours,
 )
+from vnpy_ashare.ui.quotes.page.roles import RADAR_PAGE, STRATEGY_MONITOR_PAGE, WATCHLIST_PAGE
 from vnpy_ashare.ui.quotes.page.service_access import (
     get_analysis_service_for_page,
     get_bar_service_for_page,
@@ -103,6 +101,7 @@ from vnpy_ashare.ui.quotes.page.task_busy import (
     set_busy,
 )
 from vnpy_ashare.ui.quotes.page.worker_lifecycle import release_worker, wait_worker_release
+from vnpy_common.ui.loading_overlay import ContentLoadingOverlay
 from vnpy_common.ui.qt_helpers import thread_is_active
 
 
@@ -772,13 +771,10 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QuotesPageStat
         max_attempts: int = 25,
     ) -> None:
         """市场页滚动/加载期间延后 UI 更新，避免与 append 渲染争抢。"""
-        if (
-            not self.config.market_scroll_paging
-            or not self._market_background_sync_paused()
-            or attempt >= max_attempts
-        ):
+        if not self.config.market_scroll_paging or not self._market_background_sync_paused() or attempt >= max_attempts:
             callback()
             return
+
         def _retry() -> None:
             QuotesPage._defer_when_market_idle(
                 self,

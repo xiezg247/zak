@@ -198,7 +198,7 @@ class BacktestRunRepository(AppUserScopedRepository):
         extras = (br.c.vt_symbol == vt_symbol,) if vt_symbol else ()
         rows = self.list_for_user(
             *_RUN_COLUMNS,
-            extras=extras or None,
+            extras=extras,
             order_by=(br.c.created_at.desc(),),
             limit=limit,
         )

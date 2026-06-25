@@ -86,7 +86,6 @@ class WatchlistPoolContextBar(QtWidgets.QWidget):
 
     def _focus_segment(self, key: str) -> None:
         page = self._page
-        feature = getattr(page, "_watchlist_feature", None)
         if key == "pool":
             groups = page._watchlist_groups
             if groups is not None:

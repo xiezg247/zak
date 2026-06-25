@@ -8,10 +8,10 @@ from datetime import datetime
 
 from sqlalchemy import delete, func, insert, select, update
 
-from vnpy_llm.domain.chat import ChatMessage, ChatSession
-from vnpy_llm.storage.repository.chat import ChatUserScopedRepository
 from vnpy_common.storage.tables.chat import chat_messages as cm
 from vnpy_common.storage.tables.chat import chat_sessions as cs
+from vnpy_llm.domain.chat import ChatMessage, ChatSession
+from vnpy_llm.storage.repository.chat import ChatUserScopedRepository
 
 MAX_MESSAGES_PER_SESSION = 50
 MAX_TOOL_RESULT_CHARS = 2000
@@ -55,9 +55,7 @@ class ChatRepository(ChatUserScopedRepository):
 
     def get_or_create_default_session(self) -> str:
         """获取最近会话 id，无则创建「默认会话」。"""
-        row = self.fetchone(
-            select(cs.c.id).where(self.scope()).order_by(cs.c.updated_at.desc()).limit(1)
-        )
+        row = self.fetchone(select(cs.c.id).where(self.scope()).order_by(cs.c.updated_at.desc()).limit(1))
         if row is not None:
             return str(row["id"])
         session_id = uuid.uuid4().hex
@@ -105,9 +103,7 @@ class ChatRepository(ChatUserScopedRepository):
 
     def list_messages(self, session_id: str) -> list[ChatMessage]:
         rows = self.fetchall(
-            select(cm.c.role, cm.c.content, cm.c.created_at)
-            .where(self.scope_table(cm, cm.c.session_id == session_id))
-            .order_by(cm.c.id.asc())
+            select(cm.c.role, cm.c.content, cm.c.created_at).where(self.scope_table(cm, cm.c.session_id == session_id)).order_by(cm.c.id.asc())
         )
         messages = [
             ChatMessage.model_validate(
@@ -137,19 +133,16 @@ class ChatRepository(ChatUserScopedRepository):
                     user_id=self.current_user_id(),
                 )
             )
-            conn.execute_stmt(
-                update(cs).where(self.scope(cs.c.id == session_id)).values(updated_at=now)
-            )
+            conn.execute_stmt(update(cs).where(self.scope(cs.c.id == session_id)).values(updated_at=now))
 
         self.run(_write)
 
     def clear_messages(self, session_id: str) -> None:
         def _write(conn) -> None:
-            conn.execute_stmt(
-                delete(cm).where(self.scope_table(cm, cm.c.session_id == session_id))
-            )
+            conn.execute_stmt(delete(cm).where(self.scope_table(cm, cm.c.session_id == session_id)))
 
         self.run(_write)
+
 
 _repo = ChatRepository()
 

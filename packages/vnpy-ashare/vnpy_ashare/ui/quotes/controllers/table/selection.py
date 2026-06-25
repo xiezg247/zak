@@ -18,10 +18,7 @@ class TableSelectionMixin(TableControllerBase):
         if row < 0 or row >= model.rowCount():
             return
         index = model.index(row, 0)
-        flags = (
-            QtCore.QItemSelectionModel.SelectionFlag.Select
-            | QtCore.QItemSelectionModel.SelectionFlag.Rows
-        )
+        flags = QtCore.QItemSelectionModel.SelectionFlag.Select | QtCore.QItemSelectionModel.SelectionFlag.Rows
         if clear:
             flags |= QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect
         view.selectionModel().select(index, flags)

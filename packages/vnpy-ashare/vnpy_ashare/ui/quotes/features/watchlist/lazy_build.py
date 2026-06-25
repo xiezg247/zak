@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from vnpy.trader.ui import QtCore, QtWidgets
+from vnpy.trader.ui import QtWidgets
 
 from vnpy_ashare.ui.components.chart_style import build_chart_frame_stylesheet
 from vnpy_ashare.ui.quotes._host_widget import as_qwidget

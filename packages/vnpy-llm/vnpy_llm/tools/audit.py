@@ -7,8 +7,8 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from vnpy_llm.storage.repository.chat import ChatUserScopedRepository
 from vnpy_common.storage.tables.chat import llm_tool_calls as ltc
+from vnpy_llm.storage.repository.chat import ChatUserScopedRepository
 
 _PREVIEW_MAX = 800
 
@@ -58,7 +58,7 @@ class ToolCallRepository(ChatUserScopedRepository):
             ltc.c.result_preview,
             ltc.c.success,
             ltc.c.created_at,
-            extras=extras or None,
+            extras=extras,
             order_by=(ltc.c.created_at.desc(),),
             limit=limit,
         )

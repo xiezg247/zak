@@ -22,9 +22,9 @@ def _team_deep_mode_from_env() -> bool:
 def load_team_deep_mode_pref() -> bool:
     stored = get_pref(_PREF_NAMESPACE, _PREF_KEY, None)
     if stored is not None:
-        return coerce_settings_bool(stored, default=_team_deep_mode_from_env())
+        return bool(coerce_settings_bool(stored, default=_team_deep_mode_from_env()))
     legacy_raw = read_migrated_value(TEAM_DEEP_MODE_SETTINGS_KEY, _LEGACY_TEAM_DEEP, None)
-    legacy = coerce_settings_bool(legacy_raw, default=_team_deep_mode_from_env())
+    legacy = bool(coerce_settings_bool(legacy_raw, default=_team_deep_mode_from_env()))
     if legacy_raw is not None:
         save_scalar_pref(_PREF_NAMESPACE, _PREF_KEY, legacy)
     return legacy

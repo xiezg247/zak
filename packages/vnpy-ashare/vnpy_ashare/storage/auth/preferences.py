@@ -113,8 +113,7 @@ def batch_get_prefs(keys: list[tuple[str, str]]) -> dict[tuple[str, str], Any]:
 
     with connect() as conn:
         rows = conn.execute(
-            f"SELECT namespace, key, value_json FROM {table}"
-            f" WHERE user_id = ? AND (namespace, key) IN ({placeholders})",
+            f"SELECT namespace, key, value_json FROM {table} WHERE user_id = ? AND (namespace, key) IN ({placeholders})",
             (uid, *flat_params),
         ).fetchall()
 

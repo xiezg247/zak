@@ -63,15 +63,8 @@ class NotifyDeliveryLogRepository(AppUserScopedRepository):
                 error=error,
                 created_at=created_at,
             )
-            keep_ids = (
-                select(ndl.c.id)
-                .where(self.scope())
-                .order_by(ndl.c.created_at.desc())
-                .limit(_MAX_ROWS)
-            )
-            conn.execute_stmt(
-                delete(ndl).where(self.scope(), ndl.c.id.not_in(keep_ids))
-            )
+            keep_ids = select(ndl.c.id).where(self.scope()).order_by(ndl.c.created_at.desc()).limit(_MAX_ROWS)
+            conn.execute_stmt(delete(ndl).where(self.scope(), ndl.c.id.not_in(keep_ids)))
 
         self.run(_write)
         return record_id

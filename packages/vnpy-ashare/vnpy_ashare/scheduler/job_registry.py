@@ -100,10 +100,7 @@ def build_scheduler_jobs(runners: SchedulerJobRunners) -> dict[str, SchedulerJob
             schedule_builder=lambda cfg: IntervalTrigger(
                 seconds=max(cfg.interval_seconds, COLLECT_QUOTES_INTERVAL_SECONDS),
             ),
-            schedule_text_builder=lambda cfg: (
-                f"交易时段内每 {max(cfg.interval_seconds, COLLECT_QUOTES_INTERVAL_SECONDS)} 秒；"
-                "非交易时段自动休眠"
-            ),
+            schedule_text_builder=lambda cfg: f"交易时段内每 {max(cfg.interval_seconds, COLLECT_QUOTES_INTERVAL_SECONDS)} 秒；非交易时段自动休眠",
         ),
         "sync_universe": SchedulerJobMeta(
             job_id="sync_universe",
@@ -139,9 +136,7 @@ def build_scheduler_jobs(runners: SchedulerJobRunners) -> dict[str, SchedulerJob
             runner=runners.run_universe_daily_download,
             config_attr=specs["batch_download_universe"].config_attr,
             schedule_builder=_weekly_cron_trigger,
-            schedule_text_builder=lambda cfg: (
-                f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}，起始于 {cfg.download_start}"
-            ),
+            schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}，起始于 {cfg.download_start}",
         ),
         "prefetch_moneyflow": SchedulerJobMeta(
             job_id="prefetch_moneyflow",
@@ -249,10 +244,7 @@ def build_scheduler_jobs(runners: SchedulerJobRunners) -> dict[str, SchedulerJob
             runner=lambda: run_scheduled_auto_screen("screen_intraday"),
             config_attr=specs["screen_intraday"].config_attr,
             schedule_builder=lambda _cfg: CronTrigger(hour="10,14", minute=0),
-            schedule_text_builder=lambda cfg: (
-                f"交易日 {cfg.cron_hours}:{cfg.cron_minute_intraday:02d} · "
-                f"{recipe_label(cfg.recipe_id, 'intraday_multi')}"
-            ),
+            schedule_text_builder=lambda cfg: f"交易日 {cfg.cron_hours}:{cfg.cron_minute_intraday:02d} · {recipe_label(cfg.recipe_id, 'intraday_multi')}",
         ),
         "screen_post_close": SchedulerJobMeta(
             job_id="screen_post_close",
@@ -261,10 +253,7 @@ def build_scheduler_jobs(runners: SchedulerJobRunners) -> dict[str, SchedulerJob
             runner=lambda: run_scheduled_auto_screen("screen_post_close"),
             config_attr=specs["screen_post_close"].config_attr,
             schedule_builder=_weekly_cron_trigger,
-            schedule_text_builder=lambda cfg: (
-                f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d} · "
-                f"{recipe_label(cfg.recipe_id, 'post_close_multi')}"
-            ),
+            schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d} · {recipe_label(cfg.recipe_id, 'post_close_multi')}",
         ),
         "scan_horizon_outlook": SchedulerJobMeta(
             job_id="scan_horizon_outlook",
@@ -284,8 +273,6 @@ def build_scheduler_jobs(runners: SchedulerJobRunners) -> dict[str, SchedulerJob
             schedule_builder=lambda cfg: IntervalTrigger(
                 seconds=max(cfg.interval_seconds, BILIBILI_SYNC_INTERVAL_SECONDS),
             ),
-            schedule_text_builder=lambda cfg: (
-                f"每天 08:00–20:00 每 {max(cfg.interval_seconds, BILIBILI_SYNC_INTERVAL_SECONDS) // 60} 分钟"
-            ),
+            schedule_text_builder=lambda cfg: f"每天 08:00–20:00 每 {max(cfg.interval_seconds, BILIBILI_SYNC_INTERVAL_SECONDS) // 60} 分钟",
         ),
     }

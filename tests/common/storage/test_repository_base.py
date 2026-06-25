@@ -11,8 +11,10 @@ from vnpy_ashare.storage.auth.users import get_or_create_default_user_id
 from vnpy_ashare.storage.repositories.positions import PositionRepository
 from vnpy_common.storage.repository import BaseRepository, UserScopedRepository, bulk_upsert
 from vnpy_common.storage.session import connect_app
-from vnpy_common.storage.tables import meta, valuation_history as vh, watchlist_positions as wp
+from vnpy_common.storage.tables import meta
+from vnpy_common.storage.tables import valuation_history as vh
 from vnpy_common.storage.tables import watchlist as wl
+from vnpy_common.storage.tables import watchlist_positions as wp
 
 
 class _TestUserRepo(UserScopedRepository):

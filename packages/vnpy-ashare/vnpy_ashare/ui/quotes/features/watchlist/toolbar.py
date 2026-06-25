@@ -64,9 +64,7 @@ def append_watchlist_strategy_toolbar_actions(
     """信号/持仓/笔记/诊断等自选页策略区动作。"""
     strategy_page = is_strategy_monitor_page(page.page_name)
     show_signal_toolbar = page.config.show_watchlist_signals and not strategy_page
-    show_emotion_toolbar = (
-        (page.config.show_watchlist_signals or page.config.show_watchlist_positions) and not strategy_page
-    )
+    show_emotion_toolbar = (page.config.show_watchlist_signals or page.config.show_watchlist_positions) and not strategy_page
     if show_backtest_in_toolbar:
         toolbar.addWidget(page.backtest_button)
     if page.config.show_batch_backtest_button:

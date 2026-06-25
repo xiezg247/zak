@@ -94,12 +94,7 @@ class DisclosureRepository(AppBaseRepository):
         ]
 
     def latest_ann_date_after(self, ts_code: str, since_yyyymmdd: str) -> str | None:
-        row = self.fetchone(
-            select(dc.c.ann_date)
-            .where(dc.c.ts_code == ts_code, dc.c.ann_date > since_yyyymmdd)
-            .order_by(dc.c.ann_date.desc())
-            .limit(1)
-        )
+        row = self.fetchone(select(dc.c.ann_date).where(dc.c.ts_code == ts_code, dc.c.ann_date > since_yyyymmdd).order_by(dc.c.ann_date.desc()).limit(1))
         if not row or not row["ann_date"]:
             return None
         return str(row["ann_date"])

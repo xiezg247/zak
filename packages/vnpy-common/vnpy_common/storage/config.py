@@ -11,10 +11,7 @@ DatabaseDriver = Literal["postgresql"]
 _forced_url: str | None = None
 _dotenv_loaded = False
 
-_PG_REQUIRED_MSG = (
-    "未配置 PostgreSQL。请在 .env 设置 DATABASE_URL，或配置 "
-    "POSTGRES_HOST / POSTGRES_USER / POSTGRES_DATABASE。"
-)
+_PG_REQUIRED_MSG = "未配置 PostgreSQL。请在 .env 设置 DATABASE_URL，或配置 POSTGRES_HOST / POSTGRES_USER / POSTGRES_DATABASE。"
 
 
 def reset_storage_config() -> None:
@@ -75,8 +72,7 @@ def resolve_database_url() -> str | None:
     direct = _env("DATABASE_URL")
     if direct:
         return direct
-    keys = ("POSTGRES_HOST", "POSTGRES_PORT", "POSTGRES_USER",
-            "POSTGRES_PASSWORD", "POSTGRES_DATABASE")
+    keys = ("POSTGRES_HOST", "POSTGRES_PORT", "POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_DATABASE")
     if not any(_env(key) for key in keys):
         return None
     host = _env("POSTGRES_HOST") or "localhost"

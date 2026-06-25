@@ -6,12 +6,11 @@ import os
 import unittest
 import uuid
 
-from vnpy_common.auth.context import clear_current_user, set_current_user
-from vnpy_common.storage.config import force_database_url, reset_storage_config
-
 import vnpy_llm.chat.store as store
 from vnpy_ashare.storage.auth.users import get_or_create_default_user_id
 from vnpy_ashare.storage.connection import init_app_db
+from vnpy_common.auth.context import clear_current_user, set_current_user
+from vnpy_common.storage.config import force_database_url, reset_storage_config
 
 
 class TestChatStore(unittest.TestCase):

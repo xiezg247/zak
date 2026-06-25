@@ -15,7 +15,7 @@ from vnpy_ashare.storage.auth.migrate import PRIVATE_TABLES, migrate_user_scope_
 from vnpy_ashare.storage.auth.users import create_user, users_table
 from vnpy_common.auth.users import DEFAULT_USERNAME
 from vnpy_common.paths import BACKUP_DIR, VNTRADER_DIR, get_app_db_path, get_chat_db_path
-from vnpy_common.storage.config import require_database_url, resolve_database_url
+from vnpy_common.storage.config import require_database_url
 from vnpy_common.storage.migrate import upgrade_head
 from vnpy_common.storage.session import connect_app
 from vnpy_common.storage.sqlite_backend import SqliteBackend
@@ -75,9 +75,7 @@ class ImportLegacyReport:
             if item.skipped:
                 lines.append(f"  跳过 {item.schema}.{item.table} ({item.note})")
             else:
-                lines.append(
-                    f"  {item.schema}.{item.table}: 读取 {item.rows_read}，写入 {item.rows_inserted} [{item.source}]"
-                )
+                lines.append(f"  {item.schema}.{item.table}: 读取 {item.rows_read}，写入 {item.rows_inserted} [{item.source}]")
         if self.archived:
             lines.append("已归档：")
             for path in self.archived:
@@ -131,7 +129,7 @@ def _sqlite_tables(conn: sqlite3.Connection) -> list[str]:
 
 
 def _sqlite_columns(conn: sqlite3.Connection, table: str) -> list[str]:
-    return SqliteBackend.table_columns(conn, table)
+    return list(SqliteBackend.table_columns(conn, table))
 
 
 def _pg_columns(conn, schema: str, table: str) -> list[str]:
@@ -395,9 +393,7 @@ def _import_app_db(
     try:
         _prepare_app_sqlite(sqlite_conn)
         tables = [t for t in _sqlite_tables(sqlite_conn) if t not in _AUTH_SQLITE_TABLES]
-        ordered = [t for t in tables if t not in _DEFERRED_APP_TABLES] + [
-            t for t in _DEFERRED_APP_TABLES if t in tables
-        ]
+        ordered = [t for t in tables if t not in _DEFERRED_APP_TABLES] + [t for t in _DEFERRED_APP_TABLES if t in tables]
         for table in ordered:
             inject = table in PRIVATE_TABLES or table == "feed_item_reads"
             results.append(
@@ -537,7 +533,7 @@ def _archive_paths(paths: Iterable[Path]) -> list[str]:
 def import_legacy(options: ImportLegacyOptions | None = None) -> ImportLegacyReport:
     """将本地 SQLite 遗留数据导入 PostgreSQL。"""
     opts = options or ImportLegacyOptions()
-    url = require_database_url()
+    require_database_url()
 
     if opts.upgrade:
         upgrade_head()

@@ -7,13 +7,13 @@ from typing import Any
 from pydantic import Field
 
 from strategies.signals import list_supported_signal_strategies
-from vnpy_ashare.config.preferences._settings import coerce_settings_bool, coerce_settings_int, get_settings
 from vnpy_ashare.config.preferences._local_ui_pref import (
     load_json_local_ui,
     load_scalar_local_ui,
     save_json_local_ui,
     save_scalar_local_ui,
 )
+from vnpy_ashare.config.preferences._settings import coerce_settings_bool, coerce_settings_int, get_settings
 from vnpy_ashare.config.preferences._user_pref import load_model_pref, save_model_pref
 from vnpy_ashare.config.preferences.signal_panel_columns import normalize_visible_optional_keys
 from vnpy_ashare.domain.symbols.stock import canonical_vt_symbol
@@ -29,6 +29,7 @@ SIGNAL_PANEL_COLUMNS_KEY = "watchlist/signal_panel/columns"
 SIGNAL_STALE_SWEEP_MINUTES_KEY = "watchlist/signal_stale_sweep_minutes"
 SIGNAL_CENTER_SPLITTER_SIZES_KEY = "watchlist/center_splitter/sizes"
 SIGNAL_PANEL_MAX_SYMBOLS = 10
+SIGNAL_LOOKBACK_BARS = 60
 
 DEFAULT_CLASS = "AshareShortBreakoutStrategy"
 DEFAULT_FAST = 5

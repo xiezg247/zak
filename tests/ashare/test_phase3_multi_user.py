@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import unittest
+import uuid
 from unittest.mock import patch
 
 from vnpy_ashare.jobs.core.result import JobResult
@@ -67,6 +68,7 @@ class TestSchedulerLeader(unittest.TestCase):
 class TestUserPreferencesIsolation(unittest.TestCase):
     def setUp(self) -> None:
         import os
+
         from vnpy_common.storage.config import force_database_url, reset_storage_config
 
         url = os.environ.get("DATABASE_URL", "").strip()

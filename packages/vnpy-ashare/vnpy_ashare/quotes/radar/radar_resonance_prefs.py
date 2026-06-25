@@ -56,8 +56,7 @@ _MIGRATE_KEYS = tuple(f"{_KEY_PREFIX}{card_id}" for card_id in DEFAULT_RADAR_CAR
 def list_radar_resonance_weight_items() -> tuple[tuple[str, str, float], ...]:
     """(card_id, 展示名, 默认权重)。"""
     return tuple(
-        (card_id, _WEIGHT_LABELS.get(card_id, card_id), DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS[card_id])
-        for card_id in DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS
+        (card_id, _WEIGHT_LABELS.get(card_id, card_id), DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS[card_id]) for card_id in DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS
     )
 
 

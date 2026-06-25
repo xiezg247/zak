@@ -20,6 +20,7 @@ from vnpy_ashare.ui.quotes.features.market_rank import MarketRankFeature
 from vnpy_ashare.ui.quotes.features.stock_notes import StockNotesFeature
 from vnpy_ashare.ui.quotes.features.strategy_monitor import StrategyMonitorPageFeature
 from vnpy_ashare.ui.quotes.features.watchlist import WatchlistPageFeature
+from vnpy_ashare.ui.quotes.features.watchlist.lazy_build import WatchlistLazyBuildCoordinator
 from vnpy_ashare.ui.quotes.features.watchlist_panels import WatchlistPanelsFeature
 from vnpy_ashare.ui.quotes.page.config import (
     MARKET_AUTO_REFRESH_DEFAULT,
@@ -28,7 +29,6 @@ from vnpy_ashare.ui.quotes.page.config import (
     SEARCH_DEBOUNCE_MS,
 )
 from vnpy_ashare.ui.quotes.page.roles import STRATEGY_MONITOR_PAGE, WATCHLIST_PAGE, uses_watchlist_pool
-from vnpy_ashare.ui.quotes.features.watchlist.lazy_build import WatchlistLazyBuildCoordinator
 from vnpy_ashare.ui.quotes.watchlist.bootstrap import WatchlistBootstrapCoordinator
 from vnpy_ashare.ui.quotes.watchlist.refresh_scheduler import WatchlistStrategyRefreshScheduler
 from vnpy_ashare.ui.quotes.watchlist.strategy_batch import WatchlistStrategyBatchCoordinator

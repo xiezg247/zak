@@ -4,9 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from vnpy_common.storage.compat import DbConnection
 from vnpy_common.storage.config import require_database_url
-from vnpy_common.storage.postgres_backend import PostgresBackend
 from vnpy_common.storage.session import connect_app
 
 

@@ -23,9 +23,7 @@ def bulk_upsert(
     """INSERT … ON CONFLICT DO UPDATE（批量）。"""
     if not values:
         return
-    index_elements = [
-        table.c[column] if isinstance(column, str) else column for column in conflict_columns
-    ]
+    index_elements = [table.c[column] if isinstance(column, str) else column for column in conflict_columns]
     stmt = pg_insert(table).values(list(values))
     excluded = stmt.excluded
     stmt = stmt.on_conflict_do_update(

@@ -15,7 +15,7 @@ from vnpy_ashare.config.preferences.watchlist_signal import (
     save_watchlist_signal_config,
 )
 from vnpy_ashare.screener.hard_filter_prefs import sync_hard_filter_for_strategy_profile
-from vnpy_ashare.storage.auth.preferences import batch_get_prefs, get_pref
+from vnpy_ashare.storage.auth.preferences import batch_get_prefs
 from vnpy_common.domain.base import FrozenModel
 
 StrategyProfileId = Literal["ultra_short", "short_swing", "medium_watch", "trend"]
@@ -37,20 +37,34 @@ class StrategyProfileSpec(FrozenModel):
 
 STRATEGY_PROFILES: tuple[StrategyProfileSpec, ...] = (
     StrategyProfileSpec(
-        profile_id="ultra_short", title="极致短线", signal_class_name="AshareLimitBoardStrategy",
-        fast_window=5, slow_window=10, transition_hint="打板日 K 代理；隔日退出绑定 OvernightExit",
+        profile_id="ultra_short",
+        title="极致短线",
+        signal_class_name="AshareLimitBoardStrategy",
+        fast_window=5,
+        slow_window=10,
+        transition_hint="打板日 K 代理；隔日退出绑定 OvernightExit",
     ),
     StrategyProfileSpec(
-        profile_id="short_swing", title="短线波段", signal_class_name="AshareShortBreakoutStrategy",
-        fast_window=5, slow_window=10, transition_hint="短线放量突破（全局默认）",
+        profile_id="short_swing",
+        title="短线波段",
+        signal_class_name="AshareShortBreakoutStrategy",
+        fast_window=5,
+        slow_window=10,
+        transition_hint="短线放量突破（全局默认）",
     ),
     StrategyProfileSpec(
-        profile_id="medium_watch", title="中线观察", signal_class_name="AshareDoubleMaStrategy",
-        fast_window=10, slow_window=20,
+        profile_id="medium_watch",
+        title="中线观察",
+        signal_class_name="AshareDoubleMaStrategy",
+        fast_window=10,
+        slow_window=20,
     ),
     StrategyProfileSpec(
-        profile_id="trend", title="趋势中线", signal_class_name="AshareTrendMaStrategy",
-        fast_window=20, slow_window=60,
+        profile_id="trend",
+        title="趋势中线",
+        signal_class_name="AshareTrendMaStrategy",
+        fast_window=20,
+        slow_window=60,
     ),
 )
 
@@ -76,8 +90,10 @@ def load_strategy_profile_id() -> StrategyProfileId:
     from vnpy_ashare.config.preferences._user_pref import load_scalar_pref
 
     stored = load_scalar_pref(
-        _PREF_NAMESPACE, _PREF_KEY,
-        load_legacy=_load_profile_from_qsettings, migrate_key=STRATEGY_PROFILE_KEY,
+        _PREF_NAMESPACE,
+        _PREF_KEY,
+        load_legacy=_load_profile_from_qsettings,
+        migrate_key=STRATEGY_PROFILE_KEY,
     )
     return _resolve_profile_id(str(stored))
 
@@ -89,7 +105,9 @@ def save_strategy_profile_id(profile_id: StrategyProfileId) -> None:
 def profile_signal_config(profile_id: str) -> WatchlistSignalConfig:
     spec = get_strategy_profile(profile_id)
     return WatchlistSignalConfig(
-        class_name=spec.signal_class_name, fast_window=spec.fast_window, slow_window=spec.slow_window,
+        class_name=spec.signal_class_name,
+        fast_window=spec.fast_window,
+        slow_window=spec.slow_window,
     ).normalized()
 
 

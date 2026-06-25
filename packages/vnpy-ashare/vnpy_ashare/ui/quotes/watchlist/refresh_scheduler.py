@@ -17,8 +17,8 @@ if TYPE_CHECKING:
 
 
 def _strategy_runtime_active(page: QuotesPage) -> bool:
-    from vnpy_ashare.ui.quotes.page.roles import is_strategy_monitor_page
     from vnpy_ashare.ui.quotes.features.watchlist.strategy_workspace import is_strategy_workspace_open
+    from vnpy_ashare.ui.quotes.page.roles import is_strategy_monitor_page
 
     if is_strategy_monitor_page(page.page_name):
         return True
@@ -92,8 +92,6 @@ class WatchlistStrategyStaleSweep(QtCore.QObject):
         if batch is not None and batch.is_busy():
             return
         cfg = self._page.config
-        if cfg.show_watchlist_signals:
-            self._signals.refresh(force=False)
         if cfg.show_watchlist_positions:
             self._positions.refresh(force=False)
 

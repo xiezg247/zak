@@ -28,15 +28,11 @@ def test_promote_macos_gui_process_noop_on_linux() -> None:
 
 def test_is_benign_macos_gui_log() -> None:
     assert macos_gui.is_benign_macos_gui_log(
-        "2026-06-24 python[1:2] TSMSendMessageToUIServer: "
-        "CFMessagePortSendRequest FAILED(-1) to send to port com.apple.tsm.uiserver\n"
+        "2026-06-24 python[1:2] TSMSendMessageToUIServer: CFMessagePortSendRequest FAILED(-1) to send to port com.apple.tsm.uiserver\n"
     )
+    assert macos_gui.is_benign_macos_gui_log("2026-06-24 python[52096:53223772] error messaging the mach port for IMKCFRunLoopWakeUpReliable\n")
     assert macos_gui.is_benign_macos_gui_log(
-        "2026-06-24 python[52096:53223772] error messaging the mach port for IMKCFRunLoopWakeUpReliable\n"
-    )
-    assert macos_gui.is_benign_macos_gui_log(
-        "2026-06-24 python[60255:53262380] TSM AdjustCapsLockLEDForKeyTransitionHandling - "
-        "_ISSetPhysicalKeyboardCapsLockLED Inhibit\n"
+        "2026-06-24 python[60255:53262380] TSM AdjustCapsLockLEDForKeyTransitionHandling - _ISSetPhysicalKeyboardCapsLockLED Inhibit\n"
     )
     assert not macos_gui.is_benign_macos_gui_log("real application error\n")
 
@@ -52,10 +48,7 @@ def test_install_macos_gui_log_filter_suppresses_imk_noise() -> None:
             patch.object(macos_gui, "_stderr_filter_installed", False),
         ):
             macos_gui.install_macos_gui_log_filter()
-            sys.stderr.write(
-                "2026-06-24 python[52096:53223772] error messaging the mach port for "
-                "IMKCFRunLoopWakeUpReliable\n"
-            )
+            sys.stderr.write("2026-06-24 python[52096:53223772] error messaging the mach port for IMKCFRunLoopWakeUpReliable\n")
             sys.stderr.write("real error line\n")
             filtered = buffer.getvalue()
         assert "IMKCFRunLoopWakeUpReliable" not in filtered

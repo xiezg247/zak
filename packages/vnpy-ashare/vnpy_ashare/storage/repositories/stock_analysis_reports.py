@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 
-from sqlalchemy import func, insert, select
+from sqlalchemy import insert, select
 from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.storage.repository.app import AppUserScopedRepository
@@ -128,18 +128,13 @@ class StockAnalysisReportRepository(AppUserScopedRepository):
         }
 
     def get(self, report_id: int) -> dict[str, str | int] | None:
-        rows = self.fetchall(
-            select(*_REPORT_COLUMNS).where(self.scope(sar.c.id == int(report_id))).limit(1)
-        )
+        rows = self.fetchall(select(*_REPORT_COLUMNS).where(self.scope(sar.c.id == int(report_id))).limit(1))
         return _row_to_dict(rows[0]) if rows else None
 
     def list_for_symbol(self, symbol: str, exchange: Exchange, *, limit: int = 100) -> list[dict[str, str | int]]:
         limit = max(1, min(int(limit), 500))
         rows = self.fetchall(
-            select(*_REPORT_COLUMNS)
-            .where(self.scope(self._item_filter(symbol, exchange)))
-            .order_by(sar.c.created_at.desc(), sar.c.id.desc())
-            .limit(limit)
+            select(*_REPORT_COLUMNS).where(self.scope(self._item_filter(symbol, exchange))).order_by(sar.c.created_at.desc(), sar.c.id.desc()).limit(limit)
         )
         return [_row_to_dict(row) for row in rows]
 
@@ -148,10 +143,7 @@ class StockAnalysisReportRepository(AppUserScopedRepository):
 
     def list_symbols(self) -> list[tuple[str, str]]:
         rows = self.fetchall(
-            select(sar.c.symbol, sar.c.exchange)
-            .where(self.scope())
-            .group_by(sar.c.symbol, sar.c.exchange)
-            .order_by(sar.c.symbol, sar.c.exchange)
+            select(sar.c.symbol, sar.c.exchange).where(self.scope()).group_by(sar.c.symbol, sar.c.exchange).order_by(sar.c.symbol, sar.c.exchange)
         )
         return [(row["symbol"], row["exchange"]) for row in rows]
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import BigInteger, Column, Double, Integer, MetaData, PrimaryKeyConstraint, Table, Text, UUID, UniqueConstraint
+from sqlalchemy import UUID, BigInteger, Column, Double, Integer, MetaData, PrimaryKeyConstraint, Table, Text, UniqueConstraint
 
 metadata = MetaData()
 

@@ -43,11 +43,7 @@ class MemoryPositionCacheBackend:
         symbol = str(vt_symbol or "").strip()
         key = str(config_key or "").strip()
         pos_key = str(position_key or "").strip()
-        candidates = [
-            entry
-            for (sym, cfg, _, pk), entry in self._rows.items()
-            if sym == symbol and cfg == key and pk == pos_key
-        ]
+        candidates = [entry for (sym, cfg, _, pk), entry in self._rows.items() if sym == symbol and cfg == key and pk == pos_key]
         if not candidates:
             return None
         latest = max(candidates, key=lambda item: item.updated_at)

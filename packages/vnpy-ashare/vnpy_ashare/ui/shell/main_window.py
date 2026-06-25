@@ -19,6 +19,10 @@ from vnpy_ashare.app.events import (
     EVENT_OPEN_BATCH_BACKTEST,
     EVENT_ORB_ATTENTION,
 )
+from vnpy_ashare.config.preferences._settings import (
+    read_migrated_value,
+    write_setting_value,
+)
 from vnpy_ashare.ui.shell.floating_controller import FloatingAiController
 from vnpy_ashare.ui.shell.main_window_ai_events import (
     AI_NOT_LOADED_MSG,
@@ -83,10 +87,6 @@ from vnpy_ashare.ui.shell.nav import (
     BACKSTAGE_SHORTCUTS,
     NAV_SHORTCUTS,
     SidebarNav,
-)
-from vnpy_ashare.config.preferences._settings import (
-    read_migrated_value,
-    write_setting_value,
 )
 from vnpy_ashare.ui.shell.settings.dialog import show_settings_dialog
 from vnpy_common.paths import QSETTINGS_ORG

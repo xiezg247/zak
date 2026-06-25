@@ -5,11 +5,11 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from sqlalchemy import delete, insert, select
+from sqlalchemy import insert
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.storage.repository.app import AppUserScopedRepository
 from vnpy_ashare.storage.repositories.watchlist import watchlist_contains
+from vnpy_ashare.storage.repository.app import AppUserScopedRepository
 from vnpy_common.storage.tables import watchlist_positions as wp
 
 POSITION_MAX_ITEMS = 20

@@ -7,7 +7,6 @@ import uuid
 from typing import Any
 
 from pydantic import Field
-from sqlalchemy import select
 
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.storage.repository.app import AppUserScopedRepository

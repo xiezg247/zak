@@ -148,10 +148,7 @@ def refresh_strategy_workspace_button(page: WatchlistHost) -> None:
     button.setText(label)
     button.setChecked(is_strategy_workspace_open(page))
     button.blockSignals(False)
-    button.setToolTip(
-        "展开或收起策略信号区与持仓区。收起时主表占满空间且不跑策略计算；"
-        "展开后按当前预设（盘中/复盘）分配面板并刷新信号/持仓。"
-    )
+    button.setToolTip("展开或收起策略信号区与持仓区。收起时主表占满空间且不跑策略计算；展开后按当前预设（盘中/复盘）分配面板并刷新信号/持仓。")
 
 
 def init_strategy_workspace_on_layout(page: WatchlistHost) -> None:

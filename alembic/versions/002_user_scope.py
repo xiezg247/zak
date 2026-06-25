@@ -70,7 +70,7 @@ def upgrade() -> None:
         op.execute(f"ALTER TABLE chat.{table} ALTER COLUMN user_id SET NOT NULL")
 
     op.execute(
-        f"""
+        """
         CREATE TABLE IF NOT EXISTS app.feed_item_reads (
             user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
             item_id TEXT NOT NULL REFERENCES app.feed_items(id) ON DELETE CASCADE,

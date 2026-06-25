@@ -9,9 +9,9 @@ from pydantic import ValidationError
 from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
+from vnpy_common.storage.tables.chat import llm_turn_traces as ltt
 from vnpy_llm.storage.repository.chat import ChatUserScopedRepository
 from vnpy_llm.trace.trace import TurnTrace, turn_from_dict, turn_to_dict
-from vnpy_common.storage.tables.chat import llm_turn_traces as ltt
 
 MAX_TURNS_PER_SESSION = 50
 
@@ -38,9 +38,7 @@ class TraceRepository(ChatUserScopedRepository):
 
     def load_turns(self, session_id: str) -> list[TurnTrace]:
         rows = self.fetchall(
-            select(ltt.c.trace_json)
-            .where(self.scope(ltt.c.session_id == session_id))
-            .order_by(ltt.c.turn_index.asc(), ltt.c.created_at.asc())
+            select(ltt.c.trace_json).where(self.scope(ltt.c.session_id == session_id)).order_by(ltt.c.turn_index.asc(), ltt.c.created_at.asc())
         )
 
         turns: list[TurnTrace] = []
@@ -107,12 +105,7 @@ class TraceRepository(ChatUserScopedRepository):
         if count <= MAX_TURNS_PER_SESSION:
             return
         overflow = count - MAX_TURNS_PER_SESSION
-        subq = (
-            select(ltt.c.turn_id)
-            .where(scope)
-            .order_by(ltt.c.turn_index.asc(), ltt.c.created_at.asc())
-            .limit(overflow)
-        )
+        subq = select(ltt.c.turn_id).where(scope).order_by(ltt.c.turn_index.asc(), ltt.c.created_at.asc()).limit(overflow)
         conn.execute_stmt(delete(ltt).where(ltt.c.turn_id.in_(subq)))
 
 

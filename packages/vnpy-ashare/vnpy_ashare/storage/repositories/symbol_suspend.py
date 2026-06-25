@@ -9,8 +9,8 @@ from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.domain.time.calendar import last_trading_day
 from vnpy_ashare.integrations.tushare.suspend import fetch_suspend_d
-from vnpy_ashare.storage.repository.app import MetaRepository
 from vnpy_ashare.storage.repositories.trade_calendar import load_open_trading_days
+from vnpy_ashare.storage.repository.app import MetaRepository
 from vnpy_common.storage.repository import BaseRepository, bulk_upsert
 from vnpy_common.storage.tables import symbol_suspend_days as ssd
 
@@ -78,9 +78,7 @@ class SymbolSuspendRepository(BaseRepository):
         return {_parse_date(str(row[0])) for row in rows}
 
     def load_keys(self, trade_date: date) -> frozenset[tuple[str, str]]:
-        rows = self.fetchall(
-            select(ssd.c.symbol, ssd.c.exchange).where(ssd.c.cal_date == _format_date(trade_date))
-        )
+        rows = self.fetchall(select(ssd.c.symbol, ssd.c.exchange).where(ssd.c.cal_date == _format_date(trade_date)))
         return frozenset((str(row[0]), str(row[1])) for row in rows)
 
     def clear_cache(self) -> None:

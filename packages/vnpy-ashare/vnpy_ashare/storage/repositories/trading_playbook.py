@@ -34,9 +34,7 @@ class PlaybookRepository(AppBaseRepository):
         return int(row[0]) if row else 0
 
     def list_sections(self) -> tuple[PlaybookSection, ...]:
-        rows = self.fetchall(
-            select(tps).order_by(tps.c.sort_order, tps.c.section_id)
-        )
+        rows = self.fetchall(select(tps).order_by(tps.c.sort_order, tps.c.section_id))
         return tuple(_row_to_section(row) for row in rows)
 
     def upsert_sections(self, sections: tuple[PlaybookSection, ...]) -> None:

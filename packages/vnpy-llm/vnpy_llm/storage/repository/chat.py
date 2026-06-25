@@ -14,7 +14,7 @@ class ChatUserScopedRepository(UserScopedRepository):
 
     @staticmethod
     def user_id_resolver() -> str:
-        return get_user_id()
+        return str(get_user_id())
 
     def prepare(self) -> None:
         """表由 Alembic 管理，无需 inline DDL。"""

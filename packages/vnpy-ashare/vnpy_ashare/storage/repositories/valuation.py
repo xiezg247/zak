@@ -9,8 +9,8 @@ from pydantic import Field
 from sqlalchemy import Table, select
 
 from vnpy_ashare.domain.core.numbers import coerce_float
-from vnpy_common.domain.base import FrozenModel
 from vnpy_ashare.storage.repository.app import AppBaseRepository
+from vnpy_common.domain.base import FrozenModel
 from vnpy_common.storage.repository import bulk_upsert
 from vnpy_common.storage.tables import valuation_history as vh
 
@@ -115,12 +115,7 @@ class ValuationRepository(AppBaseRepository):
         ]
 
     def latest_trade_date(self, ts_code: str) -> str | None:
-        row = self.fetchone(
-            select(vh.c.trade_date)
-            .where(vh.c.ts_code == ts_code)
-            .order_by(vh.c.trade_date.desc())
-            .limit(1)
-        )
+        row = self.fetchone(select(vh.c.trade_date).where(vh.c.ts_code == ts_code).order_by(vh.c.trade_date.desc()).limit(1))
         return str(row["trade_date"]) if row else None
 
 

@@ -5,8 +5,8 @@ from __future__ import annotations
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
-from vnpy_ashare.ui.quotes.features.watchlist.lazy_build import watchlist_lazy_build_enabled
 from vnpy_ashare.ui.quotes.features.watchlist.context_bar import WatchlistPoolContextBar
+from vnpy_ashare.ui.quotes.features.watchlist.lazy_build import watchlist_lazy_build_enabled
 from vnpy_ashare.ui.quotes.page.run_log import load_run_output_expanded, on_run_output_expansion_changed
 from vnpy_ashare.ui.quotes.panels.loading_overlay import MarketTableHost
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost

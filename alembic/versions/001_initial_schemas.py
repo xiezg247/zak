@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from alembic import op
-
 from ddl.initial import ALL_STATEMENTS, DOWNGRADE_STATEMENTS
+
+from alembic import op
 
 revision = "001_initial"
 down_revision = None

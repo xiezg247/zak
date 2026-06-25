@@ -493,11 +493,7 @@ def _build_position_row_cells(
             if snap is not None:
                 tooltip = snap.t1_status_tooltip
             elif buy_date != "—":
-                tooltip = (
-                    f"买入日 {buy_date}：当日买入不可卖（A 股 T+1）"
-                    if t1_locked
-                    else f"买入日 {buy_date}：已过 T+1，可按策略卖出"
-                )
+                tooltip = f"买入日 {buy_date}：当日买入不可卖（A 股 T+1）" if t1_locked else f"买入日 {buy_date}：已过 T+1，可按策略卖出"
         elif key == "exit_signal" and snap is not None and snap.signal_snapshot is not None:
             fg = signal_cell_color(
                 "signal",

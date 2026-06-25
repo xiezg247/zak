@@ -24,12 +24,8 @@ class TestImportLegacyHelpers(unittest.TestCase):
             app_path = Path(tmp) / "zak.db"
             conn = _open_sqlite(app_path)
             try:
-                conn.execute(
-                    "CREATE TABLE watchlist (symbol TEXT, exchange TEXT, name TEXT, sort_order INTEGER, PRIMARY KEY(symbol, exchange))"
-                )
-                conn.execute(
-                    "INSERT INTO watchlist(symbol, exchange, name, sort_order) VALUES ('600000', 'SSE', '浦发', 0)"
-                )
+                conn.execute("CREATE TABLE watchlist (symbol TEXT, exchange TEXT, name TEXT, sort_order INTEGER, PRIMARY KEY(symbol, exchange))")
+                conn.execute("INSERT INTO watchlist(symbol, exchange, name, sort_order) VALUES ('600000', 'SSE', '浦发', 0)")
                 default_uid = _prepare_app_sqlite(conn)
                 conn.commit()
                 row = conn.execute("SELECT user_id FROM watchlist").fetchone()

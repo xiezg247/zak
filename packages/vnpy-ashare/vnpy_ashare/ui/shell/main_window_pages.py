@@ -20,8 +20,8 @@ from vnpy_ashare.ui.home.page import HomePageWidget
 from vnpy_ashare.ui.scheduler.dialog import show_scheduler_dialog
 from vnpy_ashare.ui.screener.pages.screener_hub_page import ScreenerHubPageWidget
 from vnpy_ashare.ui.sector_flow.page import SectorFlowPageWidget
-from vnpy_ashare.ui.shell.local.dialog import show_local_data_dialog
 from vnpy_ashare.ui.shell.deferred_idle import touch_user_activity
+from vnpy_ashare.ui.shell.local.dialog import show_local_data_dialog
 from vnpy_ashare.ui.shell.manager.dialog import show_data_manager_dialog
 from vnpy_ashare.ui.shell.page_shell import MarketPageWidget, RadarPageWidget, StrategyMonitorPageWidget, WatchlistPageWidget
 from vnpy_common.ui.theme.build_extra import build_info_feed_stylesheet

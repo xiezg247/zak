@@ -5,7 +5,6 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import tests._bootstrap  # noqa: F401
-
 from vnpy_ashare.ui.quotes.page.roles import STRATEGY_MONITOR_PAGE
 from vnpy_ashare.ui.quotes.watchlist.bootstrap import WatchlistBootstrapCoordinator
 

@@ -5,12 +5,11 @@ from __future__ import annotations
 import os
 import unittest
 
+from vnpy_ashare.storage.auth.users import get_or_create_default_user_id
+from vnpy_ashare.storage.connection import init_app_db
 from vnpy_common.ai.protocol import AiChartBar, AiChartSpec
 from vnpy_common.auth.context import clear_current_user, set_current_user
 from vnpy_common.storage.config import force_database_url, reset_storage_config
-
-from vnpy_ashare.storage.auth.users import get_or_create_default_user_id
-from vnpy_ashare.storage.connection import init_app_db
 from vnpy_llm.trace.persistence import TracePersistence
 from vnpy_llm.trace.trace import TraceStore
 

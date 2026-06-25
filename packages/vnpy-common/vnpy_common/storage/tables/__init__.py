@@ -23,25 +23,25 @@ from vnpy_common.storage.tables.app import (
     stock_note_memos,
     symbol_suspend_days,
     trade_calendar,
-    tushare_factor_cache,
     trading_plan_symbols,
     trading_plans,
     trading_playbook_discipline_daily,
     trading_playbook_sections,
-    valuation_history,
+    tushare_factor_cache,
     universe,
+    valuation_history,
     watchlist,
     watchlist_group_members,
     watchlist_groups,
     watchlist_positions,
 )
-from vnpy_common.storage.tables.system import scheduler_config
 from vnpy_common.storage.tables.chat import (
     chat_messages,
     chat_sessions,
     llm_tool_calls,
     llm_turn_traces,
 )
+from vnpy_common.storage.tables.system import scheduler_config
 
 __all__ = (
     "backtest_runs",

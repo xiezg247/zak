@@ -4,12 +4,11 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-import tests._bootstrap  # noqa: F401
-
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.domain.symbols.stock import StockItem
+import tests._bootstrap  # noqa: F401
 from vnpy_ashare.data import bar_store
+from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.ui.quotes.page.roles import STRATEGY_MONITOR_PAGE
 from vnpy_ashare.ui.quotes.watchlist.bootstrap import WatchlistBootstrapCoordinator
 

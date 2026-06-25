@@ -206,11 +206,7 @@ class WatchlistStrategyBatchCoordinator:
                 for job in merged.jobs:
                     subset = remap_batch_results(payload.signals, job.symbols)
                     if job.zone == "signal":
-                        subset_cont = (
-                            remap_batch_results(payload.continuations, job.symbols)
-                            if payload.continuations
-                            else {}
-                        )
+                        subset_cont = remap_batch_results(payload.continuations, job.symbols) if payload.continuations else {}
                         job.on_complete(
                             WatchlistSignalWorkerPayload(signals=subset, continuations=subset_cont),
                         )

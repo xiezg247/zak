@@ -87,9 +87,7 @@ class SectorFlowIntradayRepository(AppBaseRepository):
         if not day:
             return []
         rows = self.fetchall(
-            select(*_INTRADAY_COLUMNS)
-            .where(sfi.c.trade_date == day, sfi.c.sector_kind == kind)
-            .order_by(sfi.c.sector_id.asc(), sfi.c.clock_minutes.asc())
+            select(*_INTRADAY_COLUMNS).where(sfi.c.trade_date == day, sfi.c.sector_kind == kind).order_by(sfi.c.sector_id.asc(), sfi.c.clock_minutes.asc())
         )
         return [
             SectorFlowIntradayRecord(

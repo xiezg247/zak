@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import Column, MetaData, Table, Text, func
+from sqlalchemy import Column, Table, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP
 
 from vnpy_common.storage.tables.app import metadata

@@ -16,10 +16,7 @@ def build_interpret_screen_action() -> QuickAction | None:
         label="解读选股结果",
         auto_send=True,
         tooltip=f"解读「{ctx.condition}」共 {ctx.count} 条",
-        prompt=(
-            f"请解读选股结果「{ctx.condition}」（共 {ctx.count} 条）。"
-            "分析板块分布、与上次变动差异及技术面特征后解读，不要编造。"
-        ),
+        prompt=(f"请解读选股结果「{ctx.condition}」（共 {ctx.count} 条）。分析板块分布、与上次变动差异及技术面特征后解读，不要编造。"),
     )
 
 
@@ -31,18 +28,13 @@ def build_screener_hub_quick_actions() -> list[QuickAction]:
             label="雷达龙头",
             auto_send=True,
             tooltip="须先在雷达页刷新；情绪 gate 通过后 run_leader_screen",
-            prompt=(
-                "请先 get_emotion_cycle 与 get_radar_snapshot；"
-                "若允许新开仓则 run_leader_screen 并解读龙头结果，不要编造。"
-            ),
+            prompt=("请先 get_emotion_cycle 与 get_radar_snapshot；若允许新开仓则 run_leader_screen 并解读龙头结果，不要编造。"),
         ),
         QuickAction(
             id="screener_radar_resonance",
             label="共振解读",
             auto_send=True,
             tooltip="解读雷达共振≥2 卡标的及龙头地位",
-            prompt=(
-                "请调用 get_radar_snapshot，重点解读共振≥2 卡的标的及龙头地位，不要编造。"
-            ),
+            prompt=("请调用 get_radar_snapshot，重点解读共振≥2 卡的标的及龙头地位，不要编造。"),
         ),
     ]

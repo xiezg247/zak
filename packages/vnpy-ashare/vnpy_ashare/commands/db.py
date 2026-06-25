@@ -5,12 +5,11 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from vnpy_ashare.storage.import_legacy import ImportLegacyOptions, import_legacy
+from vnpy_ashare.storage.repositories.watchlist_repair import repair_all_watchlist_names
 from vnpy_common.paths import get_app_db_path, get_chat_db_path
 from vnpy_common.storage.config import require_database_url, resolve_database_url
 from vnpy_common.storage.migrate import upgrade_head
-
-from vnpy_ashare.storage.import_legacy import ImportLegacyOptions, import_legacy
-from vnpy_ashare.storage.repositories.watchlist_repair import repair_all_watchlist_names
 
 
 def _cmd_upgrade(_args: argparse.Namespace) -> int:

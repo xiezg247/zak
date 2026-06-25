@@ -294,6 +294,10 @@ class WatchlistPositionController:
         self.hydrate_from_disk(record_map=record_map)
         if is_strategy_monitor_page(self._page.page_name):
             self._apply_refresh_result()
+            if self._compute_enabled():
+                missing = self._symbols_needing_refresh(list(record_map), record_map)
+                if missing:
+                    QtCore.QTimer.singleShot(0, lambda: self.refresh(force=False, symbols=missing, record_map=record_map))
             return
         self.refresh(force=False, record_map=record_map)
 

@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from vnpy_ashare.config.runtime import format_vt_symbol_cn
-from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.data.bar_store import is_overview_cache_warmed
+from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.services.bar import bar_meta_from_overview, get_scope_overview, invalidate_bar_overview_cache, iter_bar_overviews, list_status
 from vnpy_ashare.ui.quotes.controllers.local_data.base import LocalDataControllerBase
 from vnpy_ashare.ui.quotes.workers.quotes_workers import InvalidBarCleanupWorker

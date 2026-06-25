@@ -61,10 +61,7 @@ class SettingsDialog(QtWidgets.QDialog):
     _ENV_ROW_HEIGHT = 34
     _ENV_KEY_COLUMN_WIDTH = 220
 
-    _POSTGRES_METADATA_HINT = (
-        "元数据与 AI 对话写入 PostgreSQL（schema app / chat / auth / cache），"
-        "由 .env 中 DATABASE_URL 或 POSTGRES_* 配置。"
-    )
+    _POSTGRES_METADATA_HINT = "元数据与 AI 对话写入 PostgreSQL（schema app / chat / auth / cache），由 .env 中 DATABASE_URL 或 POSTGRES_* 配置。"
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -517,9 +514,7 @@ class SettingsDialog(QtWidgets.QDialog):
                 continue
             db_widget_values[spec.key] = self._read_widget_value(widget, spec)
 
-        updates.update(
-            collect_database_runtime_updates(db_widget_values)
-        )
+        updates.update(collect_database_runtime_updates(db_widget_values))
         return updates
 
     def _read_widget_value(self, widget: QtWidgets.QWidget, spec: ConfigFieldSpec) -> object:

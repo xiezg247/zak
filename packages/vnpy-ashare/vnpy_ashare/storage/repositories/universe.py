@@ -10,8 +10,8 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.sql.elements import ColumnElement
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.storage.repository.app import AppBaseRepository
 from vnpy_ashare.storage.repositories.csv_io import read_stock_csv_rows, write_stock_csv
+from vnpy_ashare.storage.repository.app import AppBaseRepository
 from vnpy_common.storage.tables import meta
 from vnpy_common.storage.tables import universe as u
 
@@ -95,11 +95,7 @@ class UniverseRepository(AppBaseRepository):
         for start in range(0, len(unique_keys), chunk_size):
             chunk = unique_keys[start : start + chunk_size]
             key_tuples = [(symbol, exchange.name) for symbol, exchange in chunk]
-            rows = self.fetchall(
-                select(u.c.symbol, u.c.exchange, u.c.name).where(
-                    tuple_(u.c.symbol, u.c.exchange).in_(key_tuples)
-                )
-            )
+            rows = self.fetchall(select(u.c.symbol, u.c.exchange, u.c.name).where(tuple_(u.c.symbol, u.c.exchange).in_(key_tuples)))
             for row in rows:
                 result[(row["symbol"], Exchange[row["exchange"]])] = row["name"]
         return result
@@ -160,13 +156,7 @@ class UniverseRepository(AppBaseRepository):
 
         count_row = self.fetchone(select(func.count()).select_from(u).where(*filters))
         total = int(count_row[0]) if count_row is not None else 0
-        rows = self.fetchall(
-            select(u.c.symbol, u.c.exchange, u.c.name)
-            .where(*filters)
-            .order_by(u.c.symbol)
-            .limit(limit)
-            .offset(offset)
-        )
+        rows = self.fetchall(select(u.c.symbol, u.c.exchange, u.c.name).where(*filters).order_by(u.c.symbol).limit(limit).offset(offset))
         return [self._row_to_stock(row) for row in rows], total
 
     def universe_is_fresh(self, max_age: timedelta = CACHE_MAX_AGE) -> bool:

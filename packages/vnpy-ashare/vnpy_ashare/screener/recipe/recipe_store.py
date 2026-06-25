@@ -50,7 +50,7 @@ class ScreenerRecipeRepository(AppUserScopedRepository):
 
     def list_recipes(self, *, trigger_kind: TriggerKind | None = None) -> list[SavedRecipe]:
         extras = (sr.c.trigger_kind == trigger_kind,) if trigger_kind else ()
-        rows = self.list_for_user(*_RECIPE_COLUMNS, extras=extras or None, order_by=(sr.c.updated_at.desc(),))
+        rows = self.list_for_user(*_RECIPE_COLUMNS, extras=extras, order_by=(sr.c.updated_at.desc(),))
         return [_row_to_saved(row) for row in rows]
 
     def get_recipe(self, recipe_id: str) -> SavedRecipe | None:

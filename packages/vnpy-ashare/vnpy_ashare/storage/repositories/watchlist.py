@@ -8,9 +8,9 @@ from typing import Literal
 from sqlalchemy import delete, insert
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.storage.repository.app import AppUserScopedRepository
 from vnpy_ashare.storage.repositories.csv_io import read_stock_csv_rows, write_stock_csv
 from vnpy_ashare.storage.repositories.watchlist_groups import _prune_watchlist_group_members_conn
+from vnpy_ashare.storage.repository.app import AppUserScopedRepository
 from vnpy_common.storage.tables import watchlist as wl
 from vnpy_common.storage.tables import watchlist_group_members as wgm
 

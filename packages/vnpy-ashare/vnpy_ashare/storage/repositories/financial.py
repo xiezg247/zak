@@ -257,12 +257,7 @@ class FinancialRepository(AppBaseRepository):
         self.run(_write)
 
     def list_snapshots(self, ts_code: str, *, limit: int = 12) -> list[FinancialSnapshotRow]:
-        rows = self.fetchall(
-            select(fs)
-            .where(fs.c.ts_code == ts_code)
-            .order_by(fs.c.end_date.desc())
-            .limit(max(1, limit))
-        )
+        rows = self.fetchall(select(fs).where(fs.c.ts_code == ts_code).order_by(fs.c.end_date.desc()).limit(max(1, limit)))
         return [_row_to_snapshot(row) for row in rows]
 
     def get_sync_meta(self, ts_code: str) -> FinancialSyncMeta | None:

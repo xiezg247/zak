@@ -8,10 +8,10 @@ import uuid
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_common.auth.context import set_current_user
 from vnpy_ashare.storage.auth.users import create_user
 from vnpy_ashare.storage.connection import connect, init_app_db
 from vnpy_ashare.storage.repositories import watchlist as watchlist_repo
+from vnpy_common.auth.context import set_current_user
 from vnpy_common.storage.config import force_database_url, reset_storage_config
 
 

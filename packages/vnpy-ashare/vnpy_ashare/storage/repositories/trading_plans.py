@@ -71,9 +71,7 @@ class TradingPlanRepository(AppUserScopedRepository):
 
     def _load_symbols(self, conn, plan_id: str) -> tuple[TradingPlanSymbolRecord, ...]:
         rows = conn.execute_stmt(
-            select(*_SYMBOL_COLUMNS, tps.c.plan_id)
-            .where(self.scope_table(tps, tps.c.plan_id == plan_id))
-            .order_by(tps.c.sort_order, tps.c.symbol)
+            select(*_SYMBOL_COLUMNS, tps.c.plan_id).where(self.scope_table(tps, tps.c.plan_id == plan_id)).order_by(tps.c.sort_order, tps.c.symbol)
         ).fetchall()
         return tuple(_row_to_symbol(row, sort_order=index) for index, row in enumerate(rows))
 
@@ -129,10 +127,7 @@ class TradingPlanRepository(AppUserScopedRepository):
     def load_active_plan(self, trade_date: str) -> TradingPlanRecord | None:
         def _write(conn):
             row = conn.execute_stmt(
-                select(tp)
-                .where(self.scope((tp.c.trade_date == trade_date[:10]) & (tp.c.status == "active")))
-                .order_by(tp.c.updated_at.desc())
-                .limit(1)
+                select(tp).where(self.scope((tp.c.trade_date == trade_date[:10]) & (tp.c.status == "active"))).order_by(tp.c.updated_at.desc()).limit(1)
             ).fetchone()
             if row is None:
                 return None
@@ -144,9 +139,7 @@ class TradingPlanRepository(AppUserScopedRepository):
 
     def list_plans(self, *, limit: int = 20) -> list[TradingPlanRecord]:
         def _write(conn):
-            rows = conn.execute_stmt(
-                select(tp).where(self.scope()).order_by(tp.c.trade_date.desc(), tp.c.updated_at.desc()).limit(max(1, limit))
-            ).fetchall()
+            rows = conn.execute_stmt(select(tp).where(self.scope()).order_by(tp.c.trade_date.desc(), tp.c.updated_at.desc()).limit(max(1, limit))).fetchall()
             if not rows:
                 return []
             plan_ids = [str(row["id"]) for row in rows]
@@ -228,21 +221,15 @@ class TradingPlanRepository(AppUserScopedRepository):
 
     def activate_plan(self, plan_id: str) -> bool:
         def _write(conn) -> bool:
-            row = conn.execute_stmt(
-                select(tp.c.trade_date).where(self.scope(tp.c.id == plan_id))
-            ).fetchone()
+            row = conn.execute_stmt(select(tp.c.trade_date).where(self.scope(tp.c.id == plan_id))).fetchone()
             if row is None:
                 return False
             trade_date = str(row["trade_date"])
             now = _now_iso()
             conn.execute_stmt(
-                update(tp)
-                .where(self.scope((tp.c.trade_date == trade_date) & (tp.c.status == "active")))
-                .values(status="archived", updated_at=now)
+                update(tp).where(self.scope((tp.c.trade_date == trade_date) & (tp.c.status == "active"))).values(status="archived", updated_at=now)
             )
-            cursor = conn.execute_stmt(
-                update(tp).where(self.scope(tp.c.id == plan_id)).values(status="active", updated_at=now)
-            )
+            cursor = conn.execute_stmt(update(tp).where(self.scope(tp.c.id == plan_id)).values(status="active", updated_at=now))
             return bool(cursor.rowcount > 0)
 
         return bool(self.run(_write))

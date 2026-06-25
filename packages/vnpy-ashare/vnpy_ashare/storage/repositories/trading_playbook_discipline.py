@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import delete, select
+from sqlalchemy import select
 
 from vnpy_ashare.domain.trading.playbook import DisciplineCheckItem
 from vnpy_ashare.storage.repository.app import AppUserScopedRepository
@@ -22,15 +22,10 @@ class DisciplineRepository(AppUserScopedRepository):
 
     def load_checks(self, trade_date: str) -> tuple[DisciplineCheckItem, ...]:
         day = trade_date[:10]
-        rows = self.fetchall(
-            select(tpd.c.check_id, tpd.c.checked).where(
-                self.scope(tpd.c.trade_date == day)
-            )
-        )
+        rows = self.fetchall(select(tpd.c.check_id, tpd.c.checked).where(self.scope(tpd.c.trade_date == day)))
         checked_map = {str(row["check_id"]): bool(row["checked"]) for row in rows}
         return tuple(
-            DisciplineCheckItem(check_id=check_id, label=label, checked=checked_map.get(check_id, False))
-            for check_id, label in DEFAULT_DISCIPLINE_CHECKS
+            DisciplineCheckItem(check_id=check_id, label=label, checked=checked_map.get(check_id, False)) for check_id, label in DEFAULT_DISCIPLINE_CHECKS
         )
 
     def set_check(self, trade_date: str, check_id: str, checked: bool) -> None:

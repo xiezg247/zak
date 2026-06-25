@@ -41,9 +41,7 @@ class WatchlistRepairReport:
         lines = [f"{prefix}共修复 {self.updated_count} 条自选名称"]
         for patch in self.patches:
             label = f"{patch.symbol}.{patch.exchange.value}"
-            lines.append(
-                f"  [{patch.username}] {label}: {patch.old_name!r} → {patch.new_name!r} ({patch.source})"
-            )
+            lines.append(f"  [{patch.username}] {label}: {patch.old_name!r} → {patch.new_name!r} ({patch.source})")
         if not self.patches:
             lines.append("  无需修复")
         return lines
@@ -93,11 +91,7 @@ def repair_watchlist_names_for_user(
     patches: list[WatchlistNamePatch] = []
     repo = WatchlistRepository()
 
-    rows = repo.fetchall(
-        select(wl.c.symbol, wl.c.exchange, wl.c.name)
-        .where(user_scope(wl.c.user_id, user_id))
-        .order_by(wl.c.sort_order, wl.c.symbol)
-    )
+    rows = repo.fetchall(select(wl.c.symbol, wl.c.exchange, wl.c.name).where(user_scope(wl.c.user_id, user_id)).order_by(wl.c.sort_order, wl.c.symbol))
 
     missing: list[tuple[str, Exchange, str]] = []
     for row in rows:

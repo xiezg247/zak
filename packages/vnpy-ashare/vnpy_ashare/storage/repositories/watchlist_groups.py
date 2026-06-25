@@ -108,9 +108,7 @@ class WatchlistGroupRepository(AppUserScopedRepository):
                 )
             ).fetchall()
             for index, row in enumerate(rows):
-                conn.execute_stmt(
-                    update(wg).where(self.scope(wg.c.id == row["id"])).values(sort_order=index)
-                )
+                conn.execute_stmt(update(wg).where(self.scope(wg.c.id == row["id"])).values(sort_order=index))
 
         self.run(_write)
         return True
@@ -121,10 +119,7 @@ class WatchlistGroupRepository(AppUserScopedRepository):
 
         def _write(conn) -> bool:
             in_watchlist = conn.execute_stmt(
-                select(1)
-                .select_from(wl)
-                .where(self.scope_table(wl, (wl.c.symbol == symbol) & (wl.c.exchange == exchange.name)))
-                .limit(1)
+                select(1).select_from(wl).where(self.scope_table(wl, (wl.c.symbol == symbol) & (wl.c.exchange == exchange.name))).limit(1)
             ).fetchone()
             if in_watchlist is None:
                 return False
@@ -147,9 +142,7 @@ class WatchlistGroupRepository(AppUserScopedRepository):
             self.delete_matching(
                 self.scope_table(
                     wgm,
-                    (wgm.c.group_id == group_id)
-                    & (wgm.c.symbol == symbol)
-                    & (wgm.c.exchange == exchange.name),
+                    (wgm.c.group_id == group_id) & (wgm.c.symbol == symbol) & (wgm.c.exchange == exchange.name),
                 )
             )
             > 0
@@ -162,26 +155,16 @@ class WatchlistGroupRepository(AppUserScopedRepository):
         return self.update_matching({"position_cap_pct": cap}, self.scope(wg.c.id == group_id)) > 0
 
     def load_member_keys(self, group_id: str) -> set[tuple[str, str]]:
-        rows = self.fetchall(
-            select(wgm.c.symbol, wgm.c.exchange).where(self.scope_table(wgm, wgm.c.group_id == group_id))
-        )
+        rows = self.fetchall(select(wgm.c.symbol, wgm.c.exchange).where(self.scope_table(wgm, wgm.c.group_id == group_id)))
         return {(str(row["symbol"]), str(row["exchange"])) for row in rows}
 
     def load_group_ids_for_item(self, symbol: str, exchange: Exchange) -> set[str]:
-        rows = self.fetchall(
-            select(wgm.c.group_id).where(
-                self.scope_table(wgm, (wgm.c.symbol == symbol) & (wgm.c.exchange == exchange.name))
-            )
-        )
+        rows = self.fetchall(select(wgm.c.group_id).where(self.scope_table(wgm, (wgm.c.symbol == symbol) & (wgm.c.exchange == exchange.name))))
         return {str(row["group_id"]) for row in rows}
 
     def set_membership(self, symbol: str, exchange: Exchange, group_ids: set[str]) -> None:
         def _write(conn) -> None:
-            conn.execute_stmt(
-                delete(wgm).where(
-                    self.scope_table(wgm, (wgm.c.symbol == symbol) & (wgm.c.exchange == exchange.name))
-                )
-            )
+            conn.execute_stmt(delete(wgm).where(self.scope_table(wgm, (wgm.c.symbol == symbol) & (wgm.c.exchange == exchange.name))))
             uid = self.current_user_id()
             for group_id in sorted(group_ids):
                 if not self.group_exists(group_id):
@@ -203,14 +186,14 @@ class WatchlistGroupRepository(AppUserScopedRepository):
         self.run(lambda conn: _prune_watchlist_group_members_conn(conn, self.current_user_id()))
 
     def remove_members_for_item(self, symbol: str, exchange: Exchange) -> None:
-        self.delete_matching(
-            self.scope_table(wgm, (wgm.c.symbol == symbol) & (wgm.c.exchange == exchange.name))
-        )
+        self.delete_matching(self.scope_table(wgm, (wgm.c.symbol == symbol) & (wgm.c.exchange == exchange.name)))
 
 
 def _prune_watchlist_group_members_conn(conn, uid: str) -> None:
     watchlist_exists = exists(
-        select(1).select_from(wl).where(
+        select(1)
+        .select_from(wl)
+        .where(
             wl.c.user_id == wgm.c.user_id,
             wl.c.symbol == wgm.c.symbol,
             wl.c.exchange == wgm.c.exchange,

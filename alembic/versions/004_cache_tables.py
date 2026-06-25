@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from alembic import op
-
 from ddl.cache import CACHE_DOWNGRADE, CACHE_TABLES
+
+from alembic import op
 
 revision = "004_cache_tables"
 down_revision = "003_drop_bars_schema"

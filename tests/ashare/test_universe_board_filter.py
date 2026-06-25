@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import tests._bootstrap  # noqa: F401
-
 from vnpy_ashare.storage.repositories.universe import count_universe, load_universe_page
 
 

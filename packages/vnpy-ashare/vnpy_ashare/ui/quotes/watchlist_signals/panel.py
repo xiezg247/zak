@@ -23,7 +23,6 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
     """自选页信号监控区：手动名单 + 双均线策略 + 独立表格。"""
 
     symbols_changed = QtCore.Signal()
-    enabled_changed = QtCore.Signal(bool)
     config_changed = QtCore.Signal()
     refresh_requested = QtCore.Signal()
     row_activated = QtCore.Signal(str)
@@ -68,7 +67,7 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
 
     @property
     def enabled(self) -> bool:
-        return self._header.is_enabled()
+        return True
 
     def is_expanded(self) -> bool:
         return self._header.is_expanded()
@@ -188,7 +187,6 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         t = self._table_view
 
         h.config_changed.connect(self._on_header_config_changed)
-        h.enabled_changed.connect(self._on_header_enabled_changed)
         h.refresh_requested.connect(self.refresh_requested.emit)
         h.ai_scan_requested.connect(self.ai_scan_requested.emit)
         h.ai_clicked.connect(self._on_ai_clicked)
@@ -207,9 +205,6 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         t = self._table_view
         t.set_visible_column_keys(self._header.visible_column_keys())
         self.config_changed.emit()
-
-    def _on_header_enabled_changed(self, enabled: bool) -> None:
-        self.enabled_changed.emit(enabled)
 
     def _on_header_expansion_changed(self, expanded: bool) -> None:
         self._table_view.set_visible(expanded)

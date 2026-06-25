@@ -86,11 +86,7 @@ def collect_outlook_exclusion_vt_symbols() -> set[str]:
 
 def name_map_for_symbols(vt_symbols: list[str]) -> dict[str, str]:
     """vt_symbol → 名称（仅自选池与 StockItem 已有字段，不查 universe 全表）。"""
-    watchlist_names = {
-        _vt_from_parts(symbol, exchange): name
-        for symbol, exchange, name in load_watchlist_rows()
-        if str(name or "").strip()
-    }
+    watchlist_names = {_vt_from_parts(symbol, exchange): name for symbol, exchange, name in load_watchlist_rows() if str(name or "").strip()}
     mapping: dict[str, str] = {}
     for vt_symbol in vt_symbols:
         text = str(vt_symbol or "").strip()

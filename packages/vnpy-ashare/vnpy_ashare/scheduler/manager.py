@@ -120,10 +120,8 @@ class TaskSchedulerManager:
     def _run_collect_quotes(self, *, force: bool = False) -> JobResult:
         return run_collect_quotes(force=force)
 
-
     def _run_prefetch_tushare(self) -> JobResult:
         return run_prefetch_tushare_with_warm()
-
 
     def _run_sync_bilibili_feed(self, *, force: bool = False) -> JobResult:
         return run_sync_bilibili_feed(force=force, engine=self._engine)

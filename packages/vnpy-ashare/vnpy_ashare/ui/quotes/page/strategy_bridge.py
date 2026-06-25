@@ -47,8 +47,6 @@ def add_items_to_strategy_monitor(start: QtWidgets.QWidget, items: list[StockIte
     if panel is None:
         return 0, len(items)
     added, skipped = panel.add_symbols([item.vt_symbol for item in items])
-    if added:
-        page._signals.refresh(force=True)
     return added, skipped
 
 

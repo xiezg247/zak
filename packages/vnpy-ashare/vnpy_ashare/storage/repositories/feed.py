@@ -89,7 +89,7 @@ class FeedRepository(AppUserScopedRepository):
         extras = (fs.c.enabled == 1,) if enabled_only else ()
         rows = self.list_for_user(
             *fs.c,
-            extras=extras or None,
+            extras=extras,
             order_by=(fs.c.sort_order.asc(), fs.c.created_at.asc()),
         )
         return [_row_to_subscription(row) for row in rows]
@@ -120,9 +120,7 @@ class FeedRepository(AppUserScopedRepository):
         cfg = config or FeedSubscriptionConfig()
 
         def _write(conn) -> None:
-            row = conn.execute_stmt(
-                select(func.coalesce(func.max(fs.c.sort_order), -1).label("m")).where(self.scope())
-            ).fetchone()
+            row = conn.execute_stmt(select(func.coalesce(func.max(fs.c.sort_order), -1).label("m")).where(self.scope())).fetchone()
             sort_order = int(row["m"] if row else -1) + 1
             self.insert_for_user(
                 conn,
@@ -179,9 +177,7 @@ class FeedRepository(AppUserScopedRepository):
 
     def delete_subscription(self, subscription_id: str) -> None:
         def _write(conn) -> None:
-            conn.execute_stmt(
-                delete(fc).where(self.scope_table(fc, fc.c.subscription_id == subscription_id))
-            )
+            conn.execute_stmt(delete(fc).where(self.scope_table(fc, fc.c.subscription_id == subscription_id)))
             self.delete_where(conn, self.scope(fs.c.id == subscription_id))
 
         self.run(_write)
@@ -276,11 +272,7 @@ class FeedRepository(AppUserScopedRepository):
         ext_ids = [d.external_id for d in drafts]
 
         def _write(conn) -> list[FeedItem]:
-            conn.execute_stmt(
-                pg_insert(fi)
-                .values(values)
-                .on_conflict_do_nothing(index_elements=[fi.c.source_type, fi.c.external_id])
-            )
+            conn.execute_stmt(pg_insert(fi).values(values).on_conflict_do_nothing(index_elements=[fi.c.source_type, fi.c.external_id]))
             rows = conn.execute_stmt(
                 select(fi).where(
                     fi.c.source_type == source_type,

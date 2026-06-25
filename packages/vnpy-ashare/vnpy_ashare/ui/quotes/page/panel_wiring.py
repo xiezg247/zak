@@ -56,7 +56,10 @@ def apply_strategy_profile_for_page(page: QuotesPage, profile_id: str) -> None:
     position_panel = page.position_panel
     if position_panel is not None:
         position_panel.sync_strategy_profile_combo(profile_id)
-    refresh_watchlist_signals(page)
+    page._signals.invalidate_memory_cache()
+    signal_panel = page.signal_panel
+    if signal_panel is not None:
+        signal_panel.render_panel()
 
 
 def refresh_watchlist_signals(page: QuotesPage) -> None:

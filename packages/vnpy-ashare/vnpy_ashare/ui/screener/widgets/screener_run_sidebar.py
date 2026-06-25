@@ -7,6 +7,11 @@ from typing import TYPE_CHECKING, Literal, cast
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.app.engine_access import get_screening_service
+from vnpy_ashare.config.preferences._settings import (
+    coerce_settings_bool,
+    read_migrated_value,
+    write_setting_value,
+)
 from vnpy_ashare.screener.data.screening_status import resolve_run_trigger_kind
 from vnpy_ashare.screener.run.run_store import (
     delete_run,
@@ -14,11 +19,6 @@ from vnpy_ashare.screener.run.run_store import (
     is_run_unread,
     is_strategy_run,
     list_runs,
-)
-from vnpy_ashare.config.preferences._settings import (
-    coerce_settings_bool,
-    read_migrated_value,
-    write_setting_value,
 )
 from vnpy_common.paths import QSETTINGS_ORG
 from vnpy_common.ui.feedback import confirm_action

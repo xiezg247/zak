@@ -8,13 +8,13 @@ from vnpy_ashare.config.preferences.watchlist_position import save_position_pane
 from vnpy_ashare.config.preferences.watchlist_signal import save_signal_panel_expanded
 from vnpy_ashare.ui.quotes.features.watchlist.prefs import LayoutPresetId, save_watchlist_layout_preset
 from vnpy_ashare.ui.quotes.features.watchlist.preset_specs import POSITION_FOCUS_TABLE_RATIO, PRESET_LABELS, PRESET_SPECS
-from vnpy_ashare.ui.quotes.page.roles import is_strategy_monitor_page
 from vnpy_ashare.ui.quotes.features.watchlist.strategy_workspace import (
     is_strategy_workspace_open,
     open_strategy_workspace,
     sync_strategy_workspace_from_preset,
 )
 from vnpy_ashare.ui.quotes.features.watchlist.toolbar_preset import apply_toolbar_for_preset
+from vnpy_ashare.ui.quotes.page.roles import is_strategy_monitor_page
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist_signals.splitter import apply_center_splitter_sizes
 

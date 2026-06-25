@@ -22,7 +22,6 @@ from vnpy_ashare.storage.connection import init_app_db
 
 class HardFilterPrefsTests(unittest.TestCase):
     def setUp(self) -> None:
-        import os
         from vnpy_common.storage.config import force_database_url, reset_storage_config
 
         url = os.environ.get("DATABASE_URL", "").strip()

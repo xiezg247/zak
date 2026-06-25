@@ -22,7 +22,7 @@ class UserScopedRepository(BaseRepository):
         return self.table.c.user_id
 
     def current_user_id(self) -> str:
-        return self.user_id_resolver()
+        return type(self).user_id_resolver()
 
     def scope(self, *extras: ColumnElement[bool]) -> ColumnElement[bool]:
         return user_scope(self.user_id_col, self.current_user_id(), *extras)

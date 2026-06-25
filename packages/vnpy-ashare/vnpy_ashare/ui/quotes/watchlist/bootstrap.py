@@ -36,11 +36,7 @@ class WatchlistBootstrapCoordinator:
 
         pool = page._watchlist._pool_from_service()
         fingerprint = self.pool_fingerprint(pool)
-        if (
-            page.display_stocks
-            and self._last_pool_fingerprint is not None
-            and fingerprint == self._last_pool_fingerprint
-        ):
+        if page.display_stocks and self._last_pool_fingerprint is not None and fingerprint == self._last_pool_fingerprint:
             self._sync_display_only(page, pool)
             self.schedule_downstream(page, reason="tab_resume")
             return

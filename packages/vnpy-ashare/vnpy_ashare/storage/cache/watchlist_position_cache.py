@@ -8,7 +8,6 @@ from collections.abc import Callable
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
 from vnpy_ashare.storage.cache.position_cache_factory import create_position_cache_backend
 from vnpy_ashare.storage.cache.signal_cache_config import l1_cache_ttl_seconds
-from vnpy_ashare.storage.cache.signal_payload import snapshot_from_payload, snapshot_to_payload
 
 
 class _L1PositionCacheWrapper:

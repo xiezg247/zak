@@ -7,7 +7,6 @@ import uuid
 from datetime import datetime
 
 from vnpy_common.auth.users import DEFAULT_USERNAME, hash_password
-
 from vnpy_common.storage.sqlite_backend import SqliteBackend
 
 _USERS_SCHEMA_SQLITE = """

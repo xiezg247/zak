@@ -9,8 +9,8 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
-from vnpy_ashare.storage.repository.app import AppBaseRepository
 from vnpy_ashare.storage.cache.signal_payload import snapshot_from_payload, snapshot_to_payload
+from vnpy_ashare.storage.repository.app import AppBaseRepository
 from vnpy_common.storage.tables.cache import watchlist_position_cache as wpc
 
 

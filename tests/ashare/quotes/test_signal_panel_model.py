@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import tests._bootstrap  # noqa: F401
-
 from vnpy_ashare.ui.quotes.table.model import QuoteCell
 from vnpy_ashare.ui.quotes.watchlist_signals.signal_panel_model import SignalPanelTableModel
 

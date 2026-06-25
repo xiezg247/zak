@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 from vnpy.trader.ui import QtCore
 
@@ -81,12 +81,12 @@ def load_json_local_ui(
 ) -> T:
     ck = _cache_key(relative_key)
     if ck in _json_cache:
-        return _json_cache[ck]  # type: ignore[return-value]
+        return cast(T, _json_cache[ck])
 
     stored = _decode_json_value(_read_raw_local_ui(relative_key))
     if stored is not None:
         _json_cache[ck] = stored
-        return stored  # type: ignore[return-value]
+        return cast(T, stored)
 
     legacy = load_default()
     _json_cache[ck] = legacy
@@ -109,12 +109,12 @@ def load_scalar_local_ui(
 ) -> T:
     ck = _cache_key(relative_key)
     if ck in _json_cache:
-        return _json_cache[ck]  # type: ignore[return-value]
+        return cast(T, _json_cache[ck])
 
     raw = _read_raw_local_ui(relative_key)
     if raw is not None:
         _json_cache[ck] = raw
-        return raw  # type: ignore[return-value]
+        return cast(T, raw)
 
     legacy = load_default()
     _json_cache[ck] = legacy

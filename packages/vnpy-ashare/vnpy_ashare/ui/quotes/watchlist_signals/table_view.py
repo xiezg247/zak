@@ -266,10 +266,7 @@ class SignalPanelTableView(QtWidgets.QWidget):
     def _rebuild_table(self, display_symbols: list[str]) -> None:
         self._building = True
         try:
-            rows = [
-                _build_signal_row_cells(self._page, vt_symbol, panel_columns=self._panel_columns())
-                for vt_symbol in display_symbols
-            ]
+            rows = [_build_signal_row_cells(self._page, vt_symbol, panel_columns=self._panel_columns()) for vt_symbol in display_symbols]
             self._model.set_rows_with_symbols(display_symbols, rows)
         finally:
             self._building = False

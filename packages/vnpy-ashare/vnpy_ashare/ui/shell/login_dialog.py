@@ -6,10 +6,10 @@ import os
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_common.auth.context import set_current_user
-from vnpy_common.paths import QSETTINGS_ORG
 from vnpy_ashare.storage.auth.scope import get_user_id
 from vnpy_ashare.storage.auth.users import list_active_users, login
+from vnpy_common.auth.context import set_current_user
+from vnpy_common.paths import QSETTINGS_ORG
 
 
 class LoginDialog(QtWidgets.QDialog):

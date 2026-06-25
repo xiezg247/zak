@@ -18,13 +18,9 @@ from vnpy_ashare.ui.quotes.page.worker_lifecycle import teardown_quotes_page_wor
 
 
 def _strategy_stale_sweep_enabled(page: Any) -> bool:
-    if page.page_name != STRATEGY_MONITOR_PAGE:
-        return True
-    signal_panel = getattr(page, "signal_panel", None)
+    """信号区仅手动刷新；stale 巡检仅覆盖持仓区。"""
     position_panel = getattr(page, "position_panel", None)
-    signal_on = signal_panel is not None and signal_panel.enabled
-    position_on = position_panel is not None and position_panel.enabled
-    return signal_on or position_on
+    return position_panel is not None and position_panel.enabled
 
 
 def _deferred_watchlist_activate(page: Any) -> None:

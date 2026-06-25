@@ -64,9 +64,7 @@ class QuotesShellWidget(QtWidgets.QWidget):
         if self._discovery_controller is not None:
             self._discovery_controller.activate()
         if self.PAGE_NAME != "自选" and (
-            self.page.config.show_watchlist_signals
-            or self.page.config.show_watchlist_positions
-            or self.page.config.show_run_output_panel
+            self.page.config.show_watchlist_signals or self.page.config.show_watchlist_positions or self.page.config.show_run_output_panel
         ):
             QtCore.QTimer.singleShot(0, lambda: restore_center_splitter(self.page))
         if self.PAGE_NAME == "市场":
@@ -80,9 +78,7 @@ class QuotesShellWidget(QtWidgets.QWidget):
     def showEvent(self, event: QtGui.QShowEvent) -> None:
         super().showEvent(event)
         if self.PAGE_NAME != "自选" and (
-            self.page.config.show_watchlist_signals
-            or self.page.config.show_watchlist_positions
-            or self.page.config.show_run_output_panel
+            self.page.config.show_watchlist_signals or self.page.config.show_watchlist_positions or self.page.config.show_run_output_panel
         ):
             QtCore.QTimer.singleShot(0, lambda: restore_center_splitter(self.page))
         if self.PAGE_NAME == "市场":

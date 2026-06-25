@@ -5,8 +5,8 @@ from __future__ import annotations
 from pydantic import Field
 
 from strategies.signals import list_supported_signal_strategies
-from vnpy_ashare.config.preferences._settings import coerce_settings_bool, coerce_settings_int, get_settings
 from vnpy_ashare.config.preferences._local_ui_pref import load_json_local_ui, save_json_local_ui
+from vnpy_ashare.config.preferences._settings import coerce_settings_bool, coerce_settings_int, get_settings
 from vnpy_ashare.config.preferences._user_pref import load_model_pref, save_model_pref
 from vnpy_ashare.config.preferences.watchlist_signal import (
     DEFAULT_CLASS,

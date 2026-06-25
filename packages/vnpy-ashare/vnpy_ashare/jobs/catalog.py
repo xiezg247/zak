@@ -178,9 +178,7 @@ JOB_SPECS: tuple[JobSpec, ...] = (
 
 JOBS_BY_ID: dict[str, JobSpec] = {spec.job_id: spec for spec in JOB_SPECS}
 
-JOB_CATALOG: dict[str, tuple[str, str]] = {
-    spec.job_id: (spec.name, spec.cli_text) for spec in JOB_SPECS
-}
+JOB_CATALOG: dict[str, tuple[str, str]] = {spec.job_id: (spec.name, spec.cli_text) for spec in JOB_SPECS}
 
 __all__ = [
     "BILIBILI_SYNC_INTERVAL_SECONDS",

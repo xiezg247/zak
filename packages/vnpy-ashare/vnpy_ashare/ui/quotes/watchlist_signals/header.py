@@ -20,11 +20,9 @@ from vnpy_ashare.config.preferences.watchlist_signal import (
     DEFAULT_CLASS,
     WatchlistSignalConfig,
     load_signal_panel_columns,
-    load_signal_panel_enabled,
     load_signal_panel_expanded,
     load_watchlist_strategy_stale_sweep_minutes,
     save_signal_panel_columns,
-    save_signal_panel_enabled,
     save_signal_panel_expanded,
     save_watchlist_strategy_stale_sweep_minutes,
 )
@@ -43,7 +41,6 @@ class SignalPanelHeader(QtWidgets.QWidget):
     ai_clicked = QtCore.Signal()
     remove_requested = QtCore.Signal()
     clear_requested = QtCore.Signal()
-    enabled_changed = QtCore.Signal(bool)
     expansion_changed = QtCore.Signal(bool)
 
     def __init__(self, page: WatchlistHost, parent: QtWidgets.QWidget | None = None) -> None:
@@ -92,9 +89,6 @@ class SignalPanelHeader(QtWidgets.QWidget):
         if index >= 0:
             self._profile_combo.setCurrentIndex(index)
         self._profile_combo.blockSignals(False)
-
-    def is_enabled(self) -> bool:
-        return self._toggle.isChecked()
 
     def is_expanded(self) -> bool:
         return self._expanded
@@ -166,10 +160,6 @@ class SignalPanelHeader(QtWidgets.QWidget):
         self._profile_combo.currentIndexChanged.connect(self._on_profile_changed)
         self.sync_strategy_profile_combo(load_strategy_profile_id())
 
-        self._toggle = QtWidgets.QCheckBox("启用信号", self)
-        self._toggle.setChecked(load_signal_panel_enabled(page_name=self._page.page_name))
-        self._toggle.toggled.connect(self._on_enabled_toggled)
-
         self._strategy_combo = QtWidgets.QComboBox(self)
         self._strategy_combo.setObjectName("SignalStrategyCombo")
         self._strategy_combo.setMinimumWidth(108)
@@ -224,7 +214,6 @@ class SignalPanelHeader(QtWidgets.QWidget):
         layout.addWidget(self._collapse_button)
         layout.addWidget(QtWidgets.QLabel("策略信号", self))
         layout.addWidget(self._profile_combo)
-        layout.addWidget(self._toggle)
         layout.addStretch()
         layout.addWidget(self._strategy_combo)
         layout.addWidget(self._fast_spin)
@@ -253,7 +242,6 @@ class SignalPanelHeader(QtWidgets.QWidget):
             self._ai_button,
             self._ai_scan_button,
         ]
-        self._apply_enabled(self._toggle.isChecked())
         self._apply_expanded(self._expanded, emit=False)
 
     # ── 事件处理 ────────────────────────────────────────────
@@ -298,15 +286,6 @@ class SignalPanelHeader(QtWidgets.QWidget):
         keys = normalize_visible_optional_keys(keys)
         save_signal_panel_columns(keys)
         self.config_changed.emit()
-
-    def _on_enabled_toggled(self, enabled: bool) -> None:
-        save_signal_panel_enabled(enabled, page_name=self._page.page_name)
-        self._apply_enabled(enabled)
-        self.enabled_changed.emit(enabled)
-
-    def _apply_enabled(self, enabled: bool) -> None:
-        for widget in self._body_widgets:
-            widget.setEnabled(enabled)
 
     def _on_ai_clicked(self) -> None:
         self.ai_clicked.emit()

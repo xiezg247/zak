@@ -6,7 +6,7 @@ import json
 from datetime import datetime, timedelta
 from typing import Any
 
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from vnpy_ashare.storage.repository.app import AppBaseRepository

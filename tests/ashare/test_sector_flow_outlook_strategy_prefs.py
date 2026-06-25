@@ -54,6 +54,7 @@ class SectorFlowOutlookStrategyPrefsTests(unittest.TestCase):
         with mock.patch(
             "vnpy_ashare.quotes.radar.outlook_strategy_prefs.get_settings",
         ) as get_settings:
+
             class _Settings:
                 def value(self, _key: str, default: str = "") -> str:
                     return default

@@ -7,13 +7,13 @@ from collections.abc import Callable
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from vnpy_ashare.domain.symbols.stock import canonical_vt_symbol
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
-from vnpy_ashare.storage.repository.app import AppBaseRepository
 from vnpy_ashare.storage.cache.signal_payload import snapshot_from_payload, snapshot_to_payload
+from vnpy_ashare.storage.repository.app import AppBaseRepository
 from vnpy_common.storage.tables.cache import watchlist_signal_cache as wsc
 
 
@@ -45,12 +45,7 @@ class PgSignalCacheBackend(AppBaseRepository):
         key = str(config_key or "").strip()
         if not vt or not key:
             return None
-        row = self.fetchone(
-            select(wsc.c.payload)
-            .where(wsc.c.vt_symbol == vt, wsc.c.config_key == key)
-            .order_by(wsc.c.updated_at.desc())
-            .limit(1)
-        )
+        row = self.fetchone(select(wsc.c.payload).where(wsc.c.vt_symbol == vt, wsc.c.config_key == key).order_by(wsc.c.updated_at.desc()).limit(1))
         if row is None:
             return None
         try:

@@ -9,8 +9,9 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from unittest.mock import MagicMock, patch
 
 import pytest
-import tests._bootstrap  # noqa: F401
 from vnpy.trader.ui import QtWidgets
+
+import tests._bootstrap  # noqa: F401
 
 
 @pytest.fixture(scope="module")

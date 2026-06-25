@@ -10,7 +10,8 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from vnpy_ashare.storage.connection import get_meta, set_meta
 from vnpy_common.storage.query import user_scope
 from vnpy_common.storage.session import connect_app
-from vnpy_common.storage.tables import meta, watchlist_positions as wp
+from vnpy_common.storage.tables import meta
+from vnpy_common.storage.tables import watchlist_positions as wp
 
 
 def test_meta_roundtrip_via_core(pg_storage) -> None:
@@ -60,13 +61,7 @@ def test_user_scope_filter(pg_storage) -> None:
                 updated_at="2026-01-01T00:00:00",
             )
         )
-        row = conn.execute_stmt(
-            select(wp.c.symbol)
-            .where(user_scope(wp.c.user_id, uid, wp.c.symbol == symbol))
-            .limit(1)
-        ).fetchone()
+        row = conn.execute_stmt(select(wp.c.symbol).where(user_scope(wp.c.user_id, uid, wp.c.symbol == symbol)).limit(1)).fetchone()
         assert row is not None
         assert row["symbol"] == symbol
-        conn.execute_stmt(
-            delete(wp).where(user_scope(wp.c.user_id, uid, wp.c.symbol == symbol))
-        )
+        conn.execute_stmt(delete(wp).where(user_scope(wp.c.user_id, uid, wp.c.symbol == symbol)))

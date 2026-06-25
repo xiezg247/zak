@@ -10,8 +10,8 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from vnpy_ashare.domain.time.china import format_china_datetime
-from vnpy_ashare.storage.repository.app import AppBaseRepository, MetaRepository
 from vnpy_ashare.storage.repositories.trade_calendar import previous_open_trading_day
+from vnpy_ashare.storage.repository.app import AppBaseRepository, MetaRepository
 from vnpy_common.domain.base import FrozenModel
 from vnpy_common.storage.tables import emotion_limit_ladder_daily as eld
 from vnpy_common.storage.tables import meta

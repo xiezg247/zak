@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.config.preferences._settings import get_settings
 from vnpy_ashare.config.preferences._local_ui_pref import load_scalar_local_ui, save_scalar_local_ui
+from vnpy_ashare.config.preferences._settings import get_settings
 
 _ACTIVE_GROUP_KEY = "watchlist/groups/active_group_id"
 _LOCAL_UI_ACTIVE_GROUP = "watchlist/active_group_id"

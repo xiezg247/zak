@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from vnpy.trader.ui import QtCore
 from vnpy.trader.constant import Exchange
+from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.ui.shell.main_window_pages import nav_index_for_key, show_page_by_key
 

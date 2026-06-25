@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from vnpy_common.auth.users import DEFAULT_USERNAME
-
 from vnpy_ashare.storage.auth.migrate import PRIVATE_TABLES
 from vnpy_ashare.storage.auth.users import (
     _invalidate_default_user_cache,
@@ -14,6 +12,7 @@ from vnpy_ashare.storage.auth.users import (
     get_or_create_default_user_id,
     users_table,
 )
+from vnpy_common.auth.users import DEFAULT_USERNAME
 
 _CHAT_USER_TABLES: tuple[str, ...] = (
     "messages",

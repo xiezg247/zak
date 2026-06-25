@@ -193,9 +193,7 @@ class WatchlistController:
         if position_service is None:
             return True
 
-        with_positions = [
-            item for item in targets if position_service.contains(item.symbol, item.exchange)
-        ]
+        with_positions = [item for item in targets if position_service.contains(item.symbol, item.exchange)]
         if not with_positions:
             return True
 
