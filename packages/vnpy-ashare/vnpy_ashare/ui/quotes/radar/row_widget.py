@@ -128,6 +128,11 @@ class RadarStockRowWidget(QtWidgets.QFrame):
         self._row = self._row.model_copy(update={"price": price, "change_pct": change_pct})
         self._apply_row()
 
+    def refresh_row(self, row: RadarRow) -> None:
+        """同序刷新整行指标，避免卡片重建行组件。"""
+        self._row = row
+        self._apply_row()
+
     def refresh_theme(self) -> None:
         self._apply_row()
 

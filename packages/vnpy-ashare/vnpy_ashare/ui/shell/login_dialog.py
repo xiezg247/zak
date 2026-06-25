@@ -8,7 +8,6 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_common.auth.context import set_current_user
 from vnpy_common.paths import QSETTINGS_ORG
-from vnpy_ashare.config.preferences._local_ui_pref import bootstrap_local_ui_prefs_from_pg
 from vnpy_ashare.storage.auth.scope import get_user_id
 from vnpy_ashare.storage.auth.users import list_active_users, login
 
@@ -47,7 +46,6 @@ class LoginDialog(QtWidgets.QDialog):
             return
         self._settings.setValue("last_username", user.username)
         set_current_user(user.id)
-        bootstrap_local_ui_prefs_from_pg()
         self._user = user.id
         self.accept()
 
@@ -69,7 +67,6 @@ def ensure_logged_in(parent: QtWidgets.QWidget | None = None) -> bool:
     """仅 default 单用户时自动登录；多用户或 ZAK_SKIP_LOGIN=0 且已建号时弹窗。"""
     if _skip_login_dialog():
         set_current_user(get_user_id())
-        bootstrap_local_ui_prefs_from_pg()
         return True
     dialog = LoginDialog(parent)
     if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:

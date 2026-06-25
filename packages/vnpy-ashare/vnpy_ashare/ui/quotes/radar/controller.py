@@ -67,6 +67,9 @@ if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.radar.card import RadarBoard
     from vnpy_ashare.ui.quotes.radar.resonance_panel import RadarResonancePanel
 
+_RADAR_CARD_REFRESH_STAGGER_MS = 80
+_RADAR_RESONANCE_SYNC_DEBOUNCE_MS = 80
+
 
 class RadarController(QtCore.QObject):
     def __init__(
@@ -91,8 +94,17 @@ class RadarController(QtCore.QObject):
             "outlook_predict": load_predict_model_mode(),
         }
         self._last_payload: dict[str, RadarCardData] = {}
+        self._cached_resonance: dict[str, int] = {}
         self._auto_refresh_ticks: dict[str, int] = {}
         self._auto_refresh_timers: dict[str, QtCore.QTimer] = {}
+        self._refresh_queue: list[tuple[str, dict[str, object]]] = []
+        self._refresh_stagger_timer = QtCore.QTimer(self)
+        self._refresh_stagger_timer.setSingleShot(True)
+        self._refresh_stagger_timer.timeout.connect(self._dequeue_refresh)
+        self._resonance_sync_timer = QtCore.QTimer(self)
+        self._resonance_sync_timer.setSingleShot(True)
+        self._resonance_sync_timer.setInterval(_RADAR_RESONANCE_SYNC_DEBOUNCE_MS)
+        self._resonance_sync_timer.timeout.connect(self._flush_resonance_sync)
         self._session_timer = QtCore.QTimer(self)
         self._session_timer.setInterval(30_000)
         self._session_timer.timeout.connect(self._on_session_tick)
@@ -202,9 +214,14 @@ class RadarController(QtCore.QObject):
         """权重变更后全量重算发现 / 板块 / 自选等指标卡（保留展望等缓存卡）。"""
         reload_ids = [card_id for card_id in DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS if card_id in self._last_payload and not card_id.startswith("outlook_")]
         for card_id in reload_ids:
-            self.refresh_card(card_id, force_recompute=True)
+            self._enqueue_refresh(card_id, force_recompute=True)
 
     def activate(self) -> None:
+        self.activate_light()
+        self.activate_heavy()
+
+    def activate_light(self) -> None:
+        """切页首帧：仅同步 Tab / 策略下拉等 UI 状态。"""
         predict_mode = load_predict_model_mode()
         self._card_variants["outlook_predict"] = predict_mode
         predict_card = self._board.card("outlook_predict")
@@ -213,6 +230,9 @@ class RadarController(QtCore.QObject):
         self._board.update_tab_badges()
         self._sync_resonance_tab_from_board()
         self._page._refresh_emotion_cycle_chip()
+
+    def activate_heavy(self) -> None:
+        """延后执行：刷新当前分组卡片并启动自动轮询。"""
         self.refresh_current_group()
         self._start_auto_refresh()
         self._session_timer.start()
@@ -221,6 +241,9 @@ class RadarController(QtCore.QObject):
         self._session_timer.stop()
         self._stop_auto_refresh()
         self._cancel_all_workers()
+        self._refresh_queue.clear()
+        self._refresh_stagger_timer.stop()
+        self._resonance_sync_timer.stop()
 
     def _setup_auto_refresh_timers(self) -> None:
         for card_id in auto_refresh_card_ids():
@@ -290,28 +313,50 @@ class RadarController(QtCore.QObject):
         self.refresh_card(card_id, force_recompute=False)
 
     def refresh(self) -> None:
-        """并行刷新全部卡片。"""
-        for spec in list_radar_cards():
-            self.refresh_card(spec.id)
+        """错峰刷新全部卡片，避免多张卡同时完成时主线程拥堵。"""
+        items = [(spec.id, {}) for spec in list_radar_cards()]
+        self._enqueue_refresh_many(items)
 
     def refresh_current_group(self) -> None:
         """刷新当前分区下子 Tab 内的全部卡片。"""
         mode = self._board.current_mode()
         group_key = self._board.current_group(mode)
-        for spec in list_radar_cards_for_group(mode, group_key):
-            self.refresh_card(spec.id)
+        items = [(spec.id, {}) for spec in list_radar_cards_for_group(mode, group_key)]
+        self._enqueue_refresh_many(items)
 
     def refresh_current_mode(self) -> None:
         """刷新当前分区内的全部卡片（含各子 Tab）。"""
-        for spec in list_radar_cards_for_mode(self._board.current_mode()):
-            self.refresh_card(spec.id)
+        items = [(spec.id, {}) for spec in list_radar_cards_for_mode(self._board.current_mode())]
+        self._enqueue_refresh_many(items)
+
+    def _enqueue_refresh(self, card_id: str, **kwargs: object) -> None:
+        """批量刷新时错峰启动 worker，单卡手动刷新仍走 refresh_card。"""
+        self._enqueue_refresh_many([(card_id, dict(kwargs))])
+
+    def _enqueue_refresh_many(self, items: list[tuple[str, dict[str, object]]]) -> None:
+        if not items:
+            return
+        kick = not self._refresh_queue and not self._refresh_stagger_timer.isActive()
+        for card_id, kwargs in items:
+            self._refresh_queue = [(cid, kw) for cid, kw in self._refresh_queue if cid != card_id]
+            self._refresh_queue.append((card_id, kwargs))
+        if kick:
+            self._dequeue_refresh()
+
+    def _dequeue_refresh(self) -> None:
+        if not self._refresh_queue:
+            return
+        card_id, kwargs = self._refresh_queue.pop(0)
+        self.refresh_card(card_id, **kwargs)
+        if self._refresh_queue:
+            self._refresh_stagger_timer.start(_RADAR_CARD_REFRESH_STAGGER_MS)
 
     def _on_outlook_strategy_changed(self, class_name: str) -> None:
         if not class_name:
             return
         save_outlook_strategy_class(class_name)
         for card_id in OUTLOOK_SIGNAL_CARD_IDS:
-            self.refresh_card(card_id, force_recompute=True)
+            self._enqueue_refresh(card_id, force_recompute=True)
 
     def _on_board_mode_changed(self, mode: str) -> None:
         self._sync_resonance_tab_from_board(mode)
@@ -528,15 +573,22 @@ class RadarController(QtCore.QObject):
         if quote_only:
             self._last_payload[card_id] = data
             self._board.apply_quote_update(card_id, data.rows)
-            self._sync_resonance_panel()
             return
         self._auto_refresh_ticks[card_id] = 0
         self._last_payload[card_id] = data
-        resonance = compute_radar_resonance(self._last_payload)
-        self._board.apply_card(card_id, data, resonance_counts=resonance)
-        self._board.sync_resonance(resonance)
+        self._board.apply_card(card_id, data, resonance_counts=self._cached_resonance)
+        self._schedule_resonance_sync()
+
+    def _schedule_resonance_sync(self) -> None:
+        self._resonance_sync_timer.start(_RADAR_RESONANCE_SYNC_DEBOUNCE_MS)
+
+    def _flush_resonance_sync(self) -> None:
+        if not self._last_payload:
+            return
+        self._cached_resonance = compute_radar_resonance(self._last_payload)
+        self._board.sync_resonance(self._cached_resonance)
         self._sync_resonance_panel()
-        self._update_status(resonance=resonance)
+        self._update_status(resonance=self._cached_resonance)
 
     def _sync_resonance_panel(self) -> None:
         panel = self._resonance_panel
@@ -585,7 +637,7 @@ class RadarController(QtCore.QObject):
                         updated_at="",
                     )
                 )
-        self._sync_resonance_panel()
+        self._schedule_resonance_sync()
         page_notify(self._page, f"卡片加载失败：{message}", level="warning")
         self._update_status()
 

@@ -5,10 +5,9 @@ from __future__ import annotations
 import pytest
 
 from vnpy_ashare.config.preferences._local_ui_pref import (
-    bootstrap_local_ui_prefs_from_pg,
     clear_local_ui_pref_cache,
     load_json_local_ui,
-    purge_ui_prefs_from_pg,
+    load_scalar_local_ui,
     save_json_local_ui,
     user_ui_settings_key,
 )
@@ -23,10 +22,6 @@ def _reset_local_ui_cache() -> None:
 
 
 def test_local_ui_pref_roundtrip(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "vnpy_ashare.config.preferences._local_ui_pref.get_user_id",
-        lambda: "user-test-roundtrip",
-    )
     rel_key = "watchlist/signal_panel_test_roundtrip"
     key = user_ui_settings_key(rel_key)
     get_settings().remove(key)
@@ -51,43 +46,20 @@ def test_local_ui_pref_roundtrip(monkeypatch: pytest.MonkeyPatch) -> None:
     get_settings().remove(key)
 
 
-def test_local_ui_pref_user_isolation(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_local_ui_pref_migrates_uid_prefixed_key(monkeypatch: pytest.MonkeyPatch) -> None:
     import vnpy_ashare.config.preferences._local_ui_pref as mod
 
-    rel_key = "watchlist/active_group_id_test_isolation"
-    monkeypatch.setattr(mod, "get_user_id", lambda: "user-a")
-    save_json_local_ui(rel_key, "group-a")
+    rel_key = "watchlist/active_group_id_test_migrate"
+    flat_key = user_ui_settings_key(rel_key)
+    uid_key = f"ui/migrate-user/{flat_key}"
+    get_settings().remove(flat_key)
+    get_settings().setValue(uid_key, "group-legacy")
+
+    monkeypatch.setattr(mod, "get_user_id", lambda: "migrate-user")
     clear_local_ui_pref_cache()
 
-    monkeypatch.setattr(mod, "get_user_id", lambda: "user-b")
-    value = load_json_local_ui(
-        rel_key,
-        load_default=lambda: "default",
-    )
-    assert value == "default"
-    get_settings().remove(user_ui_settings_key(rel_key))
+    value = load_scalar_local_ui(rel_key, load_default=lambda: "default")
+    assert value == "group-legacy"
 
-
-def test_bootstrap_migrates_pg_then_purges(pg_storage, monkeypatch: pytest.MonkeyPatch) -> None:
-    from vnpy_ashare.storage.auth.preferences import get_pref, set_pref
-
-    monkeypatch.setattr(
-        "vnpy_ashare.config.preferences._local_ui_pref.get_user_id",
-        lambda: "bootstrap-user",
-    )
-    monkeypatch.setattr("vnpy_ashare.storage.auth.scope.get_user_id", lambda: "bootstrap-user")
-
-    set_pref("watchlist", "signal_panel", {"enabled": True, "symbols": "600519.SSE"})
-    assert get_pref("watchlist", "signal_panel", None) is not None
-
-    bootstrap_local_ui_prefs_from_pg()
-
-    local = load_json_local_ui(
-        "watchlist/signal_panel",
-        load_default=lambda: {"enabled": False},
-    )
-    assert local == {"enabled": True, "symbols": "600519.SSE"}
-    assert get_pref("watchlist", "signal_panel", None) is None
-    assert purge_ui_prefs_from_pg() == 0
-
-    get_settings().remove(user_ui_settings_key("watchlist/signal_panel"))
+    get_settings().remove(uid_key)
+    get_settings().remove(flat_key)

@@ -112,4 +112,5 @@ class QuotesPageStateAttrs:
     _market_scroll_timer: QtCore.QTimer
     _market_cache_sync_timer: QtCore.QTimer
     _task_lock_table: bool
+    _task_lock_search: bool
     _active_worker_attr: str | None

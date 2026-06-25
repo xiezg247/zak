@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_common.paths import QSETTINGS_ORG
+from vnpy_common.paths import QSETTINGS_ORG, SETTINGS_APP
 from vnpy_common.ui.theme.build import cached_terminal_stylesheet, stylesheet_for
 from vnpy_common.ui.theme.system import resolve_theme_id
 from vnpy_common.ui.theme.tokens import (
@@ -27,8 +27,8 @@ ChartRefreshHandler = Callable[[ThemeTokens, list[Any]], None]
 
 _chart_refresh_handler: ChartRefreshHandler | None = None
 
-_SETTINGS_APP = "ashare_ui"
-_SETTINGS_KEY = "ui_theme"
+_SETTINGS_KEY = "shell/theme"
+_LEGACY_THEME_PROFILES = ((QSETTINGS_ORG, "ashare_ui", "ui_theme"),)
 
 
 class ThemeManager(QtCore.QObject):
@@ -67,8 +67,14 @@ class ThemeManager(QtCore.QObject):
         return get_tokens(self.resolved())
 
     def load_saved(self) -> ThemePreference:
-        settings = QtCore.QSettings(QSETTINGS_ORG, _SETTINGS_APP)
-        raw = settings.value(_SETTINGS_KEY, DEFAULT_THEME_PREFERENCE)
+        raw = QtCore.QSettings(QSETTINGS_ORG, SETTINGS_APP).value(_SETTINGS_KEY)
+        if raw is None:
+            for org, app, legacy_key in _LEGACY_THEME_PROFILES:
+                raw = QtCore.QSettings(org, app).value(legacy_key)
+                if raw is not None:
+                    break
+        if raw is None:
+            raw = DEFAULT_THEME_PREFERENCE
         if isinstance(raw, str) and raw in THEME_PREFERENCES:
             preference: ThemePreference = raw
         else:
@@ -83,7 +89,7 @@ class ThemeManager(QtCore.QObject):
             return
         self._preference = theme
         if persist:
-            QtCore.QSettings(QSETTINGS_ORG, _SETTINGS_APP).setValue(_SETTINGS_KEY, theme)
+            QtCore.QSettings(QSETTINGS_ORG, SETTINGS_APP).setValue(_SETTINGS_KEY, theme)
         self.apply()
         self.theme_changed.emit(theme)
 

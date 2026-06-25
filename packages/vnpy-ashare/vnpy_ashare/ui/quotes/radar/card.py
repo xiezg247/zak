@@ -439,6 +439,17 @@ class RadarCardWidget(QtWidgets.QFrame):
         else:
             self._add_all_button.hide()
         self._apply_meta_label(data)
+        new_symbols = tuple(row.vt_symbol for row in data.rows)
+        old_symbols = tuple(widget.vt_symbol() for widget in self._row_widgets)
+        if data.rows and new_symbols == old_symbols:
+            self._body_stack.setCurrentIndex(_BODY_PAGE_ROWS)
+            quote_by_vt = {row.vt_symbol: row for row in data.rows}
+            for widget in self._row_widgets:
+                row = quote_by_vt.get(widget.vt_symbol())
+                if row is not None:
+                    widget.refresh_row(row)
+                    widget.update_resonance(self._resonance_counts.get(row.vt_symbol, 0))
+            return
         self._clear_row_widgets()
         if data.rows:
             self._body_stack.setCurrentIndex(_BODY_PAGE_ROWS)

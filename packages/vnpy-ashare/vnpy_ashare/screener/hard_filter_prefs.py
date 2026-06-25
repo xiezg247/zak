@@ -1,4 +1,4 @@
-"""选股硬过滤用户偏好（QSettings）；环境变量仍可覆盖。"""
+"""选股硬过滤用户偏好（user_preferences）；环境变量仍可覆盖。"""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from pydantic import Field
 
 from vnpy_ashare.config.constants.recipe import DEFAULT_MIN_AMOUNT_YUAN, DEFAULT_MIN_TOTAL_MV_WAN
 from vnpy_ashare.config.preferences._settings import get_settings
-from vnpy_ashare.storage.auth.preferences import get_pref, set_pref
+from vnpy_ashare.config.preferences._user_pref import load_model_pref, save_model_pref
 from vnpy_common.domain.base import FrozenModel
 
 _SETTINGS = get_settings()
@@ -22,6 +22,18 @@ _KEY_EXCLUDE_LIMIT_BOARD = "screener/hard_filter/exclude_limit_board"
 _KEY_EXCLUDE_ONE_WORD = "screener/hard_filter/exclude_one_word"
 _KEY_ALLOWED_INDUSTRIES = "screener/hard_filter/allowed_industries"
 _KEY_ALLOWED_MARKET_BOARDS = "screener/hard_filter/allowed_market_boards"
+_MIGRATE_KEYS = (
+    _KEY_EXCLUDE_ST,
+    _KEY_EXCLUDE_SUSPENDED,
+    _KEY_MIN_AMOUNT_WAN,
+    _KEY_MIN_TOTAL_MV_YI,
+    _KEY_EXCLUDE_NEW_LISTING,
+    _KEY_MIN_LISTING_DAYS,
+    _KEY_EXCLUDE_LIMIT_BOARD,
+    _KEY_EXCLUDE_ONE_WORD,
+    _KEY_ALLOWED_INDUSTRIES,
+    _KEY_ALLOWED_MARKET_BOARDS,
+)
 
 MARKET_BOARD_FILTER_OPTIONS = ("沪深主板", "创业板", "科创板", "北交所")
 
@@ -102,33 +114,17 @@ def hard_filter_preset(preset_id: str) -> HardFilterPrefs:
 
 
 def load_hard_filter_prefs() -> HardFilterPrefs:
-    stored = get_pref(_PREF_NAMESPACE, _PREF_KEY, None)
-    if stored is not None:
-        return HardFilterPrefs.model_validate(stored)
-    legacy = _load_hard_filter_from_qsettings()
-    if _qsettings_has_hard_filter():
-        set_pref(_PREF_NAMESPACE, _PREF_KEY, legacy.model_dump())
-    return legacy
+    return load_model_pref(
+        _PREF_NAMESPACE,
+        _PREF_KEY,
+        HardFilterPrefs,
+        load_legacy=_load_hard_filter_from_qsettings,
+        migrate_keys=_MIGRATE_KEYS,
+    )
 
 
 def save_hard_filter_prefs(prefs: HardFilterPrefs) -> None:
-    set_pref(_PREF_NAMESPACE, _PREF_KEY, prefs.model_dump())
-
-
-def _qsettings_has_hard_filter() -> bool:
-    keys = (
-        _KEY_EXCLUDE_ST,
-        _KEY_EXCLUDE_SUSPENDED,
-        _KEY_MIN_AMOUNT_WAN,
-        _KEY_MIN_TOTAL_MV_YI,
-        _KEY_EXCLUDE_NEW_LISTING,
-        _KEY_MIN_LISTING_DAYS,
-        _KEY_EXCLUDE_LIMIT_BOARD,
-        _KEY_EXCLUDE_ONE_WORD,
-        _KEY_ALLOWED_INDUSTRIES,
-        _KEY_ALLOWED_MARKET_BOARDS,
-    )
-    return any(_SETTINGS.value(key) is not None for key in keys)
+    save_model_pref(_PREF_NAMESPACE, _PREF_KEY, prefs)
 
 
 def _load_hard_filter_from_qsettings() -> HardFilterPrefs:

@@ -64,5 +64,9 @@ def teardown_quotes_page_workers(page: Any) -> None:
     """页面 deactivate 时取消并释放后台 Worker。"""
     cancel_quotes_page_workers(page)
     page._task_guard.end()
-    page._set_busy(False, lock_table=page._task_lock_table)
+    page._set_busy(
+        False,
+        lock_table=page._task_lock_table,
+        lock_search=getattr(page, "_task_lock_search", True),
+    )
     release_quotes_page_workers(page, timeout_ms=0)

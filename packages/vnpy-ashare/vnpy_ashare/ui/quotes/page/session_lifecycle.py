@@ -13,7 +13,7 @@ from vnpy_ashare.ui.quotes.page.layout_persistence import (
     restore_center_splitter,
     schedule_save_layout,
 )
-from vnpy_ashare.ui.quotes.page.roles import STRATEGY_MONITOR_PAGE, WATCHLIST_PAGE
+from vnpy_ashare.ui.quotes.page.roles import RADAR_PAGE, STRATEGY_MONITOR_PAGE, WATCHLIST_PAGE
 from vnpy_ashare.ui.quotes.page.worker_lifecycle import teardown_quotes_page_workers
 
 
@@ -28,7 +28,12 @@ def _strategy_stale_sweep_enabled(page: Any) -> bool:
 
 
 def _deferred_watchlist_activate(page: Any) -> None:
-    """自选页延后任务：分组/图表/布局/多维看盘等，避免 Tab 切换卡死。"""
+    """自选页延后任务入口：分帧执行，避免单帧阻塞。"""
+    _deferred_watchlist_activate_frame1(page)
+
+
+def _deferred_watchlist_activate_frame1(page: Any) -> None:
+    """帧 1：lazy 构建与分组 Tab。"""
     if not page._active or page.page_name != WATCHLIST_PAGE:
         return
     lazy = getattr(page, "_watchlist_lazy", None)
@@ -38,6 +43,15 @@ def _deferred_watchlist_activate(page: Any) -> None:
         lazy.ensure_for_activate(page, include_multiview=load_view_mode() == "multiview")
     if page._watchlist_groups is not None:
         page._watchlist_groups.refresh_groups()
+    if hasattr(page, "end_tab_switch_loading"):
+        page.end_tab_switch_loading()
+    QtCore.QTimer.singleShot(0, lambda: _deferred_watchlist_activate_frame2(page))
+
+
+def _deferred_watchlist_activate_frame2(page: Any) -> None:
+    """帧 2：图表与布局（较重）。"""
+    if not page._active or page.page_name != WATCHLIST_PAGE:
+        return
     if page.current_item is not None and page.chart_panel is not None:
         quote = page.quote_map.get(page.current_item.tickflow_symbol)
         page.chart_panel.load_item(page.current_item, quote=quote)
@@ -45,6 +59,13 @@ def _deferred_watchlist_activate(page: Any) -> None:
     chart_section = getattr(page, "chart_section", None)
     if chart_section is not None:
         page._on_chart_section_expansion_changed(chart_section.is_expanded())
+    QtCore.QTimer.singleShot(0, lambda: _deferred_watchlist_activate_frame3(page))
+
+
+def _deferred_watchlist_activate_frame3(page: Any) -> None:
+    """帧 3：笔记 / 多维看盘 / 情绪 chip 等收尾。"""
+    if not page._active or page.page_name != WATCHLIST_PAGE:
+        return
     if page.config.show_stock_notes:
         page._stock_notes.on_selection_item()
     if page.config.show_watchlist_multiview:
@@ -57,6 +78,17 @@ def _deferred_watchlist_activate(page: Any) -> None:
 
         maybe_show_ultra_short_onboarding(page)
     page._update_quote_source_label()
+
+
+def _deferred_radar_activate(page: Any) -> None:
+    """雷达页延后：卡片刷新与自动轮询，避免切页卡死。"""
+    if not page._active or page.page_name != RADAR_PAGE:
+        return
+    controller = getattr(page, "_radar_controller", None)
+    if controller is not None:
+        controller.activate_heavy()
+    if hasattr(page, "end_tab_switch_loading"):
+        page.end_tab_switch_loading()
 
 
 def _deferred_strategy_monitor_activate(page: Any) -> None:
@@ -86,13 +118,12 @@ def _deferred_strategy_monitor_activate(page: Any) -> None:
 def activate_quotes_page(page: Any) -> None:
     page._active = True
     if page.config.use_radar_cards:
-        if page.config.column_configurable and page._table.sync_tail_columns_with_config():
-            page._table.rebuild_table()
         page._update_quote_source_label()
         refresh_emotion_cycle_chip_for_page(page)
         controller = getattr(page, "_radar_controller", None)
         if controller is not None:
-            controller.activate()
+            controller.activate_light()
+        QtCore.QTimer.singleShot(0, lambda: _deferred_radar_activate(page))
         return
 
     if page.page_name == WATCHLIST_PAGE:
@@ -157,7 +188,7 @@ def activate_quotes_page(page: Any) -> None:
 
 
 def deactivate_quotes_page(page: Any) -> None:
-    if page.page_name in (WATCHLIST_PAGE, STRATEGY_MONITOR_PAGE) and hasattr(page, "end_tab_switch_loading"):
+    if page.page_name in (WATCHLIST_PAGE, STRATEGY_MONITOR_PAGE, RADAR_PAGE) and hasattr(page, "end_tab_switch_loading"):
         page.end_tab_switch_loading()
     if page.config.use_radar_cards:
         controller = getattr(page, "_radar_controller", None)

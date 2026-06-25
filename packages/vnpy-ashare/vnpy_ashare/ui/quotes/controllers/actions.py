@@ -332,6 +332,9 @@ class ActionsController:
         if page._thread_active(page._quotes_worker):
             page._toast.info("行情刷新进行中，请稍候")
             return
+        if page.config.market_scroll_paging and page._market_quote_refresh_paused():
+            page._toast.info("列表加载中，请稍候再刷新")
+            return
         self.refresh_quotes_rest()
 
     def refresh_quotes_rest(self) -> None:
@@ -366,23 +369,26 @@ class ActionsController:
                 if not page._active:
                     return
 
-                merge_quote_maps_into(page.quote_map, quotes)
-                if page.config.market_full_list and page._market_catalog_loaded:
-                    merge_quote_maps_into(page._market_catalog_quotes, quotes)
-                if page.config.use_market_rank and page.config.market_full_list and page._market_catalog_loaded:
-                    page._table.apply_market_display()
-                elif page.config.market_scroll_paging:
-                    page._table.refresh_visible_table_quotes()
-                else:
-                    page._refresh_table_quotes()
-                page._update_quote_source_label()
-                if current:
-                    self.update_quote_header(current)
-                    if page.chart_panel is not None:
-                        page.chart_panel.update_quote(quotes.get(current.tickflow_symbol))
-                        page.chart_panel.refresh_active()
-                if page.quote_auto_refresh_enabled():
-                    page.schedule_quote_auto_refresh()
+                def _apply_quotes() -> None:
+                    merge_quote_maps_into(page.quote_map, quotes)
+                    if page.config.market_full_list and page._market_catalog_loaded:
+                        merge_quote_maps_into(page._market_catalog_quotes, quotes)
+                    if page.config.use_market_rank and page.config.market_full_list and page._market_catalog_loaded:
+                        page._table.apply_market_display()
+                    elif page.config.market_scroll_paging:
+                        page._table.refresh_visible_table_quotes()
+                    else:
+                        page._refresh_table_quotes()
+                    page._update_quote_source_label()
+                    if current:
+                        self.update_quote_header(current)
+                        if page.chart_panel is not None:
+                            page.chart_panel.update_quote(quotes.get(current.tickflow_symbol))
+                            page.chart_panel.refresh_active()
+                    if page.quote_auto_refresh_enabled():
+                        page.schedule_quote_auto_refresh()
+
+                page._defer_when_market_idle(_apply_quotes)
             finally:
                 page._release_worker(worker)
 

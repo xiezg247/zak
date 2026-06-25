@@ -71,6 +71,7 @@ from vnpy_ashare.ui.shell.main_window_scheduler import (
     handle_scheduler_job,
     on_scheduler_job_event,
     refresh_info_feed_badge,
+    schedule_deferred_radar_prewarm,
     schedule_deferred_scheduler_start,
     schedule_deferred_shell_extras,
     schedule_deferred_watchlist_prewarm,
@@ -82,6 +83,10 @@ from vnpy_ashare.ui.shell.nav import (
     BACKSTAGE_SHORTCUTS,
     NAV_SHORTCUTS,
     SidebarNav,
+)
+from vnpy_ashare.config.preferences._settings import (
+    read_migrated_value,
+    write_setting_value,
 )
 from vnpy_ashare.ui.shell.settings.dialog import show_settings_dialog
 from vnpy_common.paths import QSETTINGS_ORG
@@ -296,6 +301,7 @@ class AshareMainWindow(MainWindow):
             self._show_page(0)
         schedule_deferred_shell_extras(self)
         schedule_deferred_watchlist_prewarm(self)
+        schedule_deferred_radar_prewarm(self)
         schedule_deferred_scheduler_start(self)
 
     def _show_shortcuts_help(self) -> None:
@@ -341,11 +347,11 @@ class AshareMainWindow(MainWindow):
         search.setFocus(QtCore.Qt.FocusReason.ShortcutFocusReason)
         search.selectAll()
 
-    def _nav_width_settings(self) -> QtCore.QSettings:
-        return QtCore.QSettings(QSETTINGS_ORG, "ashare_ui")
+    _NAV_WIDTH_KEY = "shell/nav_width"
+    _NAV_WIDTH_LEGACY = ((QSETTINGS_ORG, "ashare_ui", "nav_width"),)
 
     def _load_nav_width(self) -> int:
-        value = self._nav_width_settings().value("nav_width", SidebarNav.DEFAULT_WIDTH)
+        value = read_migrated_value(self._NAV_WIDTH_KEY, self._NAV_WIDTH_LEGACY, SidebarNav.DEFAULT_WIDTH)
         if isinstance(value, bool):
             width = SidebarNav.DEFAULT_WIDTH
         elif isinstance(value, (int, float)):
@@ -369,7 +375,7 @@ class AshareMainWindow(MainWindow):
             self._nav_splitter.blockSignals(True)
             self._nav_splitter.setSizes([nav_width, total - nav_width])
             self._nav_splitter.blockSignals(False)
-        self._nav_width_settings().setValue("nav_width", nav_width)
+        write_setting_value(self._NAV_WIDTH_KEY, nav_width)
         if self._floating_controller is not None:
             self._floating_controller.on_window_resize()
 
@@ -537,12 +543,13 @@ class AshareMainWindow(MainWindow):
         super().open_widget(widget_class, name)
 
     def load_window_setting(self, name: str) -> None:
-        settings = QtCore.QSettings(self.window_title, name)
-        restore_geometry_on_screen(self, settings.value("geometry"))
+        key = f"shell/geometry/{name}"
+        legacy = ((self.window_title, name, "geometry"),)
+        geometry = read_migrated_value(key, legacy, None)
+        restore_geometry_on_screen(self, geometry)
 
     def save_window_setting(self, name: str) -> None:
-        settings = QtCore.QSettings(self.window_title, name)
-        settings.setValue("geometry", self.saveGeometry())
+        write_setting_value(f"shell/geometry/{name}", self.saveGeometry())
 
     def closeEvent(self, event) -> None:
         if self._floating_controller is not None:

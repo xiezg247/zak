@@ -1,4 +1,4 @@
-"""自选页布局预设（纯 UI，本机 QSettings，按 user_id 隔离）。"""
+"""自选页布局预设（纯 UI，本机 QSettings）。"""
 
 from __future__ import annotations
 

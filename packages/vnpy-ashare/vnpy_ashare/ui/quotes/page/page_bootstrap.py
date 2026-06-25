@@ -218,6 +218,7 @@ def init_timers(page: QuotesPage) -> None:
 def finish_page_init(page: QuotesPage) -> None:
     page._task_guard = TaskGuard(page._toast)
     page._task_lock_table = True
+    page._task_lock_search = True
     page._active_worker_attr = None
     theme_manager().register_callback(page._on_theme_changed)
 

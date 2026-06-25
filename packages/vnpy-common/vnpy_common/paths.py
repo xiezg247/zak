@@ -10,6 +10,7 @@ PACKAGE_ROOT = Path(__file__).resolve().parent
 VNTRADER_DIR = Path.home() / ".vntrader"
 APP_ID = "zak"
 QSETTINGS_ORG = APP_ID
+SETTINGS_APP = "ZakTerminal"
 
 DEFAULT_LEGACY_APP_DB = f"{APP_ID}.db"
 DEFAULT_LEGACY_CHAT_DB = "llm_chat.db"

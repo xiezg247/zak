@@ -1,8 +1,9 @@
-"""看盘页个股笔记 QSettings。"""
+"""看盘页个股笔记 UI 偏好。"""
 
 from __future__ import annotations
 
-from vnpy_ashare.config.preferences._settings import coerce_settings_bool, get_settings
+from vnpy_ashare.config.preferences._local_ui_pref import load_scalar_local_ui, save_scalar_local_ui
+from vnpy_ashare.config.preferences._settings import coerce_settings_bool
 
 STOCK_NOTE_PANEL_EXPANDED_KEY = "watchlist/stock_note_panel/expanded"
 STOCK_NOTE_ACTIVE_TAB_KEY = "watchlist/stock_note_panel/active_tab"
@@ -15,33 +16,33 @@ TAB_MEMO = "memo"
 TAB_ENTRY = "entry"
 
 
+def _normalize_tab(value: object, *, default: str) -> str:
+    text = str(value or default).strip()
+    return text if text in {TAB_MEMO, TAB_ENTRY} else default
+
+
 def load_stock_note_panel_expanded() -> bool:
-    settings = get_settings()
-    return coerce_settings_bool(settings.value(STOCK_NOTE_PANEL_EXPANDED_KEY), default=True)
+    raw = load_scalar_local_ui(STOCK_NOTE_PANEL_EXPANDED_KEY, load_default=lambda: True)
+    return coerce_settings_bool(raw, default=True)
 
 
 def save_stock_note_panel_expanded(expanded: bool) -> None:
-    settings = get_settings()
-    settings.setValue(STOCK_NOTE_PANEL_EXPANDED_KEY, expanded)
+    save_scalar_local_ui(STOCK_NOTE_PANEL_EXPANDED_KEY, expanded)
 
 
 def load_stock_note_active_tab() -> str:
-    settings = get_settings()
-    value = str(settings.value(STOCK_NOTE_ACTIVE_TAB_KEY, TAB_ENTRY)).strip()
-    return value if value in {TAB_MEMO, TAB_ENTRY} else TAB_ENTRY
+    raw = load_scalar_local_ui(STOCK_NOTE_ACTIVE_TAB_KEY, load_default=lambda: TAB_ENTRY)
+    return _normalize_tab(raw, default=TAB_ENTRY)
 
 
 def save_stock_note_active_tab(tab: str) -> None:
-    settings = get_settings()
-    settings.setValue(STOCK_NOTE_ACTIVE_TAB_KEY, tab if tab in {TAB_MEMO, TAB_ENTRY} else TAB_ENTRY)
+    save_scalar_local_ui(STOCK_NOTE_ACTIVE_TAB_KEY, _normalize_tab(tab, default=TAB_ENTRY))
 
 
 def load_stock_note_quick_tab() -> str:
-    settings = get_settings()
-    value = str(settings.value(STOCK_NOTE_QUICK_TAB_KEY, TAB_ENTRY)).strip()
-    return value if value in {TAB_MEMO, TAB_ENTRY} else TAB_ENTRY
+    raw = load_scalar_local_ui(STOCK_NOTE_QUICK_TAB_KEY, load_default=lambda: TAB_ENTRY)
+    return _normalize_tab(raw, default=TAB_ENTRY)
 
 
 def save_stock_note_quick_tab(tab: str) -> None:
-    settings = get_settings()
-    settings.setValue(STOCK_NOTE_QUICK_TAB_KEY, tab if tab in {TAB_MEMO, TAB_ENTRY} else TAB_ENTRY)
+    save_scalar_local_ui(STOCK_NOTE_QUICK_TAB_KEY, _normalize_tab(tab, default=TAB_ENTRY))

@@ -2,15 +2,10 @@
 
 from __future__ import annotations
 
-from vnpy.trader.ui import QtCore
+from vnpy_ashare.config.preferences._local_ui_pref import load_scalar_local_ui, save_scalar_local_ui
+from vnpy_ashare.config.preferences._settings import coerce_settings_bool
 
-SETTINGS_ORG = "vnpy_ashare"
-SETTINGS_APP = "ZakTerminal"
 CHART_SECTION_EXPANDED_PREFIX = "quotes/chart_section/expanded/"
-
-
-def _settings() -> QtCore.QSettings:
-    return QtCore.QSettings(SETTINGS_ORG, SETTINGS_APP)
 
 
 def _expanded_key(page_name: str) -> str:
@@ -18,12 +13,9 @@ def _expanded_key(page_name: str) -> str:
 
 
 def load_chart_section_expanded(page_name: str, *, default: bool = True) -> bool:
-    settings = _settings()
-    raw = settings.value(_expanded_key(page_name), default)
-    if isinstance(raw, bool):
-        return raw
-    return str(raw).strip().lower() in {"1", "true", "yes", "on"}
+    raw = load_scalar_local_ui(_expanded_key(page_name), load_default=lambda: default)
+    return coerce_settings_bool(raw, default=default)
 
 
 def save_chart_section_expanded(page_name: str, expanded: bool) -> None:
-    _settings().setValue(_expanded_key(page_name), expanded)
+    save_scalar_local_ui(_expanded_key(page_name), expanded)

@@ -11,7 +11,7 @@ from vnpy_ashare.trading.risk.metrics import read_total_capital
 from vnpy_ashare.trading.risk.plan_position import format_group_position_tab_label, summarize_group_position
 from vnpy_ashare.ui.quotes._host_widget import as_qwidget
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
-from vnpy_ashare.ui.quotes.watchlist_groups.prefs import (
+from vnpy_ashare.config.preferences.watchlist_groups import (
     load_active_watchlist_group_id,
     save_active_watchlist_group_id,
 )

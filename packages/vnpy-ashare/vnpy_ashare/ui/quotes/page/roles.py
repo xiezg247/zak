@@ -4,6 +4,7 @@ from __future__ import annotations
 
 WATCHLIST_PAGE = "自选"
 STRATEGY_MONITOR_PAGE = "策略监控"
+RADAR_PAGE = "雷达"
 STRATEGY_MONITOR_NAV_KEY = "strategy_monitor"
 
 WATCHLIST_POOL_PAGES: frozenset[str] = frozenset({WATCHLIST_PAGE, STRATEGY_MONITOR_PAGE})

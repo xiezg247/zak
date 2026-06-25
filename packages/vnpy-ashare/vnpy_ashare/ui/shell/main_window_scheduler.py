@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from typing import TYPE_CHECKING
 
 from vnpy.event import Event
@@ -10,25 +11,69 @@ from vnpy.trader.ui import QtCore
 from vnpy_ashare.app.engine import APP_NAME, AshareEngine
 from vnpy_ashare.app.events import EVENT_ORB_ATTENTION, OrbAttentionRequest
 from vnpy_ashare.services.industry_sector import get_cached_industry_map
+from vnpy_ashare.ui.shell.deferred_idle import (
+    IDLE_PREWARM_MS,
+    bind_idle_activity_tracking,
+    run_when_idle,
+)
 from vnpy_common.startup_profile import profiler
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.shell.main_window import AshareMainWindow
 
+_WATCHLIST_PREWARM_DELAY_MS = 2000
+_RADAR_PREWARM_DELAY_MS = 3500
+_SCHEDULER_START_DELAY_MS = 4000
+
 
 def schedule_deferred_watchlist_prewarm(win: AshareMainWindow) -> None:
-    """首屏稳定后静默构造自选页，缩短用户首次切入选自的等待。"""
+    """首屏稳定且用户空闲后静默构造自选页。"""
     if getattr(win, "_watchlist_prewarm_scheduled", False):
         return
     win._watchlist_prewarm_scheduled = True
+    bind_idle_activity_tracking(win)
+    started_at = time.monotonic()
 
     def _prewarm() -> None:
+        if win._page_widgets.get("watchlist") is not None:
+            return
         from vnpy_ashare.ui.shell.main_window_pages import get_or_create_page
 
         with profiler.phase("main_window.watchlist_prewarm"):
             get_or_create_page(win, "watchlist")
 
-    QtCore.QTimer.singleShot(2000, _prewarm)
+    run_when_idle(
+        win,
+        _prewarm,
+        not_before_ms=_WATCHLIST_PREWARM_DELAY_MS,
+        idle_ms=IDLE_PREWARM_MS,
+        scheduled_at=started_at,
+    )
+
+
+def schedule_deferred_radar_prewarm(win: AshareMainWindow) -> None:
+    """自选预热后、用户空闲时再静默构造雷达页。"""
+    if getattr(win, "_radar_prewarm_scheduled", False):
+        return
+    win._radar_prewarm_scheduled = True
+    bind_idle_activity_tracking(win)
+    started_at = time.monotonic()
+
+    def _prewarm() -> None:
+        if win._page_widgets.get("radar") is not None:
+            return
+        from vnpy_ashare.ui.shell.main_window_pages import get_or_create_page
+
+        with profiler.phase("main_window.radar_prewarm"):
+            get_or_create_page(win, "radar")
+
+    run_when_idle(
+        win,
+        _prewarm,
+        not_before_ms=_RADAR_PREWARM_DELAY_MS,
+        idle_ms=IDLE_PREWARM_MS,
+        scheduled_at=started_at,
+    )
 
 
 def schedule_deferred_shell_extras(win: AshareMainWindow) -> None:
@@ -50,11 +95,19 @@ def _load_deferred_shell_extras(win: AshareMainWindow) -> None:
 
 
 def schedule_deferred_scheduler_start(win: AshareMainWindow) -> None:
-    """冷启动：首屏渲染完成后再启动 APScheduler，避免与窗口首帧争抢。"""
+    """冷启动：首屏渲染完成且用户空闲后再启动 APScheduler。"""
     if win._scheduler_deferred_scheduled:
         return
     win._scheduler_deferred_scheduled = True
-    QtCore.QTimer.singleShot(4000, lambda: deferred_scheduler_start(win))
+    bind_idle_activity_tracking(win)
+    started_at = time.monotonic()
+    run_when_idle(
+        win,
+        lambda: deferred_scheduler_start(win),
+        not_before_ms=_SCHEDULER_START_DELAY_MS,
+        idle_ms=IDLE_PREWARM_MS,
+        scheduled_at=started_at,
+    )
 
 
 def deferred_scheduler_start(win: AshareMainWindow) -> None:

@@ -10,6 +10,11 @@ from vnpy.trader.ui import QtCore, QtWidgets
 from vnpy_ashare.ai.context.store import get_ai_context
 from vnpy_ashare.ai.ui.floating_actions import scene_label_from_context
 from vnpy_ashare.app.events import AskAiRequest
+from vnpy_ashare.config.preferences._settings import (
+    coerce_settings_bool,
+    read_migrated_value,
+    write_setting_value,
+)
 from vnpy_common.ai.protocol import QuickAction
 from vnpy_common.paths import QSETTINGS_ORG
 from vnpy_common.ui.feedback import page_notify
@@ -407,10 +412,10 @@ class FloatingAiController(QtCore.QObject):
 
     @staticmethod
     def _load_orb_user_hidden() -> bool:
-        settings = QtCore.QSettings(QSETTINGS_ORG, "floating_ai")
-        value = settings.value("orb_user_hidden", False)
-        return value is True or value == "true"
+        key = "floating_ai/orb_user_hidden"
+        legacy = ((QSETTINGS_ORG, "floating_ai", "orb_user_hidden"),)
+        raw = read_migrated_value(key, legacy, False)
+        return coerce_settings_bool(raw, default=False)
 
     def _save_orb_user_hidden(self) -> None:
-        settings = QtCore.QSettings(QSETTINGS_ORG, "floating_ai")
-        settings.setValue("orb_user_hidden", self._orb_user_hidden)
+        write_setting_value("floating_ai/orb_user_hidden", self._orb_user_hidden)

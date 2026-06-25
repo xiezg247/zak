@@ -15,6 +15,11 @@ from vnpy_ashare.screener.run.run_store import (
     is_strategy_run,
     list_runs,
 )
+from vnpy_ashare.config.preferences._settings import (
+    coerce_settings_bool,
+    read_migrated_value,
+    write_setting_value,
+)
 from vnpy_common.paths import QSETTINGS_ORG
 from vnpy_common.ui.feedback import confirm_action
 from vnpy_common.ui.theme.manager import theme_manager
@@ -38,8 +43,15 @@ _TRIGGER_TAGS = {
     "scheduled_post_close": "[盘后]",
 }
 
-_SETTINGS_ORG = QSETTINGS_ORG
-_SETTINGS_APP = "screener_ui"
+_LEGACY_SCREENER_UI = "screener_ui"
+
+
+def _sidebar_expanded_key(mode: SidebarMode) -> str:
+    return f"screener/{mode}_sidebar_expanded"
+
+
+def _legacy_sidebar_expanded_key(mode: SidebarMode) -> str:
+    return f"{mode}_sidebar_expanded"
 
 
 # 侧栏数据访问：优先 ScreeningService Facade；无 Engine 时 fallback run_store（测试/headless）
@@ -757,19 +769,14 @@ class ScreenerRunSidebar(QtWidgets.QWidget):
         theme_manager().bind_stylesheet(self)
         self._restore_expanded_preference()
 
-    def _settings_key(self) -> str:
-        return f"{self._mode}_sidebar_expanded"
-
     def _load_expanded_preference(self) -> bool:
-        settings = QtCore.QSettings(_SETTINGS_ORG, _SETTINGS_APP)
-        value = settings.value(self._settings_key(), False)
-        if isinstance(value, str):
-            return value.lower() in ("1", "true", "yes")
-        return bool(value)
+        key = _sidebar_expanded_key(self._mode)
+        legacy = ((QSETTINGS_ORG, _LEGACY_SCREENER_UI, _legacy_sidebar_expanded_key(self._mode)),)
+        raw = read_migrated_value(key, legacy, False)
+        return coerce_settings_bool(raw, default=False)
 
     def _save_expanded_preference(self) -> None:
-        settings = QtCore.QSettings(_SETTINGS_ORG, _SETTINGS_APP)
-        settings.setValue(self._settings_key(), self._expanded)
+        write_setting_value(_sidebar_expanded_key(self._mode), self._expanded)
 
     def _restore_expanded_preference(self) -> None:
         if self._load_expanded_preference():

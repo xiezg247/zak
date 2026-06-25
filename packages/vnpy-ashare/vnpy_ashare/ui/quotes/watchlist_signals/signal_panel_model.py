@@ -43,6 +43,18 @@ class SignalPanelTableModel(QuoteTableModel):
     def clear_rows(self) -> None:
         self.set_rows_with_symbols([], [])
 
+    def reorder_symbols(self, vt_symbols: list[str]) -> bool:
+        """仅调整行序，避免 sort 变化时整表 reset。"""
+        if len(vt_symbols) != len(self._vt_symbols):
+            return False
+        if set(vt_symbols) != set(self._vt_symbols):
+            return False
+        index_by_vt = {vt: index for index, vt in enumerate(self._vt_symbols)}
+        self._rows = [self._rows[index_by_vt[vt]] for vt in vt_symbols]
+        self._vt_symbols = list(vt_symbols)
+        self.layoutChanged.emit()
+        return True
+
     def data(self, index: _ParentIndex, role: int = QtCore.Qt.ItemDataRole.DisplayRole) -> object | None:  # noqa: N802
         if role == self.VtSymbolRole and index.isValid():
             return self.vt_symbol_at(index.row()) or None

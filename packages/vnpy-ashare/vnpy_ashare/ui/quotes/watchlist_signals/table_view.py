@@ -136,9 +136,15 @@ class SignalPanelTableView(QtWidgets.QWidget):
         self._table.setVisible(True)
         if display_symbols == self._rendered_symbols:
             self._update_row_cells(display_symbols)
+        elif (
+            len(display_symbols) == len(self._rendered_symbols)
+            and set(display_symbols) == set(self._rendered_symbols)
+            and self._model.reorder_symbols(display_symbols)
+        ):
+            self._update_row_cells(display_symbols)
         else:
             self._rebuild_table(display_symbols)
-            self._rendered_symbols = list(display_symbols)
+        self._rendered_symbols = list(display_symbols)
         self._refresh_stats()
 
     def highlight_symbol(self, vt_symbol: str | None) -> None:
@@ -271,7 +277,10 @@ class SignalPanelTableView(QtWidgets.QWidget):
     def _update_row_cells(self, display_symbols: list[str]) -> None:
         self._building = True
         try:
-            for row, vt_symbol in enumerate(display_symbols):
+            for vt_symbol in display_symbols:
+                row = self._model.row_for_vt_symbol(vt_symbol)
+                if row < 0:
+                    continue
                 cells = _build_signal_row_cells(
                     self._page,
                     vt_symbol,

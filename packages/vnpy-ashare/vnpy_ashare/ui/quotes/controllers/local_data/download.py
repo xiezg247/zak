@@ -127,6 +127,8 @@ class LocalDataDownloadMixin(LocalDataControllerBase):
             primary=primary,
             primary_text=primary_text,
             primary_handler=primary_handler,
+            lock_table=False,
+            lock_search=False,
         )
         page.status_label.setText(status_text)
         if page.config.show_run_output_panel:
@@ -195,6 +197,8 @@ class LocalDataDownloadMixin(LocalDataControllerBase):
             primary=primary,
             primary_text=primary_text,
             primary_handler=primary_handler,
+            lock_table=False,
+            lock_search=False,
         )
         page.status_label.setText(status_text)
         if page.config.show_run_output_panel:

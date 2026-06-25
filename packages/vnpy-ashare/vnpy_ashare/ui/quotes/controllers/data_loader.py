@@ -43,6 +43,7 @@ class DataLoaderController:
         primary_text: str = "",
         primary_handler=None,
         lock_table: bool = True,
+        lock_search: bool = True,
     ) -> bool:
         page = self._p
         if page._task_guard.active:
@@ -54,6 +55,7 @@ class DataLoaderController:
             primary_text=primary_text,
             primary_handler=primary_handler,
             lock_table=lock_table,
+            lock_search=lock_search,
         )
         return True
 
@@ -93,6 +95,8 @@ class DataLoaderController:
         if not page._active or not page.config.use_market_rank:
             return
         if page._market_scroll_blocked or page._market_loading_more or page._thread_active(page._market_worker):
+            return
+        if page._thread_active(page._quotes_worker):
             return
         loaded = len(page.display_stocks)
         if page._market_total > 0 and loaded >= page._market_total:
@@ -602,6 +606,7 @@ class DataLoaderController:
             primary_text="同步 A 股列表",
             primary_handler=page.sync_universe_clicked,
             lock_table=False,
+            lock_search=False,
         ):
             return
         page.status_label.setText("后台同步 A 股列表...")
@@ -682,6 +687,10 @@ class DataLoaderController:
             quote_svc.set_market_quotes_cache(page.display_stocks, page.quote_map)
 
     def flush_market_cache_sync(self) -> None:
+        page = self._p
+        if page._market_background_sync_paused():
+            page._schedule_market_cache_sync()
+            return
         self.sync_market_quotes_to_cache_from_display()
 
     def _universe_exists(self) -> bool:

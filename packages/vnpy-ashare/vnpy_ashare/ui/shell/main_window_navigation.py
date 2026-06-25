@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from vnpy.trader.ui import QtCore
 from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.ui.shell.main_window_pages import nav_index_for_key, show_page_by_key
@@ -124,13 +125,17 @@ def open_radar_card(
     if nav_index is None:
         return
     show_page_by_key(win, "radar", nav_index=nav_index)
-    widget = win._page_widgets.get("radar")
-    if widget is None or not hasattr(widget, "page"):
-        return
-    controller = getattr(widget.page, "_radar_controller", None)
-    if controller is None or not hasattr(controller, "open_external_card"):
-        return
-    controller.open_external_card(card_id, variant=variant, refresh=refresh)
+
+    def _open_card() -> None:
+        widget = win._page_widgets.get("radar")
+        if widget is None or not hasattr(widget, "page"):
+            return
+        controller = getattr(widget.page, "_radar_controller", None)
+        if controller is None or not hasattr(controller, "open_external_card"):
+            return
+        controller.open_external_card(card_id, variant=variant, refresh=refresh)
+
+    QtCore.QTimer.singleShot(0, _open_card)
 
 
 def open_radar_leader_loop(win: AshareMainWindow, *, run_leader_screen: bool = False, leader_variant: str = "mainline") -> None:

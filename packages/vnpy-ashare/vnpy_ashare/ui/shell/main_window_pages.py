@@ -21,6 +21,7 @@ from vnpy_ashare.ui.scheduler.dialog import show_scheduler_dialog
 from vnpy_ashare.ui.screener.pages.screener_hub_page import ScreenerHubPageWidget
 from vnpy_ashare.ui.sector_flow.page import SectorFlowPageWidget
 from vnpy_ashare.ui.shell.local.dialog import show_local_data_dialog
+from vnpy_ashare.ui.shell.deferred_idle import touch_user_activity
 from vnpy_ashare.ui.shell.manager.dialog import show_data_manager_dialog
 from vnpy_ashare.ui.shell.page_shell import MarketPageWidget, RadarPageWidget, StrategyMonitorPageWidget, WatchlistPageWidget
 from vnpy_common.ui.theme.build_extra import build_info_feed_stylesheet
@@ -111,7 +112,7 @@ def _finalize_page_switch(
         win._floating_controller.raise_floating_layers()
 
 
-_DEFERRED_SWITCH_KEYS = frozenset({"watchlist", "strategy_monitor"})
+_DEFERRED_SWITCH_KEYS = frozenset({"watchlist", "strategy_monitor", "radar"})
 
 
 def _switch_page_deferred(
@@ -158,10 +159,7 @@ def _switch_watchlist_deferred(
 
 
 def show_page_by_key(win: AshareMainWindow, key: str, *, nav_index: int | None = None) -> None:
-    widget = get_or_create_page(win, key)
-    if widget is None:
-        return
-
+    touch_user_activity(win)
     if key == "ai_assistant":
         if win._current_key and win._current_key != "ai_assistant":
             prev_index = nav_index_for_key(win, win._current_key)
@@ -172,7 +170,24 @@ def show_page_by_key(win: AshareMainWindow, key: str, *, nav_index: int | None =
 
     old_key = win._current_key
     if key in _DEFERRED_SWITCH_KEYS:
+        widget = win._page_widgets.get(key)
+        if widget is None:
+            if nav_index is not None:
+                win.sidebar.set_active_index(nav_index)
+
+            def _create_and_switch() -> None:
+                created = get_or_create_page(win, key)
+                if created is None:
+                    return
+                _switch_page_deferred(win, created, key=key, old_key=old_key, nav_index=nav_index)
+
+            QtCore.QTimer.singleShot(0, _create_and_switch)
+            return
         _switch_page_deferred(win, widget, key=key, old_key=old_key, nav_index=nav_index)
+        return
+
+    widget = get_or_create_page(win, key)
+    if widget is None:
         return
 
     if old_key and old_key != key:

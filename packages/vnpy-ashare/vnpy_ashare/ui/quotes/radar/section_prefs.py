@@ -1,4 +1,4 @@
-"""雷达主区 Tab 偏好（纯 UI，本机 QSettings，按 user_id 隔离）。"""
+"""雷达主区 Tab 偏好（纯 UI，本机 QSettings）。"""
 
 from __future__ import annotations
 

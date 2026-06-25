@@ -2,14 +2,39 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from vnpy.trader.ui import QtCore
 
-SETTINGS_ORG = "vnpy_ashare"
-SETTINGS_APP = "ZakTerminal"
+from vnpy_common.paths import QSETTINGS_ORG, SETTINGS_APP
 
 
 def get_settings() -> QtCore.QSettings:
-    return QtCore.QSettings(SETTINGS_ORG, SETTINGS_APP)
+    return QtCore.QSettings(QSETTINGS_ORG, SETTINGS_APP)
+
+
+def _legacy_settings(org: str, app: str) -> QtCore.QSettings:
+    return QtCore.QSettings(org, app)
+
+
+def read_migrated_value(
+    new_key: str,
+    legacy_profiles: tuple[tuple[str, str, str], ...],
+    default: Any = None,
+) -> Any:
+    """读取设置：当前 profile 优先，再按 legacy (org, app, key) 回退。"""
+    val = get_settings().value(new_key)
+    if val is not None:
+        return val
+    for org, app, legacy_key in legacy_profiles:
+        legacy_val = _legacy_settings(org, app).value(legacy_key)
+        if legacy_val is not None:
+            return legacy_val
+    return default
+
+
+def write_setting_value(key: str, value: Any) -> None:
+    get_settings().setValue(key, value)
 
 
 def coerce_settings_bool(value: object, *, default: bool) -> bool:
