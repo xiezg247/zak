@@ -10,10 +10,9 @@ from typing import Any, cast
 
 from vnpy.trader.ui import QtWidgets
 
-from vnpy_ashare.ai.context.enrichment import enrich_context_with_actions
 from vnpy_ashare.ai.context.store import get_backtest_summary_dict, set_ai_context
 from vnpy_ashare.app.engine_access import get_service
-from vnpy_common.ai.protocol import AiContextData
+from vnpy_common.ai.protocol import AiContextData, QuickAction
 
 
 def resolve_backtest_summary(main_engine=None) -> dict[str, Any] | None:
@@ -105,8 +104,70 @@ def build_backtest_ai_prompt(summary: dict[str, Any]) -> str:
     return f"请解读最近一次回测（策略 {strategy} · 标的 {vt_symbol}）。获取摘要指标后结合上下文解读，不要编造未在结果中的数值。"
 
 
+def build_backtest_page_quick_actions(*, main_engine=None) -> list[QuickAction]:
+    """策略回测页快捷动作。"""
+    summary = resolve_backtest_summary(main_engine)
+    interpret_prompt = (
+        build_backtest_ai_prompt(summary)
+        if summary
+        else "请解读最近一次回测结果。若尚无回测，请先运行回测后再解读，不要编造指标。"
+    )
+    return [
+        QuickAction(
+            id="interpret_backtest",
+            label="解读回测",
+            tooltip="解读最近回测摘要指标",
+            prompt=interpret_prompt,
+        ),
+        QuickAction(
+            id="backtest_param_hint",
+            label="参数建议",
+            tooltip="基于表单与摘要给出可调参方向（需再回测验证）",
+            prompt=(
+                "基于当前回测表单与最近回测摘要，给出参数调优方向（如均线窗口、持仓周期、止损），"
+                "说明需再回测验证，不要编造收益数字。"
+            ),
+        ),
+        QuickAction(
+            id="backtest_risk_review",
+            label="回撤与交易",
+            tooltip="聚焦最大回撤、胜率与交易次数",
+            prompt=(
+                "请聚焦最近一次回测的最大回撤、夏普、交易次数与胜率，"
+                "分析策略风险特征与是否过拟合，不要编造未在摘要中的数值。"
+            ),
+        ),
+    ]
+
+
+def build_batch_compare_quick_actions() -> list[QuickAction]:
+    """批量回测对比页快捷动作。"""
+    return [
+        QuickAction(
+            id="interpret_batch_compare",
+            label="批次解读",
+            tooltip="解读批量回测收益/夏普分布",
+            prompt=(
+                "请解读当前批量回测对比批次：收益与夏普分布、成功率、"
+                "最优与最差标的差异，不要编造未在摘要中的数据。"
+            ),
+        ),
+        QuickAction(
+            id="batch_attribution",
+            label="最优最差归因",
+            tooltip="对比批次内最优与最差标的",
+            prompt=(
+                "请针对批量回测中最优与最差标的做归因对比（区间行情、策略信号差异），"
+                "不要编造未在摘要中的数据。"
+            ),
+        ),
+    ]
+
+
 def sync_backtest_page_context(widget: QtWidgets.QWidget, main_engine=None, *, notify_ui: bool = True) -> None:
     """组装回测页上下文并写入 context_store（含快捷动作 enrichment）。"""
+    from vnpy_ashare.ai.context.enrichment import enrich_context_with_actions
+
     data = enrich_context_with_actions(build_backtest_page_context(widget, main_engine))
     set_ai_context(data)
 
@@ -144,5 +205,7 @@ def build_batch_compare_context(session, rows: list[Any]) -> AiContextData:
 
 def sync_batch_compare_context(session, rows: list[Any], main_engine=None) -> None:
     """写入批量回测对比页上下文。"""
+    from vnpy_ashare.ai.context.enrichment import enrich_context_with_actions
+
     data = enrich_context_with_actions(build_batch_compare_context(session, rows))
     set_ai_context(data)

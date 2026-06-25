@@ -62,8 +62,8 @@ def build_industry_momentum_prompt() -> str:
     return "请解读当前 A 股行业轮动：哪些行业偏强/偏弱、与大盘广度的关系、对选股的启示。可结合终端已注入的行业榜摘要；不要编造未在摘要或工具结果中的板块数据。"
 
 
-def build_market_page_quick_actions() -> list[QuickAction]:
-    return [
+def build_market_page_quick_actions(*, compact: bool = False) -> list[QuickAction]:
+    actions = [
         QuickAction(
             id="market_environment",
             label="大盘环境",
@@ -86,6 +86,9 @@ def build_market_page_quick_actions() -> list[QuickAction]:
             prompt=build_industry_momentum_prompt(),
         ),
     ]
+    if compact:
+        return actions[:2]
+    return actions
 
 
 def _index_lines(indices: list[tuple[str, QuoteSnapshot]], *, limit: int = 5) -> list[str]:

@@ -31,9 +31,9 @@ def format_radar_page_extra(snapshot: RadarBoardSnapshot | None = None) -> str:
     return "\n".join(lines)
 
 
-def build_radar_page_quick_actions() -> list[QuickAction]:
+def build_radar_page_quick_actions(*, compact: bool = False) -> list[QuickAction]:
     """雷达页无选中个股时的快捷动作。"""
-    return [
+    actions = [
         QuickAction(
             id="radar_insight",
             label="今日洞察",
@@ -58,3 +58,6 @@ def build_radar_page_quick_actions() -> list[QuickAction]:
             prompt="请基于 get_radar_snapshot 完成今日龙头结构 + 明日观察复盘，不要编造具体买卖价。",
         ),
     ]
+    if compact:
+        return actions[:1]
+    return actions

@@ -411,18 +411,18 @@ class AiChatPanel(QtWidgets.QWidget):
             return
         ctx = get_ai_context()
         actions = build_quick_actions_for_panel(ctx, mode=self._panel_mode())
-        self.quick_actions.set_actions(actions)
+        self.quick_actions.set_actions(actions, layout_mode=self._panel_mode())
 
     def set_quick_actions(self, actions: list[QuickAction]) -> None:
         if self.quick_actions is None:
             return
-        self.quick_actions.set_actions(actions)
+        self.quick_actions.set_actions(actions, layout_mode=self._panel_mode())
 
     # ── 快捷指令 ──
     def _on_quick_action(self, action: QuickAction) -> None:
-        """快捷指令：仅回填输入框，由用户点发送。"""
-        self._last_action_id = action.id.strip()
-        self.set_input_text(action.prompt)
+        """快捷指令：悬浮/紧凑面板仅预填；全屏助手尊重 auto_send。"""
+        auto_send = action.auto_send and self._panel_mode() == "assistant"
+        self.submit_prompt(action.prompt, auto_send=auto_send, action_id=action.id)
 
     # ── 代码补全 ──
     def _on_input_text_changed(self) -> None:

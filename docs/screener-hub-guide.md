@@ -33,6 +33,18 @@
 
 ## AI 对话（`Ctrl+L`）
 
+面板上方 **快捷 chip** 与左栏入口对齐（详见 [AI 数据路由 §快捷指令](./ai-data-routing.md#快捷指令ctrll-面板)）：
+
+| chip | 说明 |
+|------|------|
+| 解读选股结果 | 有最近结果时出现；`explain_screening_run` |
+| 雷达龙头 | `run_leader_screen`（须先刷新雷达） |
+| 共振解读 | `get_radar_snapshot` |
+| 形态选股 | 老鸭头 / 均线多头 / W 底 / 主题投资 |
+| 条件选股 | 盘中多因子 · 盘后多因子 · 低 PE · 主力净流入 · 成交量放大 |
+
+自然语言仍可用下表；`propose_screening` / `propose_recipe` 执行前弹窗确认。
+
 | 你说 | 工具 |
 |------|------|
 | 盘中强势股 / 多因子 | `run_recipe` |
@@ -40,7 +52,7 @@
 | 老鸭头 / W 底 | `screen_by_pattern` |
 | 解读结果 / 能不能做 / 龙头池 | `get_screening_context` / `get_emotion_cycle` / `run_leader_screen` |
 
-`propose_screening` / `propose_recipe` 执行前弹窗确认。路由见 [AI 数据路由](./ai-data-routing.md)。
+路由见 [AI 数据路由](./ai-data-routing.md)。
 
 ## 常见问题
 

@@ -6,6 +6,43 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_common.ai.protocol import QuickAction
 
+_FLOATING_MAX_PRIMARY = 5
+
+
+def _flatten_action_for_overflow_menu(action: QuickAction) -> list[QuickAction]:
+    """将带子菜单的项展开为扁平列表，供「更多」一级菜单展示。"""
+    if not action.has_menu:
+        return [action]
+    return [
+        child.model_copy(update={"label": f"{action.label}·{child.label}"})
+        for child in action.children
+    ]
+
+
+def compact_quick_actions_for_display(
+    actions: list[QuickAction],
+    *,
+    layout_mode: str = "assistant",
+    max_primary: int = _FLOATING_MAX_PRIMARY,
+) -> list[QuickAction]:
+    """悬浮/紧凑面板：超过上限时收进「更多」二级菜单。"""
+    if layout_mode == "assistant" or len(actions) <= max_primary:
+        return actions
+    budget = max(1, max_primary - 1)
+    primary = actions[:budget]
+    overflow_flat: list[QuickAction] = []
+    for action in actions[budget:]:
+        overflow_flat.extend(_flatten_action_for_overflow_menu(action))
+    if not overflow_flat:
+        return primary
+    more = QuickAction(
+        id="more_actions",
+        label="更多",
+        tooltip="更多快捷指令",
+        children=overflow_flat,
+    )
+    return [*primary, more]
+
 
 class QuickActionChips(QtWidgets.QWidget):
     """横向快捷动作按钮条，支持二级菜单。"""
@@ -41,13 +78,14 @@ class QuickActionChips(QtWidgets.QWidget):
         )
         self._layout.addWidget(self._scroll)
 
-    def set_actions(self, actions: list[QuickAction]) -> None:
+    def set_actions(self, actions: list[QuickAction], *, layout_mode: str = "assistant") -> None:
+        display = compact_quick_actions_for_display(actions, layout_mode=layout_mode)
         while self._inner_layout.count() > 1:
             item = self._inner_layout.takeAt(0)
             widget = item.widget()
             if widget is not None:
                 widget.deleteLater()
-        for action in actions:
+        for action in display:
             widget = self._build_action_widget(action)
             self._inner_layout.insertWidget(self._inner_layout.count() - 1, widget)
         self.setVisible(bool(actions))

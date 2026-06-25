@@ -232,7 +232,6 @@ def build_team_analysis_menu(binding: StockBinding) -> QuickAction:
         id="team_analysis",
         label="团队全面分析",
         tooltip=f"{binding.tooltip} · 快速=规则速览+综合研判；可在 AI 面板勾选「深度投研团队」",
-        auto_send=True,
         prompt=build_team_analysis_ai_prompt(binding.vt_symbol, binding.name),
     )
 
@@ -317,19 +316,16 @@ def build_trend_forecast_menu(
             QuickAction(
                 id="trend_price",
                 label="股价预测",
-                auto_send=True,
                 prompt=build_trend_scenario_ai_prompt(vt, name, focus="price", **prompt_kwargs),
             ),
             QuickAction(
                 id="trend_support",
                 label="支撑压力位",
-                auto_send=True,
                 prompt=build_trend_scenario_ai_prompt(vt, name, focus="support", **prompt_kwargs),
             ),
             QuickAction(
                 id="trend_5d",
                 label="5日走势预测",
-                auto_send=True,
                 prompt=build_trend_scenario_ai_prompt(
                     vt,
                     name,
@@ -341,27 +337,129 @@ def build_trend_forecast_menu(
             QuickAction(
                 id="trend_direction",
                 label="方向预测",
-                auto_send=True,
                 prompt=build_trend_scenario_ai_prompt(vt, name, focus="direction", **prompt_kwargs),
             ),
         ],
     )
 
 
-def build_bound_stock_menus(binding: StockBinding) -> list[QuickAction]:
-    """五组快捷菜单：综合诊断 / 团队全面分析 / 技术形态 / 走势预测 / 近期走势。"""
+def build_quick_analysis_menu(binding: StockBinding) -> QuickAction:
+    """快速研判：综合诊断子项 + 团队全面分析。"""
+    diagnose = build_diagnose_menu(binding)
+    team = build_team_analysis_menu(binding)
+    return QuickAction(
+        id="quick_analysis",
+        label="快速研判",
+        tooltip=binding.tooltip,
+        children=[*diagnose.children, team],
+    )
+
+
+def build_technical_trend_menu(binding: StockBinding) -> QuickAction:
+    """技术与走势：技术形态 + 近期走势 + 走势预测（扁平二级项）。"""
     class_name, fast_window, slow_window = resolve_signal_prompt_params()
-    return [
-        build_diagnose_menu(binding),
-        build_team_analysis_menu(binding),
-        build_technical_menu(binding),
-        build_trend_forecast_menu(
-            binding,
-            class_name=class_name,
-            fast_window=fast_window,
-            slow_window=slow_window,
+    technical = build_technical_menu(binding)
+    recent = build_recent_trend_menu(binding)
+    forecast = build_trend_forecast_menu(
+        binding,
+        class_name=class_name,
+        fast_window=fast_window,
+        slow_window=slow_window,
+    )
+    children: list[QuickAction] = []
+    for child in technical.children:
+        children.append(child.model_copy(update={"label": f"技术·{child.label}"}))
+    for child in recent.children:
+        children.append(child.model_copy(update={"label": f"走势·{child.label}"}))
+    for child in forecast.children:
+        children.append(child.model_copy(update={"label": f"预测·{child.label}"}))
+    return QuickAction(
+        id="technical_trend",
+        label="技术与走势",
+        tooltip=f"{binding.tooltip} · 技术面与历史/情景走势",
+        children=children,
+    )
+
+
+def build_peer_ops_menu(
+    binding: StockBinding,
+    *,
+    page: str = "",
+    extra: str = "",
+) -> QuickAction:
+    """对标与操作：找同类 Top N + 页面上下文操作。"""
+    vt = binding.vt_symbol
+    name = binding.name
+    children: list[QuickAction] = [
+        QuickAction(
+            id="ref_peer_10",
+            label="找同类 Top 10",
+            prompt=build_reference_peer_prompt(vt, name, top_n=10),
         ),
-        build_recent_trend_menu(binding),
+        QuickAction(
+            id="ref_peer_20",
+            label="找同类 Top 20",
+            prompt=build_reference_peer_prompt(vt, name, top_n=20),
+        ),
+        QuickAction(
+            id="ref_peer_30",
+            label="找同类 Top 30",
+            prompt=build_reference_peer_prompt(vt, name, top_n=30),
+        ),
+    ]
+    if page == "市场" or page == "雷达":
+        children.append(
+            QuickAction(
+                id="sector_overview",
+                label="板块概览",
+                prompt=build_sector_overview_prompt(vt, name),
+            )
+        )
+    elif page == "本地":
+        children.append(
+            QuickAction(
+                id="bar_health",
+                label="数据健康",
+                prompt=build_bar_health_prompt(vt, name, extra),
+            )
+        )
+    if page == "自选" and is_symbol_in_positions(vt):
+        children.append(
+            QuickAction(
+                id="position_strategy",
+                label="持仓策略",
+                prompt=build_positions_ai_prompt(vt, name),
+            )
+        )
+    if page == "自选":
+        children.append(
+            QuickAction(
+                id="note_review",
+                label="结合笔记复盘",
+                prompt=build_note_review_prompt(vt, name),
+            )
+        )
+    if page and page != "自选" and not is_symbol_in_watchlist(binding.symbol, binding.exchange_cn):
+        children.append(
+            QuickAction(
+                id="add_watchlist",
+                label="加入自选",
+                prompt=build_add_watchlist_prompt(vt, name),
+            )
+        )
+    return QuickAction(
+        id="peer_ops",
+        label="对标与操作",
+        tooltip=f"以 {binding.title} 为标杆及页面相关操作",
+        children=children,
+    )
+
+
+def build_bound_stock_menus(binding: StockBinding) -> list[QuickAction]:
+    """个股快捷菜单：快速研判 / 技术与走势。"""
+    return [
+        build_quick_analysis_menu(binding),
+        build_technical_trend_menu(binding),
     ]
 
 
@@ -386,69 +484,8 @@ def is_symbol_in_watchlist(symbol: str, exchange_cn: str = "") -> bool:
     return False
 
 
-def build_floating_page_extras(
-    page: str,
-    binding: StockBinding,
-    *,
-    extra: str = "",
-) -> list[QuickAction]:
-    """按看盘页类型追加扁平快捷动作（板块概览 / 数据健康 / 加入自选）。"""
-    extras: list[QuickAction] = []
-    vt = binding.vt_symbol
-    name = binding.name
-    if page in ("自选", "市场", "雷达"):
-        extras.append(
-            QuickAction(
-                id="reference_peer",
-                label="找同类",
-                prompt=build_reference_peer_prompt(vt, name),
-            )
-        )
-    if page == "市场" or page == "雷达":
-        extras.append(
-            QuickAction(
-                id="sector_overview",
-                label="板块概览",
-                prompt=build_sector_overview_prompt(vt, name),
-            )
-        )
-    elif page == "本地":
-        extras.append(
-            QuickAction(
-                id="bar_health",
-                label="数据健康",
-                prompt=build_bar_health_prompt(vt, name, extra),
-            )
-        )
-    if page == "自选" and is_symbol_in_positions(vt):
-        extras.append(
-            QuickAction(
-                id="position_strategy",
-                label="持仓策略",
-                prompt=build_positions_ai_prompt(vt, name),
-            )
-        )
-    if page == "自选":
-        extras.append(
-            QuickAction(
-                id="note_review",
-                label="结合笔记复盘",
-                prompt=build_note_review_prompt(vt, name),
-            )
-        )
-    if page != "自选" and not is_symbol_in_watchlist(binding.symbol, binding.exchange_cn):
-        extras.append(
-            QuickAction(
-                id="add_watchlist",
-                label="加入自选",
-                prompt=build_add_watchlist_prompt(vt, name),
-            )
-        )
-    return extras
-
-
 def build_pattern_screen_menu() -> QuickAction:
-    """全市场形态选股二级菜单（老鸭头 / 均线多头 / W底 / 热点活跃）。"""
+    """全市场形态选股二级菜单（老鸭头 / 均线多头 / W底 / 主题投资）。"""
     return QuickAction(
         id="pattern_screen",
         label="形态选股",
@@ -457,7 +494,6 @@ def build_pattern_screen_menu() -> QuickAction:
             QuickAction(
                 id="pattern_old_duck",
                 label="老鸭头形态",
-                auto_send=True,
                 prompt=pattern_screen_prompt(
                     "老鸭头形态",
                     detail="关注放量突破、短期均线回踩后再次上攻。",
@@ -466,7 +502,6 @@ def build_pattern_screen_menu() -> QuickAction:
             QuickAction(
                 id="pattern_ma_bull",
                 label="均线多头",
-                auto_send=True,
                 prompt=pattern_screen_prompt(
                     "均线多头排列",
                     detail="优先 MA5>MA10>MA20>MA60，现价站上关键均线。",
@@ -475,7 +510,6 @@ def build_pattern_screen_menu() -> QuickAction:
             QuickAction(
                 id="pattern_w_bottom",
                 label="W底形态",
-                auto_send=True,
                 prompt=pattern_screen_prompt(
                     "W底形态",
                     detail="关注双底结构、第二次探底缩量、突破颈线放量。",
@@ -483,9 +517,8 @@ def build_pattern_screen_menu() -> QuickAction:
             ),
             QuickAction(
                 id="pattern_theme",
-                label="热点活跃",
-                auto_send=True,
-                tooltip="全市场行情筛选，非 K 线形态；需行情采集",
+                label="主题投资",
+                tooltip="preset 主题投资：高换手+涨幅活跃；非 K 线形态，需行情采集",
                 prompt=pattern_screen_prompt(
                     "主题投资",
                     detail="基于全市场行情的高换手+涨幅活跃筛选。",
@@ -496,7 +529,7 @@ def build_pattern_screen_menu() -> QuickAction:
 
 
 def build_condition_screen_menu() -> QuickAction:
-    """全市场条件选股二级菜单（风格标签 → 固定 recipe / preset）。"""
+    """全市场条件选股二级菜单（展示名对齐 recipe / preset）。"""
     return QuickAction(
         id="condition_screen",
         label="条件选股",
@@ -504,57 +537,52 @@ def build_condition_screen_menu() -> QuickAction:
         children=[
             QuickAction(
                 id="cond_short_hot",
-                label="短线游资",
-                auto_send=True,
-                tooltip="盘中多因子：动量 + 量比 + 板块 + 换手 + 放量",
+                label="盘中多因子",
+                tooltip="配方 intraday_multi：动量 + 量比 + 板块 + 换手 + 放量",
                 prompt=recipe_screen_prompt(
                     "intraday_multi",
-                    "短线游资",
+                    "盘中多因子",
                     detail="关注题材活跃度、高换手与盘中异动，适合短线跟踪研究。",
                 ),
             ),
             QuickAction(
                 id="cond_mid_swing",
-                label="中线波段",
-                auto_send=True,
-                tooltip="盘后多因子：资金 + 估值 + 动量",
+                label="盘后多因子",
+                tooltip="配方 post_close_multi：资金 + 估值 + 动量",
                 prompt=recipe_screen_prompt(
                     "post_close_multi",
-                    "中线波段",
+                    "盘后多因子",
                     detail="持有数周至数月，兼顾趋势、资金与估值，关注波段空间。",
                 ),
             ),
             QuickAction(
                 id="cond_long_value",
-                label="长线价投",
-                auto_send=True,
+                label="低 PE",
                 tooltip="内置方案：低 PE（Tushare daily_basic）",
                 prompt=preset_screen_prompt(
                     "低 PE",
-                    "长线价投",
+                    "低 PE",
                     detail="低估值筛选，适合长期持有研究（需 TUSHARE_TOKEN）。",
                 ),
             ),
             QuickAction(
                 id="cond_growth",
-                label="成长赛道",
-                auto_send=True,
+                label="主力净流入",
                 tooltip="内置方案：主力净流入（Tushare moneyflow）",
                 prompt=preset_screen_prompt(
                     "主力净流入",
-                    "成长赛道",
-                    detail="资金关注度高的标的，可结合赛道逻辑进一步解读。",
+                    "主力净流入",
+                    detail="主力资金净流入突出的标的，可结合板块与题材进一步解读。",
                 ),
             ),
             QuickAction(
                 id="cond_cyclical",
-                label="周期资源",
-                auto_send=True,
+                label="成交量放大",
                 tooltip="内置方案：成交量放大（Redis 行情）",
                 prompt=preset_screen_prompt(
                     "成交量放大",
-                    "周期资源",
-                    detail="量能异动筛选，可结合商品/资源板块景气度解读。",
+                    "成交量放大",
+                    detail="量能异动筛选，关注放量突破与换手配合。",
                 ),
             ),
         ],
@@ -598,11 +626,11 @@ def build_assistant_screening_menus() -> list[QuickAction]:
 
 
 def build_assistant_quick_actions() -> list[QuickAction]:
-    """全屏 AI 助手：单票分析 + 标杆对标 + 全市场选股。"""
+    """全屏 AI 助手：单票分析 + 对标与操作 + 全市场选股。"""
     binding = resolve_assistant_stock_binding()
     return [
         *build_bound_stock_menus(binding),
-        build_reference_peer_menu(binding),
+        build_peer_ops_menu(binding),
         *build_assistant_screening_menus(),
     ]
 
@@ -620,7 +648,7 @@ def build_floating_stock_quick_actions(
     if binding is None:
         return []
     actions = build_bound_stock_menus(binding)
-    actions.extend(build_floating_page_extras(page, binding, extra=extra))
+    actions.append(build_peer_ops_menu(binding, page=page, extra=extra))
     return actions
 
 

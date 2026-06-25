@@ -5,78 +5,86 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
+from vnpy.trader.constant import Exchange
+
 from tests.ashare.ai.context.factories import (
     IS_IN_WATCHLIST,
     POSITION_CONTAINS,
+    WATCHLIST_ROWS,
     maotai_binding,
 )
 from vnpy_ashare.ai.context.quote.assembly import (
-    build_assistant_screening_menus,
+    build_assistant_quick_actions,
     build_bound_stock_menus,
     build_floating_stock_quick_actions,
-    build_reference_peer_menu,
+    build_peer_ops_menu,
 )
 from vnpy_ashare.ai.context.quote.prompts import build_team_analysis_ai_prompt
+
+
+def _child_ids(action) -> list[str]:
+    return [child.id for child in action.children]
 
 
 class TestQuoteActions(unittest.TestCase):
     def test_bound_stock_menus_structure(self) -> None:
         binding = maotai_binding()
-        actions = [
-            *build_bound_stock_menus(binding),
-            build_reference_peer_menu(binding),
-            *build_assistant_screening_menus(),
-        ]
-        self.assertEqual(len(actions), 8)
-        stock_ids = [a.id for a in actions[:5]]
-        screen_ids = [a.id for a in actions[6:]]
-        self.assertEqual(
-            stock_ids,
-            ["diagnose", "team_analysis", "technical", "trend_forecast", "recent_trend"],
-        )
-        self.assertEqual(actions[5].id, "reference_peer")
+        with patch(WATCHLIST_ROWS, return_value=[(binding.symbol, Exchange.SSE, binding.name)]):
+            actions = build_assistant_quick_actions()
+        self.assertEqual(len(actions), 5)
+        stock_ids = [a.id for a in actions[:2]]
+        self.assertEqual(stock_ids, ["quick_analysis", "technical_trend"])
+        self.assertEqual(actions[2].id, "peer_ops")
+        screen_ids = [a.id for a in actions[3:]]
         self.assertEqual(screen_ids, ["pattern_screen", "condition_screen"])
-        for action in actions:
-            if action.id == "team_analysis":
-                self.assertTrue(action.auto_send)
-                continue
-            self.assertTrue(action.has_menu, action.id)
+
+        quick = actions[0]
+        self.assertTrue(quick.has_menu)
+        quick_child_ids = _child_ids(quick)
+        self.assertEqual(
+            quick_child_ids,
+            ["diagnose_full", "diagnose_finance", "diagnose_flow", "team_analysis"],
+        )
+        team = next(c for c in quick.children if c.id == "team_analysis")
+        self.assertFalse(team.auto_send)
+
+        technical_trend = actions[1]
+        self.assertTrue(technical_trend.has_menu)
+        self.assertEqual(
+            [child.label for child in technical_trend.children[:3]],
+            ["技术·均线量比", "技术·MACD/KDJ/RSI", "技术·双均线信号"],
+        )
+        self.assertIn("走势·近20日", [child.label for child in technical_trend.children])
+        trend_children = [c for c in technical_trend.children if c.id.startswith("trend_")]
+        self.assertTrue(trend_children)
+        self.assertFalse(any(child.auto_send for child in trend_children))
+
+        peer_ops = actions[2]
+        self.assertEqual(
+            _child_ids(peer_ops)[:3],
+            ["ref_peer_10", "ref_peer_20", "ref_peer_30"],
+        )
+        self.assertIn("600519.SSE", peer_ops.children[1].prompt)
+        self.assertIn("标杆", peer_ops.children[1].prompt)
 
         pattern = next(a for a in actions if a.id == "pattern_screen")
         self.assertEqual(
             [child.label for child in pattern.children],
-            ["老鸭头形态", "均线多头", "W底形态", "热点活跃"],
+            ["老鸭头形态", "均线多头", "W底形态", "主题投资"],
         )
         condition = next(a for a in actions if a.id == "condition_screen")
         self.assertEqual(
             [child.label for child in condition.children],
-            ["短线游资", "中线波段", "长线价投", "成长赛道", "周期资源"],
+            ["盘中多因子", "盘后多因子", "低 PE", "主力净流入", "成交量放大"],
         )
         short_hot = next(c for c in condition.children if c.id == "cond_short_hot")
         self.assertIn("盘中多因子选股", short_hot.prompt)
-        self.assertIn("短线游资", short_hot.prompt)
-        self.assertTrue(short_hot.auto_send)
+        self.assertIn("盘中多因子", short_hot.prompt)
+        self.assertFalse(short_hot.auto_send)
         mid_swing = next(c for c in condition.children if c.id == "cond_mid_swing")
         self.assertIn("盘后多因子选股", mid_swing.prompt)
-        long_value = next(c for c in condition.children if c.id == "cond_long_value")
-        self.assertIn("低 PE", long_value.prompt)
-        self.assertIn("长线价投", long_value.prompt)
-
-        reference_peer = next(a for a in actions if a.id == "reference_peer")
-        self.assertEqual(
-            [child.label for child in reference_peer.children],
-            ["Top 10", "Top 20", "Top 30"],
-        )
-        self.assertIn("600519.SSE", reference_peer.children[1].prompt)
-        self.assertIn("标杆", reference_peer.children[1].prompt)
-
-        trend = next(a for a in actions if a.id == "trend_forecast")
-        self.assertIn("600519.SSE", trend.children[0].prompt)
-        self.assertIn("情景分析", trend.children[0].prompt)
-        self.assertIn("乐观/基准/悲观", trend.children[0].prompt)
-        self.assertTrue(all(child.auto_send for child in trend.children))
-        self.assertIn("形态选股", pattern.children[0].prompt)
-        self.assertTrue(pattern.children[0].auto_send)
+        growth = next(c for c in condition.children if c.id == "cond_growth")
+        self.assertIn("主力净流入", growth.prompt)
 
     def test_floating_bound_to_selected_symbol(self) -> None:
         with patch(POSITION_CONTAINS, return_value=False):
@@ -86,11 +94,14 @@ class TestQuoteActions(unittest.TestCase):
                 name="科大讯飞",
                 page="自选",
             )
-        self.assertEqual(len(actions), 7)
+        self.assertEqual(len(actions), 3)
+        self.assertEqual([a.id for a in actions], ["quick_analysis", "technical_trend", "peer_ops"])
         self.assertIn("002230.SZSE", actions[0].children[0].prompt)
-        team = next(a for a in actions if a.id == "team_analysis")
+        team = next(c for c in actions[0].children if c.id == "team_analysis")
         self.assertIn("投研团队全面分析", team.prompt)
         self.assertIn("600519.SSE", build_team_analysis_ai_prompt("600519.SSE", "贵州茅台"))
+        peer_child_ids = _child_ids(actions[2])
+        self.assertIn("note_review", peer_child_ids)
 
     def test_market_page_includes_sector_overview(self) -> None:
         with patch(IS_IN_WATCHLIST, return_value=True):
@@ -100,10 +111,10 @@ class TestQuoteActions(unittest.TestCase):
                 name="贵州茅台",
                 page="市场",
             )
-        ids = [a.id for a in actions]
-        self.assertIn("reference_peer", ids)
-        self.assertIn("sector_overview", ids)
-        self.assertNotIn("add_watchlist", ids)
+        peer_ops = next(a for a in actions if a.id == "peer_ops")
+        peer_child_ids = _child_ids(peer_ops)
+        self.assertIn("sector_overview", peer_child_ids)
+        self.assertNotIn("add_watchlist", peer_child_ids)
 
     def test_local_page_includes_bar_health(self) -> None:
         with patch(IS_IN_WATCHLIST, return_value=True):
@@ -114,7 +125,8 @@ class TestQuoteActions(unittest.TestCase):
                 page="本地",
                 extra="本地日 K 条数：120",
             )
-        bar_health = next(a for a in actions if a.id == "bar_health")
+        peer_ops = next(a for a in actions if a.id == "peer_ops")
+        bar_health = next(c for c in peer_ops.children if c.id == "bar_health")
         self.assertIn("本地日 K", bar_health.prompt)
         self.assertIn("600519.SSE", bar_health.prompt)
 
@@ -126,8 +138,21 @@ class TestQuoteActions(unittest.TestCase):
                 name="平安银行",
                 page="市场",
             )
-        add = next(a for a in actions if a.id == "add_watchlist")
+        peer_ops = next(a for a in actions if a.id == "peer_ops")
+        add = next(c for c in peer_ops.children if c.id == "add_watchlist")
         self.assertIn("加入自选池", add.prompt)
+
+    def test_bound_stock_menus_count(self) -> None:
+        binding = maotai_binding()
+        menus = build_bound_stock_menus(binding)
+        self.assertEqual(len(menus), 2)
+        self.assertEqual([m.id for m in menus], ["quick_analysis", "technical_trend"])
+
+    def test_peer_ops_menu_without_page(self) -> None:
+        binding = maotai_binding()
+        menu = build_peer_ops_menu(binding)
+        self.assertEqual(menu.id, "peer_ops")
+        self.assertEqual(len(menu.children), 3)
 
 
 if __name__ == "__main__":
