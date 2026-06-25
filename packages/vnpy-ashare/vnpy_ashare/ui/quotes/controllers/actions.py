@@ -31,6 +31,7 @@ from vnpy_ashare.ui.features.stock_analysis.open import show_stock_analysis_from
 from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
 from vnpy_ashare.ui.quotes.page.config import AI_CONTEXT_DEBOUNCE_MS
 from vnpy_ashare.ui.quotes.page.roles import WATCHLIST_PAGE
+from vnpy_ashare.ui.quotes.watchlist.quote_status import begin_watchlist_quotes_fetch, end_watchlist_quotes_fetch
 from vnpy_ashare.ui.quotes.workers.quotes_workers import DepthRefreshWorker, DiagnoseWorker, QuotesRefreshWorker
 from vnpy_ashare.ui.screener.dialogs.reference_peer_dialog import show_reference_peer_dialog
 from vnpy_ashare.ui.styles.colors import NAV_MUTED_COLOR
@@ -361,12 +362,16 @@ class ActionsController:
         worker = QuotesRefreshWorker(refresh_items, refresh_source)
         page._quotes_worker = worker
         current = page.current_item
+        if page.page_name == WATCHLIST_PAGE:
+            begin_watchlist_quotes_fetch(page)
 
         def on_finished(quotes: dict) -> None:
             if page._quotes_worker is worker:
                 page._quotes_worker = None
             try:
                 if not page._active:
+                    if page.page_name == WATCHLIST_PAGE:
+                        end_watchlist_quotes_fetch(page)
                     return
 
                 def _apply_quotes() -> None:
@@ -387,6 +392,8 @@ class ActionsController:
                             page.chart_panel.refresh_active()
                     if page.quote_auto_refresh_enabled():
                         page.schedule_quote_auto_refresh()
+                    if page.page_name == WATCHLIST_PAGE:
+                        end_watchlist_quotes_fetch(page)
 
                 page._defer_when_market_idle(_apply_quotes)
             finally:
@@ -398,6 +405,8 @@ class ActionsController:
             try:
                 if page.quote_auto_refresh_enabled():
                     page.schedule_quote_auto_refresh()
+                if page.page_name == WATCHLIST_PAGE:
+                    end_watchlist_quotes_fetch(page)
             finally:
                 page._release_worker(worker)
 

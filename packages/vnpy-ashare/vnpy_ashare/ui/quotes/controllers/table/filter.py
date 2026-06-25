@@ -7,6 +7,7 @@ from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.ui.quotes.controllers.table.base import TableControllerBase
 from vnpy_ashare.ui.quotes.page.config import MAX_DISPLAY_ROWS
 from vnpy_ashare.ui.quotes.page.roles import STRATEGY_MONITOR_PAGE
+from vnpy_ashare.ui.quotes.watchlist.quote_status import append_loading_suffix
 
 
 class TableFilterMixin(TableControllerBase):
@@ -103,18 +104,26 @@ class TableFilterMixin(TableControllerBase):
         else:
             page._quote_timer.stop()
 
+        self.update_display_status(matched=matched)
+
+    def update_display_status(self, *, matched: list | None = None) -> None:
+        page = self._p
+        if matched is None:
+            keyword = page.search_edit.text().strip().lower()
+            matched = [s for s in page.all_stocks if keyword in s.search_key] if keyword else list(page.all_stocks)
+
         extra = f"，显示前 {MAX_DISPLAY_ROWS} 条" if len(matched) > MAX_DISPLAY_ROWS else ""
         groups = getattr(page, "_watchlist_groups", None)
         if not matched and page.config.scope_key == "自选池":
             if page.page_name == STRATEGY_MONITOR_PAGE:
-                page.status_label.setText("自选池为空，请在市场页加入自选后再监控")
+                status = "自选池为空，请在市场页加入自选后再监控"
             elif groups is not None and groups.is_filtering():
-                page.status_label.setText(f"分组「{groups.active_group_label()}」暂无标的，可在右键菜单中勾选加入")
+                status = f"分组「{groups.active_group_label()}」暂无标的，可在右键菜单中勾选加入"
             else:
-                page.status_label.setText("自选池为空，请在市场页搜索标的并点击「加入自选」")
+                status = "自选池为空，请在市场页搜索标的并点击「加入自选」"
         elif not matched and page.config.use_local_table:
             label = page._local_scope_label()
-            page.status_label.setText(f"暂无本地{label}，请在自选页下载")
+            status = f"暂无本地{label}，请在自选页下载"
         elif page.config.use_local_table:
             stale = sum(
                 1
@@ -128,10 +137,10 @@ class TableFilterMixin(TableControllerBase):
             status = f"{page.page_name}  共 {len(matched)} 只{extra}"
             if stale:
                 status += f"，{stale} 只需补全"
-            page.status_label.setText(status)
             page._local.update_batch_toolbar_buttons()
+        elif page.page_name == STRATEGY_MONITOR_PAGE:
+            status = f"自选池 {len(matched)} 只{extra}"
         else:
-            if page.page_name == STRATEGY_MONITOR_PAGE:
-                page.status_label.setText(f"自选池 {len(matched)} 只{extra}")
-            else:
-                page.status_label.setText(f"{page.page_name}  匹配 {len(matched)} 只{extra}")
+            status = f"{page.page_name}  匹配 {len(matched)} 只{extra}"
+
+        page.status_label.setText(append_loading_suffix(page, status))

@@ -13,6 +13,7 @@ from vnpy_ashare.ui.quotes.page.config import (
     STREAM_CHART_QUOTE_DEBOUNCE_MS,
     STREAM_QUOTE_DEBOUNCE_MS,
 )
+from vnpy_ashare.ui.quotes.watchlist.quote_status import refresh_watchlist_quotes_status
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
@@ -131,6 +132,7 @@ class QuoteStreamController:
             return
 
         page._table.refresh_table_quotes_for_symbols(symbols)
+        refresh_watchlist_quotes_status(page)
         current = page.current_item
         if current is None or current.tickflow_symbol not in symbols:
             page._actions.schedule_ai_context()

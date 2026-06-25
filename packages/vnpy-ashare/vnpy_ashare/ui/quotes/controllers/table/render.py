@@ -16,6 +16,7 @@ from vnpy_ashare.ui.quotes.table.columns import (
     quote_column_index,
 )
 from vnpy_ashare.ui.quotes.table.model import QuoteCell
+from vnpy_ashare.ui.quotes.watchlist.quote_status import refresh_watchlist_quotes_status
 from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.market_colors import MarketColors, market_colors
 from vnpy_common.ui.theme.tokens import ThemeTokens
@@ -40,7 +41,7 @@ class TableRenderMixin(TableControllerBase):
             if selected_key:
                 self.select_stock_key(selected_key)
             if view.currentIndex().row() < 0 and page.display_stocks:
-                view.selectRow(0)
+                self.select_row(0)
         finally:
             view.setUpdatesEnabled(True)
             view.blockSignals(False)
@@ -61,6 +62,7 @@ class TableRenderMixin(TableControllerBase):
         if view.currentIndex().row() >= 0:
             self.on_selection_changed()
         page._sync_stream_subscriptions()
+        refresh_watchlist_quotes_status(page)
         self._build_symbol_row_index()
         self.update_stats()
         self._refresh_market_scrollbar()

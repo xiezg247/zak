@@ -144,6 +144,7 @@ def init_page_state(page: QuotesPage) -> None:
     page._gap_worker = None
     page._gap_generation = 0
     page._quotes_worker = None
+    page._watchlist_quotes_loading = False
     page._depth_worker = None
     page._diagnose_worker = None
     page._invalid_bar_cleanup_worker = None

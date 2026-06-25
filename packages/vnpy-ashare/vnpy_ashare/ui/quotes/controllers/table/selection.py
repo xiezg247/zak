@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from vnpy.trader.constant import Exchange
-from vnpy.trader.ui import QtWidgets
+from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.config.trading_universe import is_market_board_combo_locked
 from vnpy_ashare.domain.symbols.stock import StockItem, parse_stock_symbol
@@ -11,6 +11,22 @@ from vnpy_ashare.ui.quotes.controllers.table.base import TableControllerBase
 
 
 class TableSelectionMixin(TableControllerBase):
+    def select_row(self, row: int, *, clear: bool = True) -> None:
+        """选中整行；默认先清空旧选区，避免 Extended 模式下叠出多行异色。"""
+        view = self._view()
+        model = view.model()
+        if row < 0 or row >= model.rowCount():
+            return
+        index = model.index(row, 0)
+        flags = (
+            QtCore.QItemSelectionModel.SelectionFlag.Select
+            | QtCore.QItemSelectionModel.SelectionFlag.Rows
+        )
+        if clear:
+            flags |= QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect
+        view.selectionModel().select(index, flags)
+        view.scrollTo(index, QtWidgets.QAbstractItemView.ScrollHint.EnsureVisible)
+
     def selected_stock_key(self) -> tuple[str, Exchange] | None:
         if self._p.current_item is None:
             return None
@@ -27,12 +43,10 @@ class TableSelectionMixin(TableControllerBase):
         return items
 
     def select_stock_key(self, key: tuple[str, Exchange]) -> None:
-        view = self._view()
         for row in range(self._model().row_count()):
             item = self.stock_at_row(row)
             if item and (item.symbol, item.exchange) == key:
-                view.selectRow(row)
-                view.scrollTo(view.model().index(row, 0), QtWidgets.QAbstractItemView.ScrollHint.EnsureVisible)
+                self.select_row(row)
                 return
 
     def focus_market_symbol(self, vt_symbol: str) -> bool:

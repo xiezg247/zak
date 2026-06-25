@@ -40,7 +40,7 @@ from vnpy_ashare.ui.quotes.page.config import (
     load_market_auto_refresh_pref,
     quote_source_label,
 )
-from vnpy_ashare.ui.quotes.page.roles import is_strategy_monitor_page
+from vnpy_ashare.ui.quotes.page.roles import WATCHLIST_PAGE, is_strategy_monitor_page
 from vnpy_ashare.ui.quotes.page.market_board_filter import configure_market_board_combo
 from vnpy_ashare.ui.quotes.page.run_log import (
     load_run_output_expanded,
@@ -429,7 +429,7 @@ class QuotesPageShell:
             page.market_table.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
         page.market_table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
         page.market_table.verticalHeader().setVisible(False)
-        page.market_table.setAlternatingRowColors(True)
+        page.market_table.setAlternatingRowColors(page.page_name != WATCHLIST_PAGE)
         page.market_table.setSortingEnabled(False)
         page.market_table.selectionModel().selectionChanged.connect(page._table.on_selection_changed)
         page.market_table.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
