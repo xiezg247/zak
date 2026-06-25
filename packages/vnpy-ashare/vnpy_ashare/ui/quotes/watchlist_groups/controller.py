@@ -90,7 +90,7 @@ class WatchlistGroupController(QtCore.QObject):
             max_groups=service.max_groups,
             tab_labels=self._group_tab_labels(),
         )
-        self._sync_move_buttons()
+        self._page._update_action_buttons()
 
     def _position_records(self):
         service = self._page._get_position_service()
@@ -130,7 +130,7 @@ class WatchlistGroupController(QtCore.QObject):
         save_active_watchlist_group_id(self._active_group_id)
         self._reload_member_keys()
         self.apply_display_stocks()
-        self._sync_move_buttons()
+        self._page._update_action_buttons()
 
     def _prompt_name(self, *, title: str, label: str, initial: str = "") -> str | None:
         text, ok = QtWidgets.QInputDialog.getText(as_qwidget(self._page), title, label, text=initial)
@@ -366,12 +366,3 @@ class WatchlistGroupController(QtCore.QObject):
 
     def select_all_tab(self) -> None:
         self.select_group_tab(None)
-
-    def _sync_move_buttons(self) -> None:
-        page = self._page
-        if not page.config.show_watchlist_move_buttons:
-            return
-        tip = "筛选分组时请在「自选」下调整顺序" if self.is_filtering() else "调整自选池排序"
-        page.move_watchlist_up_button.setToolTip(tip)
-        page.move_watchlist_down_button.setToolTip(tip)
-        page._update_action_buttons()

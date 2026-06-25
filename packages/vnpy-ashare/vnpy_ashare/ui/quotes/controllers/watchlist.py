@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal, cast
+from typing import cast
 
 from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtWidgets
@@ -37,13 +37,6 @@ class WatchlistController:
             return True
         return (item.symbol, item.exchange) in self.keys
 
-    def index_of(self, item: StockItem) -> int | None:
-        key = (item.symbol, item.exchange)
-        for index, stock in enumerate(self._page.all_stocks):
-            if (stock.symbol, stock.exchange) == key:
-                return index
-        return None
-
     def update_action_buttons(self, item: StockItem | None) -> None:
         page = self._page
         if page.config.show_add_watchlist_button:
@@ -53,13 +46,10 @@ class WatchlistController:
                 key = (item.symbol, item.exchange)
                 page.add_watchlist_button.setEnabled(key not in self.keys and len(self.keys) < WATCHLIST_MAX_ITEMS)
         if page.config.show_remove_watchlist_button:
-            page.remove_watchlist_button.setEnabled(item is not None)
-        if page.config.show_watchlist_move_buttons:
-            index = self.index_of(item) if item is not None else None
-            total = len(page.all_stocks)
-            can_move = item is not None and not (page._watchlist_groups is not None and page._watchlist_groups.is_filtering())
-            page.move_watchlist_up_button.setEnabled(can_move and index is not None and index > 0)
-            page.move_watchlist_down_button.setEnabled(can_move and index is not None and index + 1 < total)
+            selected = page._table.selected_items()
+            count = len(selected) if len(selected) > 1 else (1 if (selected or item is not None) else 0)
+            page.remove_watchlist_button.setEnabled(count > 0)
+            page.remove_watchlist_button.setText("移出自选" if count <= 1 else f"移出 {count} 只")
 
     def _pool_from_service(self) -> list[StockItem]:
         service = self._service()
@@ -124,44 +114,66 @@ class WatchlistController:
         self.remove_items()
 
     def remove_items(self, context_item: StockItem | None = None) -> None:
+        page = self._page
         targets = self._remove_targets(context_item)
         if not targets:
+            toast = getattr(page, "_toast", None)
+            if toast is not None:
+                toast.info("请先选择要移出的标的")
+            else:
+                page.status_label.setText("请先选择要移出的标的")
             return
+
         service = self._service()
         if service is None:
-            self._page.status_label.setText("自选服务未就绪")
+            page.status_label.setText("自选服务未就绪")
+            return
+
+        if len(targets) > 1:
+            answer = QtWidgets.QMessageBox.question(
+                cast(QtWidgets.QWidget, page),
+                "移出自选",
+                f"确定从自选池移出 {len(targets)} 只标的？",
+                QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
+                QtWidgets.QMessageBox.StandardButton.No,
+            )
+            if answer != QtWidgets.QMessageBox.StandardButton.Yes:
+                return
+
+        if not self._confirm_remove_positions(targets):
             return
 
         removed_vts: list[str] = []
         removed_labels: list[str] = []
         failed = 0
         for item in targets:
-            if not self._remove_one_item(service, item):
+            if not service.remove(item.symbol, item.exchange):
                 failed += 1
                 continue
             removed_vts.append(item.vt_symbol)
             removed_labels.append(format_vt_symbol_cn(item.symbol, item.exchange))
 
         if not removed_labels:
-            self._page.status_label.setText("移出失败：标的不在自选池")
+            page.status_label.setText("移出失败：标的不在自选池")
             return
 
-        self._page.current_item = None
-        if self._page.depth_panel is not None:
-            self._page.depth_panel.clear()
         if len(removed_labels) == 1:
             status = f"已移出自选：{removed_labels[0]}"
         else:
             status = f"已移出自选 {len(removed_labels)} 只"
         if failed:
             status += f"（{failed} 只失败）"
-        self._page.status_label.setText(status)
+        page.status_label.setText(status)
         self._apply_pool(self._pool_from_service())
-        bootstrap = getattr(self._page, "_watchlist_bootstrap", None)
+        bootstrap = getattr(page, "_watchlist_bootstrap", None)
         if isinstance(bootstrap, WatchlistBootstrapCoordinator) and removed_vts:
-            bootstrap.invalidate_symbols(self._page, removed_vts)
-        if self._page.config.show_watchlist_signals:
-            self._page._signals.on_symbols_changed()
+            bootstrap.invalidate_symbols(page, removed_vts)
+        if page.config.show_watchlist_signals:
+            page._signals.on_symbols_changed()
+        if not page.display_stocks:
+            page.current_item = None
+            if page.depth_panel is not None:
+                page.depth_panel.clear()
 
     def _remove_targets(self, context_item: StockItem | None = None) -> list[StockItem]:
         selected = self._page._table.selected_items()
@@ -175,40 +187,37 @@ class WatchlistController:
             return [self._page.current_item]
         return []
 
-    def _remove_one_item(self, service: WatchlistService, item: StockItem) -> bool:
-        position_service = self._page._get_position_service()
-        if position_service is not None and position_service.contains(item.symbol, item.exchange):
-            answer = QtWidgets.QMessageBox.question(
-                cast(QtWidgets.QWidget, self._page),
-                "移出自选",
-                f"{format_vt_symbol_cn(item.symbol, item.exchange)} 仍有持仓记录，是否一并移出？",
-                QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
-                QtWidgets.QMessageBox.StandardButton.No,
-            )
-            if answer == QtWidgets.QMessageBox.StandardButton.Yes:
-                position_service.remove(item.symbol, item.exchange)
-                self._page.position_cache.pop(item.vt_symbol, None)
-                panel = getattr(self._page, "position_panel", None)
-                if panel is not None:
-                    panel.render_panel()
-        if not service.remove(item.symbol, item.exchange):
+    def _confirm_remove_positions(self, targets: list[StockItem]) -> bool:
+        page = self._page
+        position_service = page._get_position_service()
+        if position_service is None:
+            return True
+
+        with_positions = [
+            item for item in targets if position_service.contains(item.symbol, item.exchange)
+        ]
+        if not with_positions:
+            return True
+
+        if len(with_positions) == 1:
+            item = with_positions[0]
+            message = f"{format_vt_symbol_cn(item.symbol, item.exchange)} 仍有持仓记录，是否一并移出？"
+        else:
+            message = f"其中 {len(with_positions)} 只有持仓记录，是否一并移出持仓？"
+        answer = QtWidgets.QMessageBox.question(
+            cast(QtWidgets.QWidget, page),
+            "移出自选",
+            message,
+            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
+            QtWidgets.QMessageBox.StandardButton.No,
+        )
+        if answer != QtWidgets.QMessageBox.StandardButton.Yes:
             return False
+
+        for item in with_positions:
+            position_service.remove(item.symbol, item.exchange)
+            page.position_cache.pop(item.vt_symbol, None)
+        panel = getattr(page, "position_panel", None)
+        if panel is not None:
+            panel.render_panel()
         return True
-
-    def move_selected(self, direction: Literal["up", "down"]) -> None:
-        if not self._page.current_item:
-            return
-        service = self._service()
-        if service is None:
-            self._page.status_label.setText("自选服务未就绪")
-            return
-
-        item = self._page.current_item
-        key = (item.symbol, item.exchange)
-        if not service.move(item.symbol, item.exchange, direction=direction):
-            return
-        key = (item.symbol, item.exchange)
-        self._apply_pool(self._pool_from_service())
-        self._page._select_stock_key(key)
-        label = "上移" if direction == "up" else "下移"
-        self._page.status_label.setText(f"{format_vt_symbol_cn(item.symbol, item.exchange)} 已{label}")

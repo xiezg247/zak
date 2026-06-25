@@ -52,8 +52,6 @@ def collect_busy_widgets(
         "gap_fill_button",
         "add_watchlist_button",
         "remove_watchlist_button",
-        "move_watchlist_up_button",
-        "move_watchlist_down_button",
         "backtest_button",
         "batch_backtest_button",
         "diagnose_button",
@@ -117,9 +115,6 @@ def set_busy(
             page.add_watchlist_button.setEnabled(False)
         if page.config.show_remove_watchlist_button:
             page.remove_watchlist_button.setEnabled(False)
-        if page.config.show_watchlist_move_buttons:
-            page.move_watchlist_up_button.setEnabled(False)
-            page.move_watchlist_down_button.setEnabled(False)
     else:
         page._update_action_buttons()
     if lock_table:

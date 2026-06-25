@@ -87,7 +87,7 @@ class ActionsController:
                 else:
                     key = (item.symbol, item.exchange)
                     button.setEnabled(key in page.bar_meta)
-        if page.config.show_add_watchlist_button or page.config.show_remove_watchlist_button or page.config.show_watchlist_move_buttons:
+        if page.config.show_add_watchlist_button or page.config.show_remove_watchlist_button:
             page._watchlist.update_action_buttons(item)
         if page.config.show_backtest_button:
             page.backtest_button.setEnabled(item is not None)
@@ -741,19 +741,6 @@ class ActionsController:
             action = menu.addAction("策略回测")
             action.triggered.connect(self.open_backtest_for_selected)
 
-        if page.config.show_watchlist_move_buttons:
-            if page._watchlist.contains(item):
-                menu.addSeparator()
-                index = page._watchlist.index_of(item)
-                total = len(page.all_stocks)
-                can_move = page._watchlist_groups is None or not page._watchlist_groups.is_filtering()
-                if can_move and index is not None and index > 0:
-                    action = menu.addAction("上移")
-                    action.triggered.connect(lambda: page._watchlist.move_selected("up"))
-                if can_move and index is not None and index + 1 < total:
-                    action = menu.addAction("下移")
-                    action.triggered.connect(lambda: page._watchlist.move_selected("down"))
-
         if page.page_name == "自选" and page.config.show_watchlist_groups and page._watchlist_groups is not None:
             selected = [it for it in page._table.selected_items() if page._watchlist.contains(it)]
             if not selected:
@@ -772,8 +759,10 @@ class ActionsController:
             action.triggered.connect(page.add_selection_to_signal_panel)
             added = True
         if page.config.show_remove_watchlist_button and page._watchlist.contains(item):
-            action = menu.addAction("移出自选")
-            action.triggered.connect(lambda _checked=False, it=item: page.remove_from_watchlist(it))
+            selected = page._table.selected_items()
+            label = f"移出 {len(selected)} 只" if len(selected) > 1 else "移出自选"
+            action = menu.addAction(label)
+            action.triggered.connect(page.remove_from_watchlist)
             added = True
         if page.config.show_refresh_quotes_button and not page.config.use_market_rank:
             action = menu.addAction("刷新行情")

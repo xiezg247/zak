@@ -42,20 +42,12 @@ def append_watchlist_pool_toolbar_actions(
     more_actions: list[tuple[str, QtWidgets.QPushButton]],
     *,
     policy: WatchlistToolbarPolicy | None,
-    show_move_in_toolbar: bool,
 ) -> None:
-    """自选池相关：加入/移出/排序/下载。"""
+    """自选池相关：加入/移出/下载。"""
     if page.config.show_add_watchlist_button:
         toolbar.addWidget(page.add_watchlist_button)
     if page.config.show_remove_watchlist_button:
         toolbar.addWidget(page.remove_watchlist_button)
-    if show_move_in_toolbar:
-        more_actions.extend(
-            [
-                ("上移", page.move_watchlist_up_button),
-                ("下移", page.move_watchlist_down_button),
-            ]
-        )
     if page.config.show_download_button and policy is None:
         toolbar.addWidget(page.download_button)
 

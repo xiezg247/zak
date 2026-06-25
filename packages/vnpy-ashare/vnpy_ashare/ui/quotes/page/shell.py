@@ -231,12 +231,14 @@ class QuotesPageShell:
         page.remove_watchlist_button.setVisible(page.config.show_remove_watchlist_button)
 
         page.move_watchlist_up_button = QtWidgets.QPushButton("上移", page)
-        page.move_watchlist_up_button.clicked.connect(lambda: page._watchlist.move_selected("up"))
+        page.move_watchlist_up_button.clicked.connect(lambda: None)
         page.move_watchlist_up_button.setEnabled(False)
+        page.move_watchlist_up_button.hide()
 
         page.move_watchlist_down_button = QtWidgets.QPushButton("下移", page)
-        page.move_watchlist_down_button.clicked.connect(lambda: page._watchlist.move_selected("down"))
+        page.move_watchlist_down_button.clicked.connect(lambda: None)
         page.move_watchlist_down_button.setEnabled(False)
+        page.move_watchlist_down_button.hide()
 
         page.backtest_button = QtWidgets.QPushButton("策略回测", page)
         page.backtest_button.setObjectName("SecondaryButton")
@@ -244,7 +246,7 @@ class QuotesPageShell:
         page.backtest_button.setEnabled(False)
 
         watchlist_policy = watchlist_toolbar_policy(page)
-        show_move_in_toolbar, show_backtest_in_toolbar = configure_watchlist_action_button_visibility(
+        show_backtest_in_toolbar = configure_watchlist_action_button_visibility(
             page,
             watchlist_policy,
         )
@@ -339,7 +341,6 @@ class QuotesPageShell:
             page,
             policy=watchlist_policy,
             show_backtest_in_toolbar=show_backtest_in_toolbar,
-            show_move_in_toolbar=show_move_in_toolbar,
         )
         if group2_visible and group3_visible:
             toolbar.addWidget(_toolbar_separator())
@@ -351,7 +352,6 @@ class QuotesPageShell:
             toolbar,
             more_actions,
             policy=watchlist_policy,
-            show_move_in_toolbar=show_move_in_toolbar,
         )
         if page.config.show_fill_button:
             more_actions.append(("补全到最新", page.fill_button))

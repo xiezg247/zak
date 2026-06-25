@@ -25,9 +25,10 @@ class TableColumnsMixin(TableControllerBase):
         else:
             default_main = [k for k in MARKET_VISIBLE_COLUMNS if k in all_keys]
         default_main = self._strip_signal_columns(default_main)
-        for required in ("index", "symbol", "name"):
-            if required in all_keys and required not in default_main:
-                default_main.insert(0, required)
+        required = ("symbol", "name") if page.page_name == "自选" else ("index", "symbol", "name")
+        for required_key in required:
+            if required_key in all_keys and required_key not in default_main:
+                default_main.insert(0, required_key)
         if page.page_name == "市场":
             default_main = ensure_industry_board_columns(default_main, available_keys=set(all_keys))
         return default_main
@@ -114,7 +115,8 @@ class TableColumnsMixin(TableControllerBase):
             for required in ("symbol", "name"):
                 if required in all_keys and required not in valid_cols:
                     valid_cols.insert(0, required)
-            valid_cols.insert(0, "index")
+            if page.page_name != "自选":
+                valid_cols.insert(0, "index")
             before = list(valid_cols)
             if page.page_name == "自选":
                 if "market_board" in valid_cols:
