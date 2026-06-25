@@ -138,3 +138,31 @@ def delete_pref(namespace: str, key: str) -> bool:
             (uid, namespace.strip(), key.strip()),
         )
         return bool(cursor.rowcount > 0)
+
+
+def delete_prefs(keys: list[tuple[str, str]]) -> int:
+    """批量删除当前用户偏好，返回删除行数。"""
+    valid: list[tuple[str, str]] = []
+    for ns, pref_key in keys:
+        ns_s = ns.strip()
+        k_s = pref_key.strip()
+        if ns_s and k_s:
+            valid.append((ns_s, k_s))
+    if not valid:
+        return 0
+
+    init_app_db()
+    uid = get_user_id()
+    table = preferences_table()
+    placeholders = ",".join("(?, ?)" for _ in valid)
+    flat_params: list[str] = []
+    for ns, pref_key in valid:
+        flat_params.append(ns)
+        flat_params.append(pref_key)
+
+    with connect() as conn:
+        cursor = conn.execute(
+            f"DELETE FROM {table} WHERE user_id = ? AND (namespace, key) IN ({placeholders})",
+            (uid, *flat_params),
+        )
+        return int(cursor.rowcount or 0)

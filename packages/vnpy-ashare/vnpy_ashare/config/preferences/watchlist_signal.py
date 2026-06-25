@@ -8,12 +8,13 @@ from pydantic import Field
 
 from strategies.signals import list_supported_signal_strategies
 from vnpy_ashare.config.preferences._settings import coerce_settings_bool, coerce_settings_int, get_settings
-from vnpy_ashare.config.preferences._user_pref import (
-    load_json_pref,
-    load_model_pref,
-    save_json_pref,
-    save_model_pref,
+from vnpy_ashare.config.preferences._local_ui_pref import (
+    load_json_local_ui,
+    load_scalar_local_ui,
+    save_json_local_ui,
+    save_scalar_local_ui,
 )
+from vnpy_ashare.config.preferences._user_pref import load_model_pref, save_model_pref
 from vnpy_ashare.config.preferences.signal_panel_columns import normalize_visible_optional_keys
 from vnpy_ashare.domain.symbols.stock import canonical_vt_symbol
 from vnpy_common.domain.base import FrozenModel
@@ -38,17 +39,11 @@ MAX_STALE_SWEEP_MINUTES = 120
 
 _PREF_NAMESPACE = "watchlist"
 _PREF_KEY_CONFIG = "signal_config"
-_PREF_KEY_PANEL = "signal_panel"
-_PREF_KEY_STALE = "stale_sweep_minutes"
-_PREF_KEY_SPLITTER = "center_splitter_sizes"
+_LOCAL_UI_PANEL = "watchlist/signal_panel"
+_LOCAL_UI_SPLITTER = "watchlist/center_splitter_sizes"
+_LOCAL_UI_STALE = "watchlist/stale_sweep_minutes"
 
 _MIGRATE_CONFIG_KEYS = (SIGNAL_STRATEGY_KEY, SIGNAL_FAST_KEY, SIGNAL_SLOW_KEY)
-_MIGRATE_PANEL_KEYS = (
-    SIGNAL_PANEL_SYMBOLS_KEY,
-    SIGNAL_PANEL_ENABLED_KEY,
-    SIGNAL_PANEL_EXPANDED_KEY,
-    SIGNAL_PANEL_COLUMNS_KEY,
-)
 
 
 class WatchlistSignalConfig(FrozenModel):
@@ -144,16 +139,14 @@ def _load_panel_state_from_qsettings() -> dict[str, object]:
 
 
 def _load_panel_state() -> dict[str, object]:
-    return load_json_pref(
-        _PREF_NAMESPACE,
-        _PREF_KEY_PANEL,
-        load_legacy=_load_panel_state_from_qsettings,
-        migrate_keys=_MIGRATE_PANEL_KEYS,
+    return load_json_local_ui(
+        _LOCAL_UI_PANEL,
+        load_default=_load_panel_state_from_qsettings,
     )
 
 
 def _save_panel_state(state: dict[str, object]) -> None:
-    save_json_pref(_PREF_NAMESPACE, _PREF_KEY_PANEL, state)
+    save_json_local_ui(_LOCAL_UI_PANEL, state)
 
 
 def load_signal_panel_symbols() -> list[str]:
@@ -236,11 +229,9 @@ def _load_splitter_from_qsettings() -> list[int]:
 
 
 def load_center_splitter_sizes() -> list[int]:
-    stored = load_json_pref(
-        _PREF_NAMESPACE,
-        _PREF_KEY_SPLITTER,
-        load_legacy=_load_splitter_from_qsettings,
-        migrate_keys=(SIGNAL_CENTER_SPLITTER_SIZES_KEY,),
+    stored = load_json_local_ui(
+        _LOCAL_UI_SPLITTER,
+        load_default=_load_splitter_from_qsettings,
     )
     if isinstance(stored, list):
         return [max(0, int(value)) for value in stored if isinstance(value, (int, float, str))]
@@ -249,7 +240,7 @@ def load_center_splitter_sizes() -> list[int]:
 
 def save_center_splitter_sizes(sizes: list[int]) -> None:
     cleaned = [max(0, int(value)) for value in sizes]
-    save_json_pref(_PREF_NAMESPACE, _PREF_KEY_SPLITTER, cleaned)
+    save_json_local_ui(_LOCAL_UI_SPLITTER, cleaned)
 
 
 def _load_stale_sweep_from_qsettings() -> int:
@@ -260,11 +251,9 @@ def _load_stale_sweep_from_qsettings() -> int:
 
 
 def load_watchlist_strategy_stale_sweep_minutes() -> int:
-    value = load_json_pref(
-        _PREF_NAMESPACE,
-        _PREF_KEY_STALE,
-        load_legacy=_load_stale_sweep_from_qsettings,
-        migrate_keys=(SIGNAL_STALE_SWEEP_MINUTES_KEY,),
+    value = load_scalar_local_ui(
+        _LOCAL_UI_STALE,
+        load_default=_load_stale_sweep_from_qsettings,
     )
     try:
         minutes = int(value)
@@ -279,4 +268,4 @@ def load_watchlist_strategy_stale_sweep_ms() -> int:
 
 def save_watchlist_strategy_stale_sweep_minutes(minutes: int) -> None:
     value = max(MIN_STALE_SWEEP_MINUTES, min(int(minutes), MAX_STALE_SWEEP_MINUTES))
-    save_json_pref(_PREF_NAMESPACE, _PREF_KEY_STALE, value)
+    save_scalar_local_ui(_LOCAL_UI_STALE, value)

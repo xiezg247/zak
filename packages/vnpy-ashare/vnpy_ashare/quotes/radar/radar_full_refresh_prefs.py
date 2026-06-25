@@ -1,16 +1,13 @@
-"""雷达自动刷新全量重算间隔。"""
+"""雷达自动刷新全量重算间隔（纯 UI，本机 QSettings）。"""
 
 from __future__ import annotations
 
+from vnpy_ashare.config.preferences._local_ui_pref import load_json_local_ui, save_json_local_ui
 from vnpy_ashare.config.preferences._settings import get_settings
-from vnpy_ashare.config.preferences._user_pref import load_json_pref, save_json_pref
 from vnpy_ashare.quotes.radar.radar_catalog_defaults import RADAR_FULL_REFRESH_EVERY
 
 _KEY_PREFIX = "quotes/radar/full_refresh_every/"
-_PREF_NAMESPACE = "radar"
-_PREF_KEY = "full_refresh_every"
-
-_MIGRATE_KEYS = tuple(f"{_KEY_PREFIX}{card_id}" for card_id in RADAR_FULL_REFRESH_EVERY)
+_LOCAL_UI_KEY = "radar/full_refresh_every"
 
 
 def default_full_refresh_every_n_ticks(card_id: str) -> int:
@@ -33,11 +30,9 @@ def _load_all_from_qsettings() -> dict[str, int]:
 
 
 def _load_overrides() -> dict[str, int]:
-    stored = load_json_pref(
-        _PREF_NAMESPACE,
-        _PREF_KEY,
-        load_legacy=_load_all_from_qsettings,
-        migrate_keys=_MIGRATE_KEYS,
+    stored = load_json_local_ui(
+        _LOCAL_UI_KEY,
+        load_default=_load_all_from_qsettings,
     )
     if not isinstance(stored, dict):
         return {}
@@ -60,7 +55,7 @@ def load_radar_full_refresh_every(card_id: str) -> int:
 def save_radar_full_refresh_every(card_id: str, every_n: int) -> None:
     overrides = _load_overrides()
     overrides[card_id] = max(1, min(int(every_n), 20))
-    save_json_pref(_PREF_NAMESPACE, _PREF_KEY, overrides)
+    save_json_local_ui(_LOCAL_UI_KEY, overrides)
 
 
 def full_refresh_every_n_ticks(card_id: str) -> int:

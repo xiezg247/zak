@@ -51,7 +51,10 @@ class SchedulerPageWidget(QtWidgets.QWidget):
         title_block.setSpacing(4)
         title = QtWidgets.QLabel("定时任务")
         title.setObjectName("SchedulerPageTitle")
-        hint = QtWidgets.QLabel("生产环境建议独立运行 cli.py quotes collect；行情采集仅在 A 股交易时段（9:30–11:30、13:00–15:00）自动执行。")
+        hint = QtWidgets.QLabel(
+            "生产环境建议独立运行 cli.py quotes collect；行情采集仅在 A 股交易时段（9:30–11:30、13:00–15:00）自动执行。"
+            "关闭本窗口后，正在运行的任务仍会在后台继续。"
+        )
         hint.setObjectName("SchedulerHint")
         hint.setWordWrap(True)
         title_block.addWidget(title)
@@ -125,12 +128,19 @@ class SchedulerPageWidget(QtWidgets.QWidget):
         self._jobs_widget.start_monitoring()
         self._refresh_all()
 
-    def deactivate(self) -> None:
+    def deactivate(self) -> list[str]:
+        """停止 UI 监听并释放 TaskGuard；返回仍在后台运行的任务名。"""
+        running: list[str] = []
+        if self._scheduler is not None:
+            running = [status.name for status in self._scheduler.list_status() if status.running]
+        self._jobs_widget.abandon_manual_run_ui()
+        self._task_guard.end()
         self._jobs_widget.stop_monitoring()
         if self._scheduler is not None:
             self._scheduler.remove_listener(self._log_listener)
         self._scheduler = None
         self._scheduler_unavailable = False
+        return running
 
     def _on_scheduler_event(self, _job_id: str) -> None:
         QtCore.QTimer.singleShot(0, self, self._refresh_all)

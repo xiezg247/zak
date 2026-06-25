@@ -1,15 +1,13 @@
-"""NL 选股工具执行前确认偏好。"""
+"""NL 选股工具执行前确认偏好（纯 UI，本机 QSettings）。"""
 
 from __future__ import annotations
 
 from vnpy.trader.ui import QtCore
 
-from vnpy_ashare.config.preferences._user_pref import save_scalar_pref
-from vnpy_ashare.storage.auth.preferences import get_pref
+from vnpy_ashare.config.preferences._local_ui_pref import load_scalar_local_ui, save_scalar_local_ui
 
 NL_SCREENING_CONFIRM_SETTINGS_KEY = "llm/nl_screening_confirm_enabled"
-_PREF_NAMESPACE = "llm"
-_PREF_KEY = "nl_screening_confirm_enabled"
+_LOCAL_UI_KEY = "llm/nl_screening_confirm_enabled"
 
 
 def _llm_settings() -> QtCore.QSettings:
@@ -26,15 +24,17 @@ def _coerce_confirm(value: object) -> bool:
     return bool(value)
 
 
+def _load_confirm_from_legacy() -> bool:
+    return _coerce_confirm(_llm_settings().value(NL_SCREENING_CONFIRM_SETTINGS_KEY))
+
+
 def load_nl_screening_confirm_enabled() -> bool:
-    stored = get_pref(_PREF_NAMESPACE, _PREF_KEY, None)
-    if stored is not None:
-        return _coerce_confirm(stored)
-    legacy = _coerce_confirm(_llm_settings().value(NL_SCREENING_CONFIRM_SETTINGS_KEY))
-    if _llm_settings().value(NL_SCREENING_CONFIRM_SETTINGS_KEY) is not None:
-        save_scalar_pref(_PREF_NAMESPACE, _PREF_KEY, legacy)
-    return legacy
+    value = load_scalar_local_ui(
+        _LOCAL_UI_KEY,
+        load_default=_load_confirm_from_legacy,
+    )
+    return _coerce_confirm(value)
 
 
 def save_nl_screening_confirm_enabled(enabled: bool) -> None:
-    save_scalar_pref(_PREF_NAMESPACE, _PREF_KEY, bool(enabled))
+    save_scalar_local_ui(_LOCAL_UI_KEY, bool(enabled))

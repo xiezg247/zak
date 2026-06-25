@@ -1,4 +1,7 @@
-"""用户偏好 PG 读写与 QSettings 懒迁移辅助。"""
+"""用户业务偏好 PG 读写与 QSettings 懒迁移辅助。
+
+纯 UI 壳层偏好请使用 config.preferences._local_ui_pref，不要经本模块写入 PG。
+"""
 
 from __future__ import annotations
 

@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from vnpy_ashare.config.preferences._settings import get_settings
-from vnpy_ashare.config.preferences._user_pref import load_scalar_pref, save_scalar_pref
+from vnpy_ashare.config.preferences._local_ui_pref import load_scalar_local_ui, save_scalar_local_ui
 
 _ACTIVE_GROUP_KEY = "watchlist/groups/active_group_id"
-_PREF_NAMESPACE = "watchlist"
-_PREF_KEY = "active_group_id"
+_LOCAL_UI_ACTIVE_GROUP = "watchlist/active_group_id"
 
 
 def _load_active_from_qsettings() -> str | None:
@@ -16,15 +15,13 @@ def _load_active_from_qsettings() -> str | None:
 
 
 def load_active_watchlist_group_id() -> str | None:
-    value = load_scalar_pref(
-        _PREF_NAMESPACE,
-        _PREF_KEY,
-        load_legacy=_load_active_from_qsettings,
-        migrate_key=_ACTIVE_GROUP_KEY,
+    value = load_scalar_local_ui(
+        _LOCAL_UI_ACTIVE_GROUP,
+        load_default=_load_active_from_qsettings,
     )
     text = str(value or "").strip()
     return text or None
 
 
 def save_active_watchlist_group_id(group_id: str | None) -> None:
-    save_scalar_pref(_PREF_NAMESPACE, _PREF_KEY, group_id or "")
+    save_scalar_local_ui(_LOCAL_UI_ACTIVE_GROUP, group_id or "")

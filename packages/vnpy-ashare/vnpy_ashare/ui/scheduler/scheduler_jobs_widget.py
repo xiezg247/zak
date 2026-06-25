@@ -275,6 +275,13 @@ class SchedulerJobsWidget(QtWidgets.QWidget):
                 widgets.append(refresh_btn)
         return widgets
 
+    def abandon_manual_run_ui(self) -> None:
+        """关窗时释放 TaskGuard，不在弹窗内展示完成 Toast。"""
+        self._manual_run_job_id = None
+        guard = self._task_guard()
+        if guard is not None and guard.active:
+            guard.end()
+
     def _check_manual_run_finished(self) -> None:
         job_id = self._manual_run_job_id
         if not job_id or self._scheduler is None:

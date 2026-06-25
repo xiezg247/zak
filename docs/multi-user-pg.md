@@ -273,19 +273,21 @@ class DatabaseBackend(Protocol):
 
 ---
 
-## 6. 用户偏好迁移（QSettings → PG）
+## 6. 用户偏好：业务 PG + 纯 UI 本地
 
-### 6.1 迁入 `auth.user_preferences`
+原则：**纯 UI 壳层** → 本机 QSettings（`config/preferences/_local_ui_pref.py`，键 `ui/{user_id}/...`）；**业务/策略参数** → `auth.user_preferences`。
 
-| namespace | 来源模块 |
-|-----------|----------|
-| `trading` | `config/preferences/trading_risk.py`, `strategy_profile.py` |
-| `screener` | `screener/hard_filter_prefs.py`, `recipe_tuning_prefs.py` |
-| `radar` | `quotes/radar/*_prefs.py`（共振权重、展望策略、全量刷新等） |
-| `llm` | `vnpy_llm/config/nl_screening_prefs.py` |
-| `notify` | `notifications/prefs/store.py` |
-| `emotion` | `config/preferences/emotion_cycle.py` |
-| `watchlist` | `config/preferences/watchlist_*.py` |
+### 6.1 迁入 `auth.user_preferences`（业务）
+
+| namespace | 来源模块 | 说明 |
+|-----------|----------|------|
+| `trading` | `trading_risk.py`, `strategy_profile.py` | 资金/止损、策略画像 |
+| `screener` | `hard_filter_prefs.py`, `recipe_tuning_prefs.py` | 选股硬过滤、配方调参 |
+| `radar` | `outlook_strategy_prefs.py`, `radar_resonance_prefs.py`, `predict/predict_prefs.py` | 展望策略、共振权重、预测模式 |
+| `llm` | `team_prefs.py` | 投研团队深度模式 |
+| `notify` | `notifications/prefs/store.py` | 通知订阅 |
+| `emotion` | `emotion_cycle.py` | 情绪周期阈值 |
+| `watchlist` | `watchlist_signal.py`（`signal_config`）, `watchlist_position.py`（`position_config`） | 信号/持仓策略参数 |
 
 读写封装：
 
@@ -296,11 +298,20 @@ def set_pref(namespace: str, key: str, value): ...
 
 内部读 `current_user_id`，查 `auth.user_preferences`。
 
-### 6.2 保留 QSettings（纯 UI）
+### 6.2 保留 QSettings（纯 UI，`_local_ui_pref`）
 
-- 窗口几何、列宽、Tab 索引、折叠状态、悬浮球位置
-- 雷达版面模式 / 分组 Tab（`ui/quotes/radar/section_prefs.py`）
-- 与业务无关，继续本机 per-OS-user；**切换登录用户时不清 QSettings**
+| 相对键前缀 | 来源模块 | 说明 |
+|------------|----------|------|
+| `watchlist/signal_panel` 等 | `watchlist_signal.py`, `watchlist_position.py`, `watchlist_groups.py` | 面板开闭、splitter、活跃分组 |
+| `watchlist/layout_preset_v1` | `ui/.../watchlist/prefs.py` | 盘中/复盘布局 |
+| `watchlist/strategy_workspace_open_v1` | `strategy_workspace_prefs.py` | 策略工作区开闭 |
+| `radar/board_mode`, `radar/active_group/*` | `ui/quotes/radar/section_prefs.py` | 雷达版面 Tab |
+| `radar/full_refresh_every` | `radar_full_refresh_prefs.py` | 卡片全量刷新间隔 |
+| `llm/nl_screening_confirm_enabled` | `nl_screening_prefs.py` | NL 选股确认弹窗 |
+
+另：窗口几何、列宽、Tab 索引等仍直接 QSettings，不经 PG。
+
+登录后 `bootstrap_local_ui_prefs_from_pg()`：本地缺失时从 PG 只读拷贝一次，随后 **批量删除** PG 中上述 UI 键，不在 PG 留存。
 
 ---
 
