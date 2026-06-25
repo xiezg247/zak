@@ -5,19 +5,18 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
+from sqlalchemy import delete, insert
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.storage.connection import connect, init_app_db
-from vnpy_ashare.storage.auth.scope import get_user_id
-from vnpy_common.auth.scope import user_sql
+from vnpy_ashare.storage.repository.app import AppUserScopedRepository
 from vnpy_ashare.storage.repositories.csv_io import read_stock_csv_rows, write_stock_csv
 from vnpy_ashare.storage.repositories.watchlist_groups import _prune_watchlist_group_members_conn
+from vnpy_common.storage.tables import watchlist as wl
+from vnpy_common.storage.tables import watchlist_group_members as wgm
 
 WATCHLIST_MAX_ITEMS = 50
 
-
-def _row_to_stock(row) -> tuple[str, Exchange, str]:
-    return row["symbol"], Exchange[row["exchange"]], row["name"]
+_WATCHLIST_COLUMNS = (wl.c.symbol, wl.c.exchange, wl.c.name)
 
 
 def _normalize_watchlist_rows(items: list[tuple[str, Exchange, str]]) -> list[tuple[str, Exchange, str]]:
@@ -34,132 +33,184 @@ def _normalize_watchlist_rows(items: list[tuple[str, Exchange, str]]) -> list[tu
     return cleaned
 
 
+class WatchlistRepository(AppUserScopedRepository):
+    table = wl
+
+    @staticmethod
+    def _row_to_stock(row) -> tuple[str, Exchange, str]:
+        return row["symbol"], Exchange[row["exchange"]], row["name"]
+
+    def _item_filter(self, symbol: str, exchange: Exchange):
+        return (wl.c.symbol == symbol) & (wl.c.exchange == exchange.name)
+
+    def load_rows(self) -> list[tuple[str, Exchange, str]]:
+        rows = self.list_for_user(
+            *_WATCHLIST_COLUMNS,
+            order_by=(wl.c.sort_order, wl.c.symbol),
+        )
+        return [self._row_to_stock(row) for row in rows]
+
+    def contains(self, symbol: str, exchange: Exchange) -> bool:
+        return self.exists_for_user(self._item_filter(symbol, exchange))
+
+    def item_count(self) -> int:
+        return self.count_for_user()
+
+    def at_capacity(self) -> bool:
+        return self.item_count() >= WATCHLIST_MAX_ITEMS
+
+    def add_failure_reason(self, symbol: str, exchange: Exchange) -> Literal["duplicate", "full"] | None:
+        if self.contains(symbol, exchange):
+            return "duplicate"
+        if self.at_capacity():
+            return "full"
+        return None
+
+    def add(self, symbol: str, exchange: Exchange, name: str = "") -> bool:
+        if self.add_failure_reason(symbol, exchange) is not None:
+            return False
+
+        def _write(conn) -> None:
+            self.insert_for_user(
+                conn,
+                symbol=symbol,
+                exchange=exchange.name,
+                name=name,
+                sort_order=self.item_count(),
+            )
+
+        self.run(_write)
+        return True
+
+    def _insert_items(self, conn, items: list[tuple[str, Exchange, str]]) -> None:
+        for index, (symbol, exchange, name) in enumerate(items):
+            self.insert_for_user(
+                conn,
+                symbol=symbol,
+                exchange=exchange.name,
+                name=name,
+                sort_order=index,
+            )
+
+    def _rewrite_order(self, conn, rows) -> None:
+        self.delete_for_user(conn)
+        uid = self.current_user_id()
+        for index, row in enumerate(rows):
+            conn.execute_stmt(
+                insert(wl).values(
+                    user_id=uid,
+                    symbol=row["symbol"],
+                    exchange=row["exchange"],
+                    name=row["name"],
+                    sort_order=index,
+                )
+            )
+
+    def remove(self, symbol: str, exchange: Exchange) -> bool:
+        def _write(conn) -> bool:
+            rowcount = self.delete_where(conn, self.scope(self._item_filter(symbol, exchange)))
+            if rowcount == 0:
+                return False
+            conn.execute_stmt(
+                delete(wgm).where(
+                    self.scope_table(
+                        wgm,
+                        (wgm.c.symbol == symbol) & (wgm.c.exchange == exchange.name),
+                    )
+                )
+            )
+            rows = conn.execute_stmt(
+                self.select_columns(
+                    *_WATCHLIST_COLUMNS,
+                    where=(self.scope(),),
+                    order_by=(wl.c.sort_order, wl.c.symbol),
+                )
+            ).fetchall()
+            self._rewrite_order(conn, rows)
+            return True
+
+        return bool(self.run(_write))
+
+    def clear(self) -> None:
+        def _write(conn) -> None:
+            conn.execute_stmt(delete(wgm).where(self.scope_table(wgm)))
+            self.delete_for_user(conn)
+
+        self.run(_write)
+
+    def save_rows(self, items: list[tuple[str, Exchange, str]]) -> int:
+        items = _normalize_watchlist_rows(items)
+
+        def _write(conn) -> None:
+            self.delete_for_user(conn)
+            self._insert_items(conn, items)
+            _prune_watchlist_group_members_conn(conn, self.current_user_id())
+
+        self.run(_write)
+        return len(items)
+
+    def import_csv(self, path: Path) -> int:
+        rows = read_stock_csv_rows(path)
+        items = [(row["symbol"], Exchange[row["exchange"]], row.get("name", "")) for row in rows]
+        return self.save_rows(_normalize_watchlist_rows(items))
+
+    def move(self, symbol: str, exchange: Exchange, *, direction: Literal["up", "down"]) -> bool:
+        items = self.load_rows()
+        index = next(
+            (idx for idx, (row_symbol, row_exchange, _name) in enumerate(items) if row_symbol == symbol and row_exchange == exchange),
+            None,
+        )
+        if index is None:
+            return False
+        target = index - 1 if direction == "up" else index + 1
+        if target < 0 or target >= len(items):
+            return False
+        items[index], items[target] = items[target], items[index]
+        self.save_rows(items)
+        return True
+
+
+_repo = WatchlistRepository()
+
+
 def load_watchlist_rows() -> list[tuple[str, Exchange, str]]:
-    init_app_db()
-    uid = get_user_id()
-    with connect() as conn:
-        rows = conn.execute(
-            f"SELECT symbol, exchange, name FROM watchlist WHERE {user_sql()} ORDER BY sort_order, symbol",
-            (uid,),
-        ).fetchall()
-    return [_row_to_stock(row) for row in rows]
+    return _repo.load_rows()
 
 
 def watchlist_contains(symbol: str, exchange: Exchange) -> bool:
-    init_app_db()
-    uid = get_user_id()
-    with connect() as conn:
-        row = conn.execute(
-            f"SELECT 1 FROM watchlist WHERE {user_sql('symbol = ? AND exchange = ?')}",
-            (uid, symbol, exchange.name),
-        ).fetchone()
-    return row is not None
+    return _repo.contains(symbol, exchange)
 
 
 def watchlist_item_count() -> int:
-    init_app_db()
-    uid = get_user_id()
-    with connect() as conn:
-        return int(conn.execute(f"SELECT COUNT(*) FROM watchlist WHERE {user_sql()}", (uid,)).fetchone()[0])
+    return _repo.item_count()
 
 
 def watchlist_at_capacity() -> bool:
-    return watchlist_item_count() >= WATCHLIST_MAX_ITEMS
+    return _repo.at_capacity()
 
 
 def watchlist_add_failure_reason(symbol: str, exchange: Exchange) -> Literal["duplicate", "full"] | None:
-    if watchlist_contains(symbol, exchange):
-        return "duplicate"
-    if watchlist_at_capacity():
-        return "full"
-    return None
+    return _repo.add_failure_reason(symbol, exchange)
 
 
 def add_watchlist_item(symbol: str, exchange: Exchange, name: str = "") -> bool:
-    if watchlist_add_failure_reason(symbol, exchange) is not None:
-        return False
-    init_app_db()
-    uid = get_user_id()
-    with connect() as conn:
-        sort_order = conn.execute(f"SELECT COUNT(*) FROM watchlist WHERE {user_sql()}", (uid,)).fetchone()[0]
-        conn.execute(
-            "INSERT INTO watchlist(user_id, symbol, exchange, name, sort_order) VALUES (?, ?, ?, ?, ?)",
-            (uid, symbol, exchange.name, name, sort_order),
-        )
-    return True
-
-
-def _rewrite_watchlist_order(conn, uid: str, rows) -> None:
-    conn.execute(f"DELETE FROM watchlist WHERE {user_sql()}", (uid,))
-    for index, row in enumerate(rows):
-        conn.execute(
-            "INSERT INTO watchlist(user_id, symbol, exchange, name, sort_order) VALUES (?, ?, ?, ?, ?)",
-            (uid, row["symbol"], row["exchange"], row["name"], index),
-        )
+    return _repo.add(symbol, exchange, name)
 
 
 def remove_watchlist_item(symbol: str, exchange: Exchange) -> bool:
-    init_app_db()
-    uid = get_user_id()
-    with connect() as conn:
-        cursor = conn.execute(
-            f"DELETE FROM watchlist WHERE {user_sql('symbol = ? AND exchange = ?')}",
-            (uid, symbol, exchange.name),
-        )
-        if cursor.rowcount == 0:
-            return False
-        conn.execute(
-            f"DELETE FROM watchlist_group_members WHERE {user_sql('symbol = ? AND exchange = ?')}",
-            (uid, symbol, exchange.name),
-        )
-        rows = conn.execute(
-            f"SELECT symbol, exchange, name FROM watchlist WHERE {user_sql()} ORDER BY sort_order, symbol",
-            (uid,),
-        ).fetchall()
-        _rewrite_watchlist_order(conn, uid, rows)
-    return True
+    return _repo.remove(symbol, exchange)
 
 
 def clear_watchlist() -> None:
-    init_app_db()
-    uid = get_user_id()
-    with connect() as conn:
-        conn.execute(f"DELETE FROM watchlist_group_members WHERE {user_sql()}", (uid,))
-        conn.execute(f"DELETE FROM watchlist WHERE {user_sql()}", (uid,))
+    _repo.clear()
 
 
 def save_watchlist_rows(items: list[tuple[str, Exchange, str]]) -> int:
-    items = _normalize_watchlist_rows(items)
-    init_app_db()
-    uid = get_user_id()
-    with connect() as conn:
-        conn.execute(f"DELETE FROM watchlist WHERE {user_sql()}", (uid,))
-        for index, (symbol, exchange, name) in enumerate(items):
-            conn.execute(
-                "INSERT INTO watchlist(user_id, symbol, exchange, name, sort_order) VALUES (?, ?, ?, ?, ?)",
-                (uid, symbol, exchange.name, name, index),
-            )
-        _prune_watchlist_group_members_conn(conn, uid)
-    return len(items)
+    return _repo.save_rows(items)
 
 
 def import_watchlist_csv(path: Path) -> int:
-    init_app_db()
-    uid = get_user_id()
-    rows = read_stock_csv_rows(path)
-    items: list[tuple[str, Exchange, str]] = []
-    for row in rows:
-        items.append((row["symbol"], Exchange[row["exchange"]], row.get("name", "")))
-    items = _normalize_watchlist_rows(items)
-    with connect() as conn:
-        conn.execute(f"DELETE FROM watchlist WHERE {user_sql()}", (uid,))
-        for index, (symbol, exchange, name) in enumerate(items):
-            conn.execute(
-                "INSERT INTO watchlist(user_id, symbol, exchange, name, sort_order) VALUES (?, ?, ?, ?, ?)",
-                (uid, symbol, exchange.name, name, index),
-            )
-        _prune_watchlist_group_members_conn(conn, uid)
-    return len(items)
+    return _repo.import_csv(path)
 
 
 def export_watchlist_csv(path: Path) -> int:
@@ -174,16 +225,4 @@ def move_watchlist_item(
     *,
     direction: Literal["up", "down"],
 ) -> bool:
-    items = load_watchlist_rows()
-    index = next(
-        (idx for idx, (row_symbol, row_exchange, _name) in enumerate(items) if row_symbol == symbol and row_exchange == exchange),
-        None,
-    )
-    if index is None:
-        return False
-    target = index - 1 if direction == "up" else index + 1
-    if target < 0 or target >= len(items):
-        return False
-    items[index], items[target] = items[target], items[index]
-    save_watchlist_rows(items)
-    return True
+    return _repo.move(symbol, exchange, direction=direction)

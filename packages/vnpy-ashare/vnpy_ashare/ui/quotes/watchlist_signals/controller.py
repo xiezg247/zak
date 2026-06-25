@@ -18,6 +18,7 @@ from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot, detect_si
 from vnpy_ashare.domain.trading.stock_continuation import StockContinuationSnapshot
 from vnpy_ashare.services.bar import format_meta_date
 from vnpy_ashare.services.watchlist import get_signal_disk_cache_standalone
+from vnpy_ashare.ui.quotes.page.roles import is_strategy_monitor_page
 from vnpy_ashare.ui.quotes._host_widget import as_qwidget
 from vnpy_ashare.ui.quotes.page.run_log import append_run_log
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
@@ -520,6 +521,9 @@ class WatchlistSignalController:
     def _complete_stock_list_loaded(self) -> None:
         if not self._page._active:
             return
+        if is_strategy_monitor_page(self._page.page_name):
+            self._hydrate_and_render_only()
+            return
         symbols = self._sync_panel_with_pool()
         if symbols:
             self._ensure_bar_meta(symbols)
@@ -528,6 +532,12 @@ class WatchlistSignalController:
             return
         missing = self._symbols_missing_cache(symbols)
         self.refresh(force=missing)
+
+    def _hydrate_and_render_only(self) -> None:
+        """策略页进页：仅同步名单、读磁盘 cache 并重绘，不自动提交 Worker。"""
+        self._sync_panel_with_pool()
+        self.hydrate_from_disk()
+        self._apply_refresh_result()
 
     def refresh(self, *, force: bool = False, symbols: list[str] | None = None) -> None:
         if not self._page.config.show_watchlist_signals or not self._page._active:
@@ -715,6 +725,12 @@ class WatchlistSignalController:
         if not kept:
             return
 
+        if is_strategy_monitor_page(self._page.page_name):
+            if added and self._compute_enabled():
+                self._ensure_bar_meta(list(added))
+                self.refresh(symbols=list(added), force=True)
+            return
+
         if added:
             self._ensure_bar_meta(list(added))
             self.refresh(symbols=list(added), force=True)
@@ -733,3 +749,17 @@ class WatchlistSignalController:
             self.refresh(force=bool(symbols) and not self._cache_covers(symbols))
         else:
             self._apply_refresh_result()
+        self._sync_strategy_stale_sweep()
+
+    def _sync_strategy_stale_sweep(self) -> None:
+        if not is_strategy_monitor_page(self._page.page_name):
+            return
+        refresh = getattr(self._page, "_strategy_refresh", None)
+        if refresh is None:
+            return
+        from vnpy_ashare.ui.quotes.page.session_lifecycle import _strategy_stale_sweep_enabled
+
+        if _strategy_stale_sweep_enabled(self._page):
+            refresh.start()
+        else:
+            refresh.stop()

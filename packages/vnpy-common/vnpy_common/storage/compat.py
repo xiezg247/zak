@@ -6,6 +6,8 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any, Mapping, Sequence
 
+from sqlalchemy.sql.expression import Executable
+
 
 class DbRow(dict[str, Any]):
     """兼容 dict-row 的下标访问。"""
@@ -54,6 +56,12 @@ class DbConnection:
         params: Sequence[Any] | Mapping[str, Any] | None = None,
     ) -> DbCursor:
         rows, lastrowid = self._backend.execute(sql, params)
+        rowcount = self._backend.last_rowcount
+        return DbCursor(rows, lastrowid=lastrowid, rowcount=rowcount)
+
+    def execute_stmt(self, statement: Executable) -> DbCursor:
+        """执行 SQLAlchemy Core 语句。"""
+        rows, lastrowid = self._backend.execute_stmt(statement)
         rowcount = self._backend.last_rowcount
         return DbCursor(rows, lastrowid=lastrowid, rowcount=rowcount)
 

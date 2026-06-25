@@ -111,7 +111,10 @@ def _finalize_page_switch(
         win._floating_controller.raise_floating_layers()
 
 
-def _switch_watchlist_deferred(
+_DEFERRED_SWITCH_KEYS = frozenset({"watchlist", "strategy_monitor"})
+
+
+def _switch_page_deferred(
     win: AshareMainWindow,
     widget: QtWidgets.QWidget,
     *,
@@ -119,7 +122,7 @@ def _switch_watchlist_deferred(
     old_key: str | None,
     nav_index: int | None,
 ) -> None:
-    """先切到自选页壳层并显示加载态，下一帧再 deactivate/activate，避免侧栏切换卡顿。"""
+    """先切页并显示加载态，下一帧再 deactivate/activate，避免侧栏切换卡顿。"""
     if win.stack.indexOf(widget) < 0:
         win.stack.addWidget(widget)
     win.stack.setCurrentWidget(widget)
@@ -143,6 +146,17 @@ def _switch_watchlist_deferred(
     QtCore.QTimer.singleShot(0, _complete)
 
 
+def _switch_watchlist_deferred(
+    win: AshareMainWindow,
+    widget: QtWidgets.QWidget,
+    *,
+    key: str,
+    old_key: str | None,
+    nav_index: int | None,
+) -> None:
+    _switch_page_deferred(win, widget, key=key, old_key=old_key, nav_index=nav_index)
+
+
 def show_page_by_key(win: AshareMainWindow, key: str, *, nav_index: int | None = None) -> None:
     widget = get_or_create_page(win, key)
     if widget is None:
@@ -157,8 +171,8 @@ def show_page_by_key(win: AshareMainWindow, key: str, *, nav_index: int | None =
             win._floating_controller.on_ai_assistant_entered()
 
     old_key = win._current_key
-    if key == "watchlist":
-        _switch_watchlist_deferred(win, widget, key=key, old_key=old_key, nav_index=nav_index)
+    if key in _DEFERRED_SWITCH_KEYS:
+        _switch_page_deferred(win, widget, key=key, old_key=old_key, nav_index=nav_index)
         return
 
     if old_key and old_key != key:

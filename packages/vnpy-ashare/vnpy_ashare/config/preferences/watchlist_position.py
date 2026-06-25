@@ -89,13 +89,23 @@ def _save_panel_state(state: dict[str, bool]) -> None:
     save_json_pref(_PREF_NAMESPACE, _PREF_KEY_PANEL, state)
 
 
-def load_position_panel_enabled() -> bool:
-    return bool(_load_panel_state().get("enabled", True))
+def load_position_panel_enabled(*, page_name: str | None = None) -> bool:
+    from vnpy_ashare.ui.quotes.page.roles import is_strategy_monitor_page
+
+    state = _load_panel_state()
+    if page_name is not None and is_strategy_monitor_page(page_name):
+        return bool(state.get("strategy_monitor_enabled", False))
+    return bool(state.get("enabled", True))
 
 
-def save_position_panel_enabled(enabled: bool) -> None:
+def save_position_panel_enabled(enabled: bool, *, page_name: str | None = None) -> None:
+    from vnpy_ashare.ui.quotes.page.roles import is_strategy_monitor_page
+
     state = dict(_load_panel_state())
-    state["enabled"] = enabled
+    if page_name is not None and is_strategy_monitor_page(page_name):
+        state["strategy_monitor_enabled"] = enabled
+    else:
+        state["enabled"] = enabled
     _save_panel_state(state)
 
 

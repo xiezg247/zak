@@ -31,40 +31,25 @@ def test_resolve_name_falls_back_to_universe() -> None:
 
 
 def test_repair_watchlist_names_for_user_only_fills_empty(monkeypatch) -> None:
-    patched: list[tuple] = []
+    from vnpy_ashare.storage.repositories.watchlist import WatchlistRepository
 
-    class _FakeConn:
-        def execute(self, sql, params=()):
-            sql_text = str(sql)
-            if "SELECT symbol, exchange, name FROM watchlist" in sql_text:
-                return _FakeRows(
-                    [
-                        {"symbol": "601138", "exchange": "SSE", "name": ""},
-                        {"symbol": "600519", "exchange": "SSE", "name": "贵州茅台"},
-                    ]
-                )
-            if "UPDATE watchlist SET name" in sql_text:
-                patched.append(params)
-            return _FakeRows([])
+    updates: list[int] = []
 
-        def commit(self) -> None:
-            pass
+    def mock_fetchall(self, _stmt):
+        return [
+            {"symbol": "601138", "exchange": "SSE", "name": ""},
+            {"symbol": "600519", "exchange": "SSE", "name": "贵州茅台"},
+        ]
 
-        def __enter__(self):
-            return self
+    def mock_run(self, callback):
+        class _Conn:
+            def execute_stmt(self, _stmt):
+                updates.append(1)
 
-        def __exit__(self, *_args):
-            return False
+        callback(_Conn())
 
-    class _FakeRows:
-        def __init__(self, rows):
-            self._rows = rows
-
-        def fetchall(self):
-            return self._rows
-
-    monkeypatch.setattr("vnpy_ashare.storage.repositories.watchlist_repair.connect", lambda: _FakeConn())
-    monkeypatch.setattr("vnpy_ashare.storage.repositories.watchlist_repair.init_app_db", lambda: None)
+    monkeypatch.setattr(WatchlistRepository, "fetchall", mock_fetchall)
+    monkeypatch.setattr(WatchlistRepository, "run", mock_run)
     monkeypatch.setattr(
         "vnpy_ashare.storage.repositories.watchlist_repair.load_universe_names_for_keys",
         lambda keys: {("601138", Exchange.SSE): "工业富联"},
@@ -74,7 +59,7 @@ def test_repair_watchlist_names_for_user_only_fills_empty(monkeypatch) -> None:
     assert len(patches) == 1
     assert patches[0].symbol == "601138"
     assert patches[0].new_name == "工业富联"
-    assert patched == [("工业富联", "uid-1", "601138", "SSE")]
+    assert len(updates) == 1
 
 
 def test_name_map_for_symbols_uses_watchlist_only(monkeypatch) -> None:

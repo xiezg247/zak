@@ -10,6 +10,8 @@ from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from typing import Any
 
+from sqlalchemy.sql.expression import Executable
+
 from vnpy_common.storage.compat import DbRow
 from vnpy_common.storage.config import APP_SEARCH_PATH
 from vnpy_common.storage.dialect import split_sql_script, to_positional_sql
@@ -54,6 +56,20 @@ class PostgresBackend:
             except (TypeError, ValueError):
                 lastrowid = None
         return rows, lastrowid
+
+    def execute_stmt(
+        self,
+        statement: Executable,
+    ) -> tuple[list[DbRow], int | None]:
+        """执行 SQLAlchemy Core 语句（select / insert / update / delete）。"""
+        self._check_not_closed()
+        result = self._conn.execute(statement)
+        self.last_rowcount = int(result.rowcount)
+        if not result.returns_rows:
+            return [], None
+        raw_rows = result.fetchall()
+        rows = [DbRow(dict(row._mapping)) for row in raw_rows]
+        return rows, None
 
     def executemany(
         self,

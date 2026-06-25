@@ -167,7 +167,7 @@ class SignalPanelHeader(QtWidgets.QWidget):
         self.sync_strategy_profile_combo(load_strategy_profile_id())
 
         self._toggle = QtWidgets.QCheckBox("启用信号", self)
-        self._toggle.setChecked(load_signal_panel_enabled())
+        self._toggle.setChecked(load_signal_panel_enabled(page_name=self._page.page_name))
         self._toggle.toggled.connect(self._on_enabled_toggled)
 
         self._strategy_combo = QtWidgets.QComboBox(self)
@@ -300,7 +300,7 @@ class SignalPanelHeader(QtWidgets.QWidget):
         self.config_changed.emit()
 
     def _on_enabled_toggled(self, enabled: bool) -> None:
-        save_signal_panel_enabled(enabled)
+        save_signal_panel_enabled(enabled, page_name=self._page.page_name)
         self._apply_enabled(enabled)
         self.enabled_changed.emit(enabled)
 

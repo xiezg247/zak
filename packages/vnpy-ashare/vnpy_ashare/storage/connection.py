@@ -6,8 +6,12 @@ from contextlib import contextmanager
 from collections.abc import Iterator
 from pathlib import Path
 
+from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+
 from vnpy_common.paths import legacy_app_db_path
 from vnpy_common.storage.session import connect_app
+from vnpy_common.storage.tables import meta
 
 
 @contextmanager
@@ -22,14 +26,17 @@ def init_app_db() -> Path:
 
 
 def _set_meta(conn, key: str, value: str) -> None:
-    conn.execute(
-        "INSERT INTO meta(key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-        (key, value),
+    stmt = pg_insert(meta).values(key=key, value=value)
+    stmt = stmt.on_conflict_do_update(
+        index_elements=[meta.c.key],
+        set_={"value": stmt.excluded.value},
     )
+    conn.execute_stmt(stmt)
 
 
 def _get_meta(conn, key: str) -> str | None:
-    row = conn.execute("SELECT value FROM meta WHERE key = ?", (key,)).fetchone()
+    stmt = select(meta.c.value).where(meta.c.key == key)
+    row = conn.execute_stmt(stmt).fetchone()
     return row["value"] if row else None
 
 

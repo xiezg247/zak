@@ -18,16 +18,19 @@ def test_bootstrap_runs_signal_position_on_strategy_monitor_page() -> None:
     page.config.show_watchlist_signals = True
     page.config.show_watchlist_positions = True
     page.config.show_watchlist_multiview = False
+    page._signals.cache_covers_panel.return_value = False
+    page._positions.cache_covers_panel.return_value = False
+    page._signals.hydrate_from_disk.return_value = False
+    page._positions.hydrate_from_disk.return_value = False
 
     with patch(
-        "vnpy_ashare.ui.quotes.watchlist.bootstrap.load_watchlist_layout_preset",
-        return_value="intraday",
+        "vnpy_ashare.ui.quotes.watchlist.bootstrap.QtCore.QTimer.singleShot",
+        side_effect=lambda _ms, fn: fn(),
     ):
-        with patch("vnpy_ashare.ui.quotes.watchlist.bootstrap.QtCore.QTimer.singleShot", side_effect=lambda _ms, fn: fn()):
-            coord._run_downstream(page, reason="pool_ready")
+        coord._run_downstream(page, reason="pool_ready")
 
     page._signals.on_stock_list_loaded.assert_called()
-    page._positions.on_stock_list_loaded.assert_not_called()
+    page._positions.on_stock_list_loaded.assert_called()
 
 
 def test_bootstrap_skips_signal_position_on_watchlist_page() -> None:

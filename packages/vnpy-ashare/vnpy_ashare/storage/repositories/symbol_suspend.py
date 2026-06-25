@@ -4,16 +4,21 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta
 
+from sqlalchemy import delete, select
 from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.domain.time.calendar import last_trading_day
 from vnpy_ashare.integrations.tushare.suspend import fetch_suspend_d
-from vnpy_ashare.storage.connection import connect, set_meta
+from vnpy_ashare.storage.repository.app import MetaRepository
 from vnpy_ashare.storage.repositories.trade_calendar import load_open_trading_days
+from vnpy_common.storage.repository import BaseRepository, bulk_upsert
+from vnpy_common.storage.tables import symbol_suspend_days as ssd
 
 SUSPEND_SYNCED_AT_KEY = "symbol_suspend_synced_at"
 SUSPEND_LAST_TRADE_DATE_KEY = "symbol_suspend_last_trade_date"
 DEFAULT_LOOKBACK_DAYS = 3
+
+_meta = MetaRepository()
 
 
 def _parse_date(value: str) -> date:
@@ -24,29 +29,78 @@ def _format_date(value: date) -> str:
     return value.isoformat()
 
 
-def _upsert_rows(rows: list[tuple[str, str, str, str]]) -> int:
-    if not rows:
-        return 0
-    with connect() as conn:
-        conn.executemany(
-            """
-            INSERT INTO symbol_suspend_days(symbol, exchange, cal_date, suspend_type)
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT(symbol, exchange, cal_date) DO UPDATE SET
-                suspend_type = excluded.suspend_type
-            """,
-            rows,
+class SymbolSuspendRepository(BaseRepository):
+    table = ssd
+
+    def upsert_rows(self, rows: list[tuple[str, str, str, str]]) -> int:
+        if not rows:
+            return 0
+        values = [
+            {
+                "symbol": symbol,
+                "exchange": exchange,
+                "cal_date": cal_date,
+                "suspend_type": suspend_type,
+            }
+            for symbol, exchange, cal_date, suspend_type in rows
+        ]
+
+        def _write(conn) -> None:
+            bulk_upsert(
+                conn,
+                self.table,
+                values,
+                conflict_columns=("symbol", "exchange", "cal_date"),
+                update_columns=("suspend_type",),
+            )
+
+        self.run(_write)
+        return len(rows)
+
+    def load_days(
+        self,
+        symbol: str,
+        exchange: Exchange | str,
+        start: date,
+        end: date,
+    ) -> set[date]:
+        if start > end:
+            return set()
+        exchange_value = exchange.value if isinstance(exchange, Exchange) else str(exchange)
+        rows = self.fetchall(
+            select(ssd.c.cal_date).where(
+                ssd.c.symbol == symbol,
+                ssd.c.exchange == exchange_value,
+                ssd.c.cal_date >= _format_date(start),
+                ssd.c.cal_date <= _format_date(end),
+            )
         )
-    return len(rows)
+        return {_parse_date(str(row[0])) for row in rows}
+
+    def load_keys(self, trade_date: date) -> frozenset[tuple[str, str]]:
+        rows = self.fetchall(
+            select(ssd.c.symbol, ssd.c.exchange).where(ssd.c.cal_date == _format_date(trade_date))
+        )
+        return frozenset((str(row[0]), str(row[1])) for row in rows)
+
+    def clear_cache(self) -> None:
+        def _write(conn) -> None:
+            conn.execute_stmt(delete(ssd))
+
+        self.run(_write)
+        _meta.delete_keys(SUSPEND_SYNCED_AT_KEY, SUSPEND_LAST_TRADE_DATE_KEY)
+
+
+_repo = SymbolSuspendRepository()
 
 
 def sync_suspend_for_date(trade_date: date) -> int:
     """同步单个交易日的停牌记录，返回写入条数。"""
     rows = fetch_suspend_d(trade_date)
     payload = [(row["symbol"], row["exchange"], row["cal_date"], row["suspend_type"]) for row in rows]
-    count = _upsert_rows(payload)
-    set_meta(SUSPEND_LAST_TRADE_DATE_KEY, _format_date(trade_date))
-    set_meta(SUSPEND_SYNCED_AT_KEY, datetime.now().isoformat())
+    count = _repo.upsert_rows(payload)
+    _meta.upsert_value(SUSPEND_LAST_TRADE_DATE_KEY, _format_date(trade_date))
+    _meta.upsert_value(SUSPEND_SYNCED_AT_KEY, datetime.now().isoformat())
     return count
 
 
@@ -71,31 +125,12 @@ def load_suspend_days(
     end: date,
 ) -> set[date]:
     """读取 [start, end] 内已知停牌日。"""
-    if start > end:
-        return set()
-    exchange_value = exchange.value if isinstance(exchange, Exchange) else str(exchange)
-    with connect() as conn:
-        rows = conn.execute(
-            """
-            SELECT cal_date FROM symbol_suspend_days
-            WHERE symbol = ? AND exchange = ? AND cal_date >= ? AND cal_date <= ?
-            """,
-            (symbol, exchange_value, _format_date(start), _format_date(end)),
-        ).fetchall()
-    return {_parse_date(str(row[0])) for row in rows}
+    return _repo.load_days(symbol, exchange, start, end)
 
 
 def load_suspended_keys(trade_date: date) -> frozenset[tuple[str, str]]:
     """指定交易日全市场停牌标的 (symbol, exchange)。"""
-    with connect() as conn:
-        rows = conn.execute(
-            """
-            SELECT symbol, exchange FROM symbol_suspend_days
-            WHERE cal_date = ?
-            """,
-            (_format_date(trade_date),),
-        ).fetchall()
-    return frozenset((str(row[0]), str(row[1])) for row in rows)
+    return _repo.load_keys(trade_date)
 
 
 def ensure_suspend_keys_for_screening(*, trade_date: date | None = None) -> frozenset[tuple[str, str]]:
@@ -113,9 +148,4 @@ def ensure_suspend_keys_for_screening(*, trade_date: date | None = None) -> froz
 
 def clear_symbol_suspend_cache() -> None:
     """测试用：清空停牌日缓存。"""
-    with connect() as conn:
-        conn.execute("DELETE FROM symbol_suspend_days")
-        conn.execute(
-            "DELETE FROM meta WHERE key IN (?, ?)",
-            (SUSPEND_SYNCED_AT_KEY, SUSPEND_LAST_TRADE_DATE_KEY),
-        )
+    _repo.clear_cache()

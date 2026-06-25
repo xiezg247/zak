@@ -16,6 +16,7 @@ from vnpy_ashare.notifications.triggers.position_alerts import scan_position_ale
 from vnpy_ashare.services.bar import format_meta_date
 from vnpy_ashare.services.position import get_position_disk_cache_standalone
 from vnpy_ashare.trading.exit.overlay import apply_overnight_exit_overlay
+from vnpy_ashare.ui.quotes.page.roles import is_strategy_monitor_page
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 if TYPE_CHECKING:
@@ -291,6 +292,9 @@ class WatchlistPositionController:
         record_map = self._record_map()
         self.on_rows_changed(record_map=record_map)
         self.hydrate_from_disk(record_map=record_map)
+        if is_strategy_monitor_page(self._page.page_name):
+            self._apply_refresh_result()
+            return
         self.refresh(force=False, record_map=record_map)
 
     def refresh(self, *, force: bool = False, symbols: list[str] | None = None, record_map: dict[str, PositionRecord] | None = None) -> None:
@@ -450,7 +454,13 @@ class WatchlistPositionController:
         added = current - previous
         self._last_position_symbols = current
         if added and previous:
+            if is_strategy_monitor_page(self._page.page_name):
+                if self._compute_enabled():
+                    self.refresh(symbols=list(added), force=True)
+                return
             self.refresh(symbols=list(added), force=True)
+            return
+        if is_strategy_monitor_page(self._page.page_name):
             return
         missing = self._symbols_needing_refresh(list(record_map), record_map)
         if missing:
@@ -467,3 +477,17 @@ class WatchlistPositionController:
             self.refresh(force=bool(needs))
         else:
             self._apply_refresh_result()
+        self._sync_strategy_stale_sweep()
+
+    def _sync_strategy_stale_sweep(self) -> None:
+        if not is_strategy_monitor_page(self._page.page_name):
+            return
+        refresh = getattr(self._page, "_strategy_refresh", None)
+        if refresh is None:
+            return
+        from vnpy_ashare.ui.quotes.page.session_lifecycle import _strategy_stale_sweep_enabled
+
+        if _strategy_stale_sweep_enabled(self._page):
+            refresh.start()
+        else:
+            refresh.stop()

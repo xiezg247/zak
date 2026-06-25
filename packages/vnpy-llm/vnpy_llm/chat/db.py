@@ -1,4 +1,4 @@
-"""Chat 库 trace / tool_calls（PostgreSQL chat schema）。"""
+"""Chat 库 trace / tool_calls 连接（兼容旧 import）。"""
 
 from __future__ import annotations
 
@@ -6,16 +6,16 @@ from contextlib import contextmanager
 from collections.abc import Iterator
 from typing import Any
 
-import vnpy_llm.chat.store as chat_store
+from vnpy_llm.chat.store import _connect
 
 
 @contextmanager
 def trace_connect() -> Iterator[Any]:
-    with chat_store._connect() as conn:
+    with _connect() as conn:
         yield conn
 
 
 @contextmanager
 def tool_calls_connect() -> Iterator[Any]:
-    with chat_store._connect() as conn:
+    with _connect() as conn:
         yield conn

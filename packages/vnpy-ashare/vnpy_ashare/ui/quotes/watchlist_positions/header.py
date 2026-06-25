@@ -124,7 +124,7 @@ class PositionPanelHeader(QtWidgets.QWidget):
         self._collapse_button.clicked.connect(self._on_collapse_toggled)
 
         self._toggle = QtWidgets.QCheckBox("启用持仓", self)
-        self._toggle.setChecked(load_position_panel_enabled())
+        self._toggle.setChecked(load_position_panel_enabled(page_name=self._page.page_name))
         self._toggle.toggled.connect(self._on_enabled_toggled)
 
         position_cfg = self._page.position_config.normalized()
@@ -235,7 +235,7 @@ class PositionPanelHeader(QtWidgets.QWidget):
         self._emit_config_changed()
 
     def _on_enabled_toggled(self, checked: bool) -> None:
-        save_position_panel_enabled(checked)
+        save_position_panel_enabled(checked, page_name=self._page.page_name)
         self.enabled_changed.emit(checked)
 
     def _on_collapse_toggled(self, checked: bool) -> None:

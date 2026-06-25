@@ -6,12 +6,14 @@ import sqlite3
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from sqlalchemy import select, update
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.storage.connection import connect, init_app_db
 from vnpy_ashare.storage.repositories.universe import load_universe_names_for_keys
-from vnpy_common.auth.scope import user_sql
+from vnpy_ashare.storage.repositories.watchlist import WatchlistRepository
 from vnpy_common.paths import get_app_db_path
+from vnpy_common.storage.query import user_scope
+from vnpy_common.storage.tables import watchlist as wl
 
 
 @dataclass
@@ -87,53 +89,64 @@ def repair_watchlist_names_for_user(
     dry_run: bool = False,
 ) -> list[WatchlistNamePatch]:
     """仅补全 name 为空的自选行；已有名称不覆盖。"""
-    init_app_db()
     legacy_names = legacy_names or {}
     patches: list[WatchlistNamePatch] = []
+    repo = WatchlistRepository()
 
-    with connect() as conn:
-        rows = conn.execute(
-            f"SELECT symbol, exchange, name FROM watchlist WHERE {user_sql()} ORDER BY sort_order, symbol",
-            (user_id,),
-        ).fetchall()
+    rows = repo.fetchall(
+        select(wl.c.symbol, wl.c.exchange, wl.c.name)
+        .where(user_scope(wl.c.user_id, user_id))
+        .order_by(wl.c.sort_order, wl.c.symbol)
+    )
 
-        missing: list[tuple[str, Exchange, str]] = []
-        for row in rows:
-            name = str(row["name"] or "").strip()
-            if name:
-                continue
-            missing.append((str(row["symbol"]), Exchange[row["exchange"]], name))
+    missing: list[tuple[str, Exchange, str]] = []
+    for row in rows:
+        name = str(row["name"] or "").strip()
+        if name:
+            continue
+        missing.append((str(row["symbol"]), Exchange[row["exchange"]], name))
 
-        if not missing:
-            return patches
+    if not missing:
+        return patches
 
-        universe_names = load_universe_names_for_keys([(symbol, exchange) for symbol, exchange, _ in missing])
+    universe_names = load_universe_names_for_keys([(symbol, exchange) for symbol, exchange, _ in missing])
 
-        for symbol, exchange, old_name in missing:
-            resolved = _resolve_name(symbol, exchange, legacy_names=legacy_names, universe_names=universe_names)
-            if resolved is None:
-                continue
-            new_name, source = resolved
-            patches.append(
-                WatchlistNamePatch(
-                    user_id=user_id,
-                    username=username,
-                    symbol=symbol,
-                    exchange=exchange,
-                    old_name=old_name,
-                    new_name=new_name,
-                    source=source,
+    for symbol, exchange, old_name in missing:
+        resolved = _resolve_name(symbol, exchange, legacy_names=legacy_names, universe_names=universe_names)
+        if resolved is None:
+            continue
+        new_name, source = resolved
+        patches.append(
+            WatchlistNamePatch(
+                user_id=user_id,
+                username=username,
+                symbol=symbol,
+                exchange=exchange,
+                old_name=old_name,
+                new_name=new_name,
+                source=source,
+            )
+        )
+
+    if dry_run or not patches:
+        return patches
+
+    def _write(conn) -> None:
+        for patch in patches:
+            conn.execute_stmt(
+                update(wl)
+                .where(
+                    user_scope(
+                        wl.c.user_id,
+                        user_id,
+                        wl.c.symbol == patch.symbol,
+                        wl.c.exchange == patch.exchange.name,
+                    )
                 )
+                .values(name=patch.new_name)
             )
-            if dry_run:
-                continue
-            conn.execute(
-                f"UPDATE watchlist SET name = ? WHERE {user_sql('symbol = ? AND exchange = ?')}",
-                (new_name, user_id, symbol, exchange.name),
-            )
-        if not dry_run and patches:
-            conn.commit()
 
+    repo.run(_write)
     return patches
 
 
@@ -144,6 +157,7 @@ def repair_all_watchlist_names(
 ) -> WatchlistRepairReport:
     """修复所有用户的自选名称（仅补空名）。"""
     from vnpy_ashare.storage.auth.users import list_users
+    from vnpy_ashare.storage.connection import connect, init_app_db
 
     init_app_db()
     legacy_names = _load_legacy_watchlist_names(legacy_db or get_app_db_path())

@@ -7,8 +7,8 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from vnpy_ashare.storage.auth.scope import get_user_id
-from vnpy_llm.chat.db import tool_calls_connect
+from vnpy_llm.storage.repository.chat import ChatUserScopedRepository
+from vnpy_common.storage.tables.chat import llm_tool_calls as ltc
 
 _PREVIEW_MAX = 800
 
@@ -24,57 +24,45 @@ def _preview(text: str) -> str:
     return text[:_PREVIEW_MAX] + "…"
 
 
-def log_tool_call(
-    *,
-    session_id: str,
-    tool_name: str,
-    arguments: dict[str, Any] | None,
-    result: str,
-    success: bool = True,
-) -> None:
-    payload = json.dumps(arguments or {}, ensure_ascii=False)
-    uid = get_user_id()
-    with tool_calls_connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO llm_tool_calls
-            (id, session_id, tool_name, arguments_json, result_preview, success, created_at, user_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                uuid.uuid4().hex,
-                session_id,
-                tool_name,
-                payload,
-                _preview(result),
-                1 if success else 0,
-                _now(),
-                uid,
-            ),
+class ToolCallRepository(ChatUserScopedRepository):
+    table = ltc
+
+    def log_tool_call(
+        self,
+        *,
+        session_id: str,
+        tool_name: str,
+        arguments: dict[str, Any] | None,
+        result: str,
+        success: bool = True,
+    ) -> None:
+        payload = json.dumps(arguments or {}, ensure_ascii=False)
+        self.insert_one_for_user(
+            id=uuid.uuid4().hex,
+            session_id=session_id,
+            tool_name=tool_name,
+            arguments_json=payload,
+            result_preview=_preview(result),
+            success=1 if success else 0,
+            created_at=_now(),
         )
 
-
-def list_recent_tool_calls(*, session_id: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
-    limit = max(1, min(int(limit or 50), 200))
-    uid = get_user_id()
-    query = """
-        SELECT id, session_id, tool_name, arguments_json, result_preview, success, created_at
-        FROM llm_tool_calls
-        WHERE user_id=?
-    """
-    params: list[Any] = [uid]
-    if session_id:
-        query += " AND session_id=?"
-        params.append(session_id)
-    query += " ORDER BY created_at DESC LIMIT ?"
-    params.append(limit)
-
-    with tool_calls_connect() as conn:
-        rows = conn.execute(query, params).fetchall()
-
-    result: list[dict[str, Any]] = []
-    for row in rows:
-        result.append(
+    def list_recent_tool_calls(self, *, session_id: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
+        limit = max(1, min(int(limit or 50), 200))
+        extras = (ltc.c.session_id == session_id,) if session_id else ()
+        rows = self.list_for_user(
+            ltc.c.id,
+            ltc.c.session_id,
+            ltc.c.tool_name,
+            ltc.c.arguments_json,
+            ltc.c.result_preview,
+            ltc.c.success,
+            ltc.c.created_at,
+            extras=extras or None,
+            order_by=(ltc.c.created_at.desc(),),
+            limit=limit,
+        )
+        return [
             {
                 "id": row["id"],
                 "session_id": row["session_id"],
@@ -84,5 +72,29 @@ def list_recent_tool_calls(*, session_id: str | None = None, limit: int = 50) ->
                 "success": bool(row["success"]),
                 "created_at": row["created_at"],
             }
-        )
-    return result
+            for row in rows
+        ]
+
+
+_repo = ToolCallRepository()
+
+
+def log_tool_call(
+    *,
+    session_id: str,
+    tool_name: str,
+    arguments: dict[str, Any] | None,
+    result: str,
+    success: bool = True,
+) -> None:
+    _repo.log_tool_call(
+        session_id=session_id,
+        tool_name=tool_name,
+        arguments=arguments,
+        result=result,
+        success=success,
+    )
+
+
+def list_recent_tool_calls(*, session_id: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
+    return _repo.list_recent_tool_calls(session_id=session_id, limit=limit)

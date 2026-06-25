@@ -8,6 +8,8 @@ from vnpy.event import EventEngine
 from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
+from vnpy_common.ui.loading_overlay import ContentLoadingOverlay
+
 from vnpy_ashare.config.preferences.watchlist_position import WatchlistPositionConfig
 from vnpy_ashare.domain.market.depth_snapshot import DepthSnapshot
 from vnpy_ashare.domain.symbols.stock import StockItem
@@ -16,6 +18,7 @@ from vnpy_ashare.services.note import NoteService
 from vnpy_ashare.services.position import PositionService
 from vnpy_ashare.services.watchlist import WatchlistService
 from vnpy_ashare.ui.quotes.page.controller_attrs import QuotesPageControllerAttrs
+from vnpy_ashare.ui.quotes.page.roles import STRATEGY_MONITOR_PAGE, WATCHLIST_PAGE
 from vnpy_ashare.ui.quotes.page.header_chips import refresh_emotion_cycle_chip_for_page
 from vnpy_ashare.ui.quotes.page.layout_persistence import (
     on_quotes_page_resize,
@@ -285,6 +288,18 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QuotesPageStat
     def load_market_full(self, *, quiet: bool = False) -> None:
         self._loader.load_market_full(quiet=quiet)
 
+    def _tab_switch_loading_host(self) -> QtWidgets.QWidget | None:
+        if self._market_table_host is not None:
+            return self._market_table_host
+        return getattr(self, "_center_splitter", None)
+
+    def _ensure_tab_switch_loading_overlay(self, host: QtWidgets.QWidget) -> ContentLoadingOverlay:
+        overlay = getattr(self, "_tab_switch_loading_overlay", None)
+        if overlay is None or overlay.parentWidget() is not host:
+            overlay = ContentLoadingOverlay(host)
+            self._tab_switch_loading_overlay = overlay
+        return overlay
+
     def _show_market_loading(self, text: str) -> None:
         host = self._market_table_host
         if host is not None:
@@ -295,17 +310,36 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QuotesPageStat
         if host is not None:
             host.hide_loading()
 
+    def _show_tab_switch_loading(self, text: str) -> None:
+        host = self._tab_switch_loading_host()
+        if host is None:
+            return
+        if host is self._market_table_host:
+            host.show_loading(text)
+            return
+        self._ensure_tab_switch_loading_overlay(host).show_loading(text)
+
+    def _hide_tab_switch_loading(self) -> None:
+        host = self._tab_switch_loading_host()
+        if host is self._market_table_host:
+            host.hide_loading()
+            return
+        overlay = getattr(self, "_tab_switch_loading_overlay", None)
+        if overlay is not None:
+            overlay.hide_loading()
+
     def begin_tab_switch_loading(self) -> None:
-        if self.page_name != "自选":
+        if self.page_name not in (WATCHLIST_PAGE, STRATEGY_MONITOR_PAGE):
             return
         self._tab_switch_loading = True
-        self._show_market_loading("正在加载自选…")
+        text = "正在加载自选…" if self.page_name == WATCHLIST_PAGE else "正在加载策略监控…"
+        self._show_tab_switch_loading(text)
 
     def end_tab_switch_loading(self) -> None:
         if not getattr(self, "_tab_switch_loading", False):
             return
         self._tab_switch_loading = False
-        self._hide_market_loading()
+        self._hide_tab_switch_loading()
 
     def load_stock_list(self) -> None:
         self._loader.load_stock_list()

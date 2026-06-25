@@ -5,14 +5,20 @@ from __future__ import annotations
 import uuid
 
 from pydantic import Field
+from sqlalchemy import delete, exists, func, select, update
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.storage.auth.scope import get_user_id
-from vnpy_ashare.storage.connection import connect, init_app_db
-from vnpy_common.auth.scope import user_sql
+from vnpy_ashare.storage.repository.app import AppUserScopedRepository
 from vnpy_common.domain.base import FrozenModel
+from vnpy_common.storage.query import user_scope
+from vnpy_common.storage.repository import insert_ignore
+from vnpy_common.storage.tables import watchlist as wl
+from vnpy_common.storage.tables import watchlist_group_members as wgm
+from vnpy_common.storage.tables import watchlist_groups as wg
 
 WATCHLIST_MAX_GROUPS = 10
+
+_GROUP_COLUMNS = (wg.c.id, wg.c.name, wg.c.sort_order, wg.c.position_cap_pct)
 
 
 class WatchlistGroupRecord(FrozenModel):
@@ -38,232 +44,235 @@ def _normalize_group_name(name: str) -> str:
     return str(name or "").strip()
 
 
-def load_watchlist_groups() -> list[WatchlistGroupRecord]:
-    init_app_db()
-    uid = get_user_id()
-    with connect() as conn:
-        rows = conn.execute(
-            f"SELECT id, name, sort_order, position_cap_pct FROM watchlist_groups WHERE {user_sql()} ORDER BY sort_order, name",
-            (uid,),
-        ).fetchall()
-    return [
-        WatchlistGroupRecord(
-            id=str(row["id"]),
-            name=str(row["name"]),
-            sort_order=int(row["sort_order"]),
-            position_cap_pct=_parse_cap_pct(row["position_cap_pct"] if "position_cap_pct" in row.keys() else None),
-        )
-        for row in rows
-    ]
+class WatchlistGroupRepository(AppUserScopedRepository):
+    table = wg
 
+    def load_groups(self) -> list[WatchlistGroupRecord]:
+        rows = self.list_for_user(*_GROUP_COLUMNS, order_by=(wg.c.sort_order, wg.c.name))
+        return [
+            WatchlistGroupRecord(
+                id=str(row["id"]),
+                name=str(row["name"]),
+                sort_order=int(row["sort_order"]),
+                position_cap_pct=_parse_cap_pct(row["position_cap_pct"] if "position_cap_pct" in row.keys() else None),
+            )
+            for row in rows
+        ]
 
-def watchlist_group_count() -> int:
-    init_app_db()
-    uid = get_user_id()
-    with connect() as conn:
-        return int(conn.execute(f"SELECT COUNT(*) FROM watchlist_groups WHERE {user_sql()}", (uid,)).fetchone()[0])
+    def group_count(self) -> int:
+        return self.count_for_user()
 
+    def group_exists(self, group_id: str) -> bool:
+        return self.exists_for_user(wg.c.id == group_id)
 
-def watchlist_group_exists(group_id: str) -> bool:
-    init_app_db()
-    uid = get_user_id()
-    with connect() as conn:
-        row = conn.execute(
-            f"SELECT 1 FROM watchlist_groups WHERE {user_sql('id = ?')}",
-            (uid, group_id),
-        ).fetchone()
-    return row is not None
+    def _name_taken(self, name: str, *, exclude_id: str | None = None) -> bool:
+        extras = [func.lower(wg.c.name) == name.lower()]
+        if exclude_id is not None:
+            extras.append(wg.c.id != exclude_id)
+        return self.exists_for_user(*extras)
 
-
-def create_watchlist_group(name: str) -> str | None:
-    normalized = _normalize_group_name(name)
-    if not normalized:
-        return None
-    if watchlist_group_count() >= WATCHLIST_MAX_GROUPS:
-        return None
-    init_app_db()
-    uid = get_user_id()
-    group_id = uuid.uuid4().hex
-    with connect() as conn:
-        duplicate = conn.execute(
-            f"SELECT 1 FROM watchlist_groups WHERE {user_sql('name = ? COLLATE NOCASE')}",
-            (uid, normalized),
-        ).fetchone()
-        if duplicate is not None:
+    def create_group(self, name: str) -> str | None:
+        normalized = _normalize_group_name(name)
+        if not normalized:
             return None
-        sort_order = conn.execute(f"SELECT COUNT(*) FROM watchlist_groups WHERE {user_sql()}", (uid,)).fetchone()[0]
-        conn.execute(
-            "INSERT INTO watchlist_groups(user_id, id, name, sort_order) VALUES (?, ?, ?, ?)",
-            (uid, group_id, normalized, int(sort_order)),
-        )
-    return group_id
+        if self.group_count() >= WATCHLIST_MAX_GROUPS:
+            return None
+        if self._name_taken(normalized):
+            return None
+        group_id = uuid.uuid4().hex
+        self.insert_one_for_user(id=group_id, name=normalized, sort_order=self.group_count())
+        return group_id
 
-
-def rename_watchlist_group(group_id: str, name: str) -> bool:
-    normalized = _normalize_group_name(name)
-    if not normalized or not watchlist_group_exists(group_id):
-        return False
-    init_app_db()
-    uid = get_user_id()
-    with connect() as conn:
-        duplicate = conn.execute(
-            f"SELECT 1 FROM watchlist_groups WHERE {user_sql('name = ? COLLATE NOCASE AND id <> ?')}",
-            (uid, normalized, group_id),
-        ).fetchone()
-        if duplicate is not None:
+    def rename_group(self, group_id: str, name: str) -> bool:
+        normalized = _normalize_group_name(name)
+        if not normalized or not self.group_exists(group_id):
             return False
-        cursor = conn.execute(
-            f"UPDATE watchlist_groups SET name = ? WHERE {user_sql('id = ?')}",
-            (normalized, uid, group_id),
-        )
-    return bool(cursor.rowcount > 0)
-
-
-def delete_watchlist_group(group_id: str) -> bool:
-    if not watchlist_group_exists(group_id):
-        return False
-    init_app_db()
-    uid = get_user_id()
-    with connect() as conn:
-        conn.execute(f"DELETE FROM watchlist_group_members WHERE {user_sql('group_id = ?')}", (uid, group_id))
-        conn.execute(f"DELETE FROM watchlist_groups WHERE {user_sql('id = ?')}", (uid, group_id))
-        rows = conn.execute(
-            f"SELECT id, name, sort_order FROM watchlist_groups WHERE {user_sql()} ORDER BY sort_order, name",
-            (uid,),
-        ).fetchall()
-        for index, row in enumerate(rows):
-            conn.execute(
-                f"UPDATE watchlist_groups SET sort_order = ? WHERE {user_sql('id = ?')}",
-                (index, uid, row["id"]),
-            )
-    return True
-
-
-def add_watchlist_group_member(group_id: str, symbol: str, exchange: Exchange) -> bool:
-    if not watchlist_group_exists(group_id):
-        return False
-    init_app_db()
-    uid = get_user_id()
-    with connect() as conn:
-        exists = conn.execute(
-            f"SELECT 1 FROM watchlist WHERE {user_sql('symbol = ? AND exchange = ?')}",
-            (uid, symbol, exchange.name),
-        ).fetchone()
-        if exists is None:
+        if self._name_taken(normalized, exclude_id=group_id):
             return False
-        conn.execute(
-            """
-            INSERT OR IGNORE INTO watchlist_group_members(user_id, group_id, symbol, exchange)
-            VALUES (?, ?, ?, ?)
-            """,
-            (uid, group_id, symbol, exchange.name),
-        )
-    return True
+        return self.update_matching({"name": normalized}, self.scope(wg.c.id == group_id)) > 0
 
+    def delete_group(self, group_id: str) -> bool:
+        if not self.group_exists(group_id):
+            return False
 
-def remove_watchlist_group_member(group_id: str, symbol: str, exchange: Exchange) -> bool:
-    init_app_db()
-    uid = get_user_id()
-    with connect() as conn:
-        cursor = conn.execute(
-            f"""
-            DELETE FROM watchlist_group_members
-            WHERE {user_sql('group_id = ? AND symbol = ? AND exchange = ?')}
-            """,
-            (uid, group_id, symbol, exchange.name),
-        )
-    return bool(cursor.rowcount > 0)
+        def _write(conn) -> None:
+            conn.execute_stmt(delete(wgm).where(self.scope_table(wgm, wgm.c.group_id == group_id)))
+            self.delete_where(conn, self.scope(wg.c.id == group_id))
+            rows = conn.execute_stmt(
+                self.select_columns(
+                    wg.c.id,
+                    wg.c.name,
+                    wg.c.sort_order,
+                    where=(self.scope(),),
+                    order_by=(wg.c.sort_order, wg.c.name),
+                )
+            ).fetchall()
+            for index, row in enumerate(rows):
+                conn.execute_stmt(
+                    update(wg).where(self.scope(wg.c.id == row["id"])).values(sort_order=index)
+                )
 
+        self.run(_write)
+        return True
 
-def update_watchlist_group_position_cap(group_id: str, position_cap_pct: float | None) -> bool:
-    if not watchlist_group_exists(group_id):
-        return False
-    cap = _parse_cap_pct(position_cap_pct)
-    init_app_db()
-    uid = get_user_id()
-    with connect() as conn:
-        cursor = conn.execute(
-            f"UPDATE watchlist_groups SET position_cap_pct = ? WHERE {user_sql('id = ?')}",
-            (cap, uid, group_id),
-        )
-    return bool(cursor.rowcount > 0)
+    def add_member(self, group_id: str, symbol: str, exchange: Exchange) -> bool:
+        if not self.group_exists(group_id):
+            return False
 
-
-def load_watchlist_group_member_keys(group_id: str) -> set[tuple[str, str]]:
-    init_app_db()
-    uid = get_user_id()
-    with connect() as conn:
-        rows = conn.execute(
-            f"""
-            SELECT symbol, exchange FROM watchlist_group_members
-            WHERE {user_sql('group_id = ?')}
-            """,
-            (uid, group_id),
-        ).fetchall()
-    return {(str(row["symbol"]), str(row["exchange"])) for row in rows}
-
-
-def load_watchlist_group_ids_for_item(symbol: str, exchange: Exchange) -> set[str]:
-    init_app_db()
-    uid = get_user_id()
-    with connect() as conn:
-        rows = conn.execute(
-            f"""
-            SELECT group_id FROM watchlist_group_members
-            WHERE {user_sql('symbol = ? AND exchange = ?')}
-            """,
-            (uid, symbol, exchange.name),
-        ).fetchall()
-    return {str(row["group_id"]) for row in rows}
-
-
-def set_watchlist_group_membership(symbol: str, exchange: Exchange, group_ids: set[str]) -> None:
-    init_app_db()
-    uid = get_user_id()
-    with connect() as conn:
-        conn.execute(
-            f"DELETE FROM watchlist_group_members WHERE {user_sql('symbol = ? AND exchange = ?')}",
-            (uid, symbol, exchange.name),
-        )
-        for group_id in sorted(group_ids):
-            if not watchlist_group_exists(group_id):
-                continue
-            conn.execute(
-                """
-                INSERT OR IGNORE INTO watchlist_group_members(user_id, group_id, symbol, exchange)
-                VALUES (?, ?, ?, ?)
-                """,
-                (uid, group_id, symbol, exchange.name),
+        def _write(conn) -> bool:
+            in_watchlist = conn.execute_stmt(
+                select(1)
+                .select_from(wl)
+                .where(self.scope_table(wl, (wl.c.symbol == symbol) & (wl.c.exchange == exchange.name)))
+                .limit(1)
+            ).fetchone()
+            if in_watchlist is None:
+                return False
+            insert_ignore(
+                conn,
+                wgm,
+                {
+                    "user_id": self.current_user_id(),
+                    "group_id": group_id,
+                    "symbol": symbol,
+                    "exchange": exchange.name,
+                },
             )
+            return True
+
+        return bool(self.run(_write))
+
+    def remove_member(self, group_id: str, symbol: str, exchange: Exchange) -> bool:
+        return (
+            self.delete_matching(
+                self.scope_table(
+                    wgm,
+                    (wgm.c.group_id == group_id)
+                    & (wgm.c.symbol == symbol)
+                    & (wgm.c.exchange == exchange.name),
+                )
+            )
+            > 0
+        )
+
+    def update_position_cap(self, group_id: str, position_cap_pct: float | None) -> bool:
+        if not self.group_exists(group_id):
+            return False
+        cap = _parse_cap_pct(position_cap_pct)
+        return self.update_matching({"position_cap_pct": cap}, self.scope(wg.c.id == group_id)) > 0
+
+    def load_member_keys(self, group_id: str) -> set[tuple[str, str]]:
+        rows = self.fetchall(
+            select(wgm.c.symbol, wgm.c.exchange).where(self.scope_table(wgm, wgm.c.group_id == group_id))
+        )
+        return {(str(row["symbol"]), str(row["exchange"])) for row in rows}
+
+    def load_group_ids_for_item(self, symbol: str, exchange: Exchange) -> set[str]:
+        rows = self.fetchall(
+            select(wgm.c.group_id).where(
+                self.scope_table(wgm, (wgm.c.symbol == symbol) & (wgm.c.exchange == exchange.name))
+            )
+        )
+        return {str(row["group_id"]) for row in rows}
+
+    def set_membership(self, symbol: str, exchange: Exchange, group_ids: set[str]) -> None:
+        def _write(conn) -> None:
+            conn.execute_stmt(
+                delete(wgm).where(
+                    self.scope_table(wgm, (wgm.c.symbol == symbol) & (wgm.c.exchange == exchange.name))
+                )
+            )
+            uid = self.current_user_id()
+            for group_id in sorted(group_ids):
+                if not self.group_exists(group_id):
+                    continue
+                insert_ignore(
+                    conn,
+                    wgm,
+                    {
+                        "user_id": uid,
+                        "group_id": group_id,
+                        "symbol": symbol,
+                        "exchange": exchange.name,
+                    },
+                )
+
+        self.run(_write)
+
+    def prune_members(self) -> None:
+        self.run(lambda conn: _prune_watchlist_group_members_conn(conn, self.current_user_id()))
+
+    def remove_members_for_item(self, symbol: str, exchange: Exchange) -> None:
+        self.delete_matching(
+            self.scope_table(wgm, (wgm.c.symbol == symbol) & (wgm.c.exchange == exchange.name))
+        )
 
 
 def _prune_watchlist_group_members_conn(conn, uid: str) -> None:
-    conn.execute(
-        f"""
-        DELETE FROM watchlist_group_members
-        WHERE {user_sql()} AND NOT EXISTS (
-            SELECT 1 FROM watchlist w
-            WHERE w.user_id = watchlist_group_members.user_id
-              AND w.symbol = watchlist_group_members.symbol
-              AND w.exchange = watchlist_group_members.exchange
+    watchlist_exists = exists(
+        select(1).select_from(wl).where(
+            wl.c.user_id == wgm.c.user_id,
+            wl.c.symbol == wgm.c.symbol,
+            wl.c.exchange == wgm.c.exchange,
         )
-        """,
-        (uid,),
     )
+    conn.execute_stmt(delete(wgm).where(user_scope(wgm.c.user_id, uid), ~watchlist_exists))
+
+
+_repo = WatchlistGroupRepository()
+
+
+def load_watchlist_groups() -> list[WatchlistGroupRecord]:
+    return _repo.load_groups()
+
+
+def watchlist_group_count() -> int:
+    return _repo.group_count()
+
+
+def watchlist_group_exists(group_id: str) -> bool:
+    return _repo.group_exists(group_id)
+
+
+def create_watchlist_group(name: str) -> str | None:
+    return _repo.create_group(name)
+
+
+def rename_watchlist_group(group_id: str, name: str) -> bool:
+    return _repo.rename_group(group_id, name)
+
+
+def delete_watchlist_group(group_id: str) -> bool:
+    return _repo.delete_group(group_id)
+
+
+def add_watchlist_group_member(group_id: str, symbol: str, exchange: Exchange) -> bool:
+    return _repo.add_member(group_id, symbol, exchange)
+
+
+def remove_watchlist_group_member(group_id: str, symbol: str, exchange: Exchange) -> bool:
+    return _repo.remove_member(group_id, symbol, exchange)
+
+
+def update_watchlist_group_position_cap(group_id: str, position_cap_pct: float | None) -> bool:
+    return _repo.update_position_cap(group_id, position_cap_pct)
+
+
+def load_watchlist_group_member_keys(group_id: str) -> set[tuple[str, str]]:
+    return _repo.load_member_keys(group_id)
+
+
+def load_watchlist_group_ids_for_item(symbol: str, exchange: Exchange) -> set[str]:
+    return _repo.load_group_ids_for_item(symbol, exchange)
+
+
+def set_watchlist_group_membership(symbol: str, exchange: Exchange, group_ids: set[str]) -> None:
+    _repo.set_membership(symbol, exchange, group_ids)
 
 
 def prune_watchlist_group_members() -> None:
-    init_app_db()
-    uid = get_user_id()
-    with connect() as conn:
-        _prune_watchlist_group_members_conn(conn, uid)
+    _repo.prune_members()
 
 
 def remove_watchlist_group_members_for_item(symbol: str, exchange: Exchange) -> None:
-    init_app_db()
-    uid = get_user_id()
-    with connect() as conn:
-        conn.execute(
-            f"DELETE FROM watchlist_group_members WHERE {user_sql('symbol = ? AND exchange = ?')}",
-            (uid, symbol, exchange.name),
-        )
+    _repo.remove_members_for_item(symbol, exchange)

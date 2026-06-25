@@ -2,49 +2,112 @@
 
 from __future__ import annotations
 
+from sqlalchemy import select
+
 from vnpy_ashare.domain.market.sector_flow import SectorFlowHistoryPoint, SectorFlowRow
-from vnpy_ashare.storage.connection import connect, init_app_db
+from vnpy_ashare.storage.repository.app import AppBaseRepository
+from vnpy_common.storage.repository import bulk_upsert
+from vnpy_common.storage.tables import sector_flow_daily as sfd
 
 _HISTORY_LIMIT = 15
 _ROTATION_DAYS = 15
 
+_UPSERT_UPDATE_COLUMNS = ("name", "change_pct", "net_flow_yi", "flow_source")
 
-def upsert_sector_flow_day(
-    trade_date: str,
-    sector_kind: str,
-    rows: list[SectorFlowRow],
-) -> None:
-    """写入单日板块资金快照（官方日终数据）。"""
-    date_key = str(trade_date or "").strip()
-    kind = str(sector_kind or "industry").strip().lower()
-    if not date_key or not rows:
-        return
-    init_app_db()
-    with connect() as conn:
-        conn.executemany(
-            """
-            INSERT INTO sector_flow_daily(
-                trade_date, sector_kind, sector_id, name, change_pct, net_flow_yi, flow_source
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(trade_date, sector_kind, sector_id) DO UPDATE SET
-                name = excluded.name,
-                change_pct = excluded.change_pct,
-                net_flow_yi = excluded.net_flow_yi,
-                flow_source = excluded.flow_source
-            """,
-            [
-                (
-                    date_key,
-                    kind,
-                    row.sector_id,
-                    row.name,
-                    row.change_pct,
-                    row.net_flow_yi,
-                    row.flow_source,
-                )
-                for row in rows
-            ],
+
+class SectorFlowDailyRepository(AppBaseRepository):
+    table = sfd
+
+    def upsert_day(self, trade_date: str, sector_kind: str, rows: list[SectorFlowRow]) -> None:
+        date_key = str(trade_date or "").strip()
+        kind = str(sector_kind or "industry").strip().lower()
+        if not date_key or not rows:
+            return
+        values = [
+            {
+                "trade_date": date_key,
+                "sector_kind": kind,
+                "sector_id": row.sector_id,
+                "name": row.name,
+                "change_pct": row.change_pct,
+                "net_flow_yi": row.net_flow_yi,
+                "flow_source": row.flow_source,
+            }
+            for row in rows
+        ]
+
+        def _write(conn) -> None:
+            bulk_upsert(
+                conn,
+                self.table,
+                values,
+                conflict_columns=("trade_date", "sector_kind", "sector_id"),
+                update_columns=_UPSERT_UPDATE_COLUMNS,
+            )
+
+        self.run(_write)
+
+    def load_history(
+        self,
+        *,
+        sector_id: str,
+        sector_kind: str,
+        limit: int = _HISTORY_LIMIT,
+    ) -> list[SectorFlowHistoryPoint]:
+        sid = str(sector_id or "").strip()
+        kind = str(sector_kind or "industry").strip().lower()
+        if not sid:
+            return []
+        rows = self.fetchall(
+            select(sfd.c.trade_date, sfd.c.net_flow_yi)
+            .where(sfd.c.sector_kind == kind, sfd.c.sector_id == sid)
+            .order_by(sfd.c.trade_date.desc())
+            .limit(max(1, limit))
         )
+        points = [
+            SectorFlowHistoryPoint(
+                trade_date=str(row["trade_date"]),
+                net_flow_yi=float(row["net_flow_yi"] or 0),
+            )
+            for row in rows
+        ]
+        points.reverse()
+        return points
+
+    def load_matrix(
+        self,
+        *,
+        sector_kind: str,
+        trade_dates: list[str],
+        sector_ids: list[str] | None = None,
+    ) -> dict[str, dict[str, float]]:
+        kind = str(sector_kind or "industry").strip().lower()
+        dates = [str(item or "").strip() for item in trade_dates if str(item or "").strip()]
+        if not dates:
+            return {}
+        ids = [str(item or "").strip() for item in (sector_ids or []) if str(item or "").strip()]
+        stmt = select(sfd.c.sector_id, sfd.c.trade_date, sfd.c.net_flow_yi).where(
+            sfd.c.sector_kind == kind,
+            sfd.c.trade_date.in_(dates),
+        )
+        if ids:
+            stmt = stmt.where(sfd.c.sector_id.in_(ids))
+        rows = self.fetchall(stmt)
+        matrix: dict[str, dict[str, float]] = {}
+        for row in rows:
+            sector_id = str(row["sector_id"] or "").strip()
+            trade_date = str(row["trade_date"] or "").strip()
+            if not sector_id or not trade_date:
+                continue
+            matrix.setdefault(sector_id, {})[trade_date] = float(row["net_flow_yi"] or 0)
+        return matrix
+
+
+_repo = SectorFlowDailyRepository()
+
+
+def upsert_sector_flow_day(trade_date: str, sector_kind: str, rows: list[SectorFlowRow]) -> None:
+    _repo.upsert_day(trade_date, sector_kind, rows)
 
 
 def load_sector_flow_history(
@@ -53,33 +116,7 @@ def load_sector_flow_history(
     sector_kind: str,
     limit: int = _HISTORY_LIMIT,
 ) -> list[SectorFlowHistoryPoint]:
-    """读取板块近 N 个交易日主力净流入（升序）。"""
-    sid = str(sector_id or "").strip()
-    kind = str(sector_kind or "industry").strip().lower()
-    if not sid:
-        return []
-    init_app_db()
-    with connect() as conn:
-        cursor = conn.execute(
-            """
-            SELECT trade_date, net_flow_yi
-            FROM sector_flow_daily
-            WHERE sector_kind = ? AND sector_id = ?
-            ORDER BY trade_date DESC
-            LIMIT ?
-            """,
-            (kind, sid, max(1, limit)),
-        )
-        rows = list(cursor.fetchall())
-    points = [
-        SectorFlowHistoryPoint(
-            trade_date=str(row["trade_date"]),
-            net_flow_yi=float(row["net_flow_yi"] or 0),
-        )
-        for row in rows
-    ]
-    points.reverse()
-    return points
+    return _repo.load_history(sector_id=sector_id, sector_kind=sector_kind, limit=limit)
 
 
 def load_sector_flow_matrix(
@@ -88,35 +125,7 @@ def load_sector_flow_matrix(
     trade_dates: list[str],
     sector_ids: list[str] | None = None,
 ) -> dict[str, dict[str, float]]:
-    """批量读取板块日终主力净流入，返回 sector_id → trade_date → net_flow_yi。"""
-    kind = str(sector_kind or "industry").strip().lower()
-    dates = [str(item or "").strip() for item in trade_dates if str(item or "").strip()]
-    if not dates:
-        return {}
-    ids = [str(item or "").strip() for item in (sector_ids or []) if str(item or "").strip()]
-    init_app_db()
-    placeholders = ",".join("?" * len(dates))
-    params: list[object] = [kind, *dates]
-    sql = f"""
-        SELECT sector_id, trade_date, net_flow_yi
-        FROM sector_flow_daily
-        WHERE sector_kind = ? AND trade_date IN ({placeholders})
-    """
-    if ids:
-        id_placeholders = ",".join("?" * len(ids))
-        sql += f" AND sector_id IN ({id_placeholders})"
-        params.extend(ids)
-    with connect() as conn:
-        cursor = conn.execute(sql, params)
-        rows = list(cursor.fetchall())
-    matrix: dict[str, dict[str, float]] = {}
-    for row in rows:
-        sector_id = str(row["sector_id"] or "").strip()
-        trade_date = str(row["trade_date"] or "").strip()
-        if not sector_id or not trade_date:
-            continue
-        matrix.setdefault(sector_id, {})[trade_date] = float(row["net_flow_yi"] or 0)
-    return matrix
+    return _repo.load_matrix(sector_kind=sector_kind, trade_dates=trade_dates, sector_ids=sector_ids)
 
 
 def merge_sector_flow_history(

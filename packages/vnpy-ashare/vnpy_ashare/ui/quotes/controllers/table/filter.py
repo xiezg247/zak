@@ -92,9 +92,10 @@ class TableFilterMixin(TableControllerBase):
         next_display = matched[:MAX_DISPLAY_ROWS]
         display_unchanged = self._same_stock_list(page.display_stocks, next_display)
         page.display_stocks = next_display
-        table_rows = self._model().row_count()
-        if not display_unchanged or table_rows != len(next_display) or page.config.use_local_table:
-            self.render_table()
+        if page.config.show_market_table:
+            table_rows = self._model().row_count()
+            if not display_unchanged or table_rows != len(next_display) or page.config.use_local_table:
+                self.render_table()
         if page.config.auto_refresh_quotes:
             if is_ashare_trading_session():
                 page.refresh_quotes()

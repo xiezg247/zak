@@ -7,6 +7,7 @@ import json
 from pydantic import Field
 
 from vnpy_ashare.storage.connection import connect, get_meta, set_meta
+from vnpy_common.storage.tables import meta
 from vnpy_common.domain.base import FrozenModel
 
 _META_PREFIX = "scheduler/job_last_run/"
@@ -70,5 +71,7 @@ def save_job_run_meta(
 
 def clear_job_run_meta(job_id: str) -> None:
     """测试用：清除指定任务的上次执行记录。"""
+    from sqlalchemy import delete
+
     with connect() as conn:
-        conn.execute("DELETE FROM meta WHERE key = ?", (_meta_key(job_id),))
+        conn.execute_stmt(delete(meta).where(meta.c.key == _meta_key(job_id)))

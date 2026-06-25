@@ -11,26 +11,21 @@ from pydantic import Field, field_validator
 
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow, coerce_screener_result_rows, screener_rows_to_dicts
 from vnpy_ashare.domain.time.china import format_china_datetime
-from vnpy_ashare.storage.auth.scope import get_user_id
-from vnpy_ashare.storage.cache.db_session import app_db_session
-from vnpy_common.auth.scope import user_sql
+from vnpy_ashare.storage.repository.app import AppUserScopedRepository
 from vnpy_common.domain.base import MutableModel
 from vnpy_common.storage.compat import DbRow
+from vnpy_common.storage.tables import screener_runs as sr
 
-_SCHEMA = """
-CREATE TABLE IF NOT EXISTS screener_runs (
-    id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL DEFAULT '',
-    condition TEXT NOT NULL,
-    source TEXT NOT NULL,
-    row_count INTEGER NOT NULL,
-    total_scanned INTEGER NOT NULL DEFAULT 0,
-    config_json TEXT NOT NULL DEFAULT '{}',
-    result_json TEXT NOT NULL,
-    created_at TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_screener_runs_created ON screener_runs(created_at DESC);
-"""
+_RUN_COLUMNS = (
+    sr.c.id,
+    sr.c.condition,
+    sr.c.source,
+    sr.c.row_count,
+    sr.c.total_scanned,
+    sr.c.config_json,
+    sr.c.result_json,
+    sr.c.created_at,
+)
 
 
 class ScreenerRunRecord(MutableModel):
@@ -53,12 +48,78 @@ class ScreenerRunRecord(MutableModel):
         return coerce_screener_result_rows(value)
 
 
-def _connect():
-    return app_db_session(_SCHEMA)
-
-
 def _now() -> str:
     return format_china_datetime()
+
+
+def _row_to_record(row: DbRow) -> ScreenerRunRecord:
+    return ScreenerRunRecord(
+        id=str(row["id"]),
+        condition=str(row["condition"]),
+        source=str(row["source"]),
+        row_count=int(row["row_count"]),
+        total_scanned=int(row["total_scanned"]),
+        config=json.loads(str(row["config_json"] or "{}")),
+        rows=json.loads(str(row["result_json"] or "[]")),
+        created_at=str(row["created_at"]),
+    )
+
+
+class ScreenerRunRepository(AppUserScopedRepository):
+    table = sr
+
+    def save_run(
+        self,
+        *,
+        condition: str,
+        source: str,
+        rows: Sequence[ScreenerResultRow | Mapping[str, Any]],
+        total_scanned: int = 0,
+        config: dict[str, Any] | None = None,
+    ) -> ScreenerRunRecord:
+        run_id = uuid.uuid4().hex
+        now = _now()
+        normalized = coerce_screener_result_rows(rows)
+        payload = json.dumps(screener_rows_to_dicts(normalized), ensure_ascii=False)
+        config_payload = json.dumps(config or {}, ensure_ascii=False)
+        self.insert_one_for_user(
+            id=run_id,
+            condition=condition,
+            source=source,
+            row_count=len(normalized),
+            total_scanned=total_scanned,
+            config_json=config_payload,
+            result_json=payload,
+            created_at=now,
+        )
+        return ScreenerRunRecord(
+            id=run_id,
+            condition=condition,
+            source=source,
+            row_count=len(normalized),
+            total_scanned=total_scanned,
+            config=config or {},
+            rows=normalized,
+            created_at=now,
+        )
+
+    def list_runs(self, *, limit: int = 20) -> list[ScreenerRunRecord]:
+        rows = self.list_for_user(*_RUN_COLUMNS, order_by=(sr.c.created_at.desc(),), limit=limit)
+        return [_row_to_record(row) for row in rows]
+
+    def get_run(self, run_id: str) -> ScreenerRunRecord | None:
+        rows = self.list_for_user(*_RUN_COLUMNS, extras=(sr.c.id == run_id,), limit=1)
+        return _row_to_record(rows[0]) if rows else None
+
+    def delete_run(self, run_id: str) -> bool:
+        return self.delete_matching(self.scope(sr.c.id == run_id)) > 0
+
+    def update_run_config(self, run_id: str, config: dict[str, Any]) -> bool:
+        payload = json.dumps(config, ensure_ascii=False)
+        return self.update_matching({"config_json": payload}, self.scope(sr.c.id == run_id)) > 0
+
+
+_repo = ScreenerRunRepository()
 
 
 def save_run(
@@ -70,74 +131,23 @@ def save_run(
     config: dict[str, Any] | None = None,
 ) -> ScreenerRunRecord:
     """持久化选股结果并返回完整记录。"""
-    run_id = uuid.uuid4().hex
-    now = _now()
-    normalized = coerce_screener_result_rows(rows)
-    payload = json.dumps(screener_rows_to_dicts(normalized), ensure_ascii=False)
-    config_payload = json.dumps(config or {}, ensure_ascii=False)
-    with _connect() as conn:
-        uid = get_user_id()
-        conn.execute(
-            """
-            INSERT INTO screener_runs
-            (id, user_id, condition, source, row_count, total_scanned, config_json, result_json, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                run_id,
-                uid,
-                condition,
-                source,
-                len(normalized),
-                total_scanned,
-                config_payload,
-                payload,
-                now,
-            ),
-        )
-    return ScreenerRunRecord(
-        id=run_id,
+    return _repo.save_run(
         condition=condition,
         source=source,
-        row_count=len(normalized),
+        rows=rows,
         total_scanned=total_scanned,
-        config=config or {},
-        rows=normalized,
-        created_at=now,
+        config=config,
     )
 
 
 def list_runs(*, limit: int = 20) -> list[ScreenerRunRecord]:
     """按创建时间倒序列出历史运行。"""
-    with _connect() as conn:
-        uid = get_user_id()
-        rows = conn.execute(
-            f"""
-            SELECT id, condition, source, row_count, total_scanned, config_json, result_json, created_at
-            FROM screener_runs
-            WHERE {user_sql()}
-            ORDER BY created_at DESC
-            LIMIT ?
-            """,
-            (uid, limit),
-        ).fetchall()
-    return [_row_to_record(row) for row in rows]
+    return _repo.list_runs(limit=limit)
 
 
 def get_run(run_id: str) -> ScreenerRunRecord | None:
     """按 id 读取单次运行。"""
-    with _connect() as conn:
-        uid = get_user_id()
-        row = conn.execute(
-            f"""
-            SELECT id, condition, source, row_count, total_scanned, config_json, result_json, created_at
-            FROM screener_runs WHERE {user_sql('id=?')}
-            """,
-            (uid, run_id),
-        ).fetchone()
-    if row is None:
-        return None
-    return _row_to_record(row)
+    return _repo.get_run(run_id)
 
 
 def get_latest_run() -> ScreenerRunRecord | None:
@@ -187,22 +197,12 @@ def find_previous_run_by_condition(
 
 def delete_run(run_id: str) -> bool:
     """删除运行记录；成功返回 True。"""
-    with _connect() as conn:
-        uid = get_user_id()
-        cursor = conn.execute(f"DELETE FROM screener_runs WHERE {user_sql('id=?')}", (uid, run_id))
-        return bool(cursor.rowcount > 0)
+    return _repo.delete_run(run_id)
 
 
 def update_run_config(run_id: str, config: dict[str, Any]) -> bool:
     """更新运行的 config_json（如标记 read_at）。"""
-    payload = json.dumps(config, ensure_ascii=False)
-    with _connect() as conn:
-        uid = get_user_id()
-        cursor = conn.execute(
-            f"UPDATE screener_runs SET config_json=? WHERE {user_sql('id=?')}",
-            (payload, uid, run_id),
-        )
-        return bool(cursor.rowcount > 0)
+    return _repo.update_run_config(run_id, config)
 
 
 def mark_run_read(run_id: str) -> bool:
@@ -236,16 +236,3 @@ def is_run_unread(config: dict[str, Any]) -> bool:
     """定时运行且尚未标记 read_at。"""
     trigger = str(config.get("trigger", ""))
     return trigger.startswith("scheduled_") and not config.get("read_at")
-
-
-def _row_to_record(row: DbRow) -> ScreenerRunRecord:
-    return ScreenerRunRecord(
-        id=str(row["id"]),
-        condition=str(row["condition"]),
-        source=str(row["source"]),
-        row_count=int(row["row_count"]),
-        total_scanned=int(row["total_scanned"]),
-        config=json.loads(str(row["config_json"] or "{}")),
-        rows=json.loads(str(row["result_json"] or "[]")),
-        created_at=str(row["created_at"]),
-    )

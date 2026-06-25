@@ -172,6 +172,9 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
     def highlight_symbol(self, vt_symbol: str | None) -> None:
         self._table_view.highlight_symbol(vt_symbol)
 
+    def show_signal_reason(self, vt_symbol: str) -> None:
+        self._table_view.show_signal_reason(vt_symbol)
+
     def selected_vt_symbols(self) -> list[str]:
         return self._table_view.selected_vt_symbols()
 

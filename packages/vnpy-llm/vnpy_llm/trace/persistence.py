@@ -6,10 +6,12 @@ import json
 from datetime import datetime
 
 from pydantic import ValidationError
+from sqlalchemy import delete, func, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-from vnpy_ashare.storage.auth.scope import get_user_id
-from vnpy_llm.chat.db import trace_connect
+from vnpy_llm.storage.repository.chat import ChatUserScopedRepository
 from vnpy_llm.trace.trace import TurnTrace, turn_from_dict, turn_to_dict
+from vnpy_common.storage.tables.chat import llm_turn_traces as ltt
 
 MAX_TURNS_PER_SESSION = 50
 
@@ -29,21 +31,17 @@ def _repair_interrupted_turn(turn: TurnTrace) -> TurnTrace:
     return turn
 
 
-class TracePersistence:
+class TraceRepository(ChatUserScopedRepository):
     """按 session 读写 TurnTrace。"""
 
+    table = ltt
+
     def load_turns(self, session_id: str) -> list[TurnTrace]:
-        uid = get_user_id()
-        with trace_connect() as conn:
-            rows = conn.execute(
-                """
-                SELECT trace_json
-                FROM llm_turn_traces
-                WHERE session_id=? AND user_id=?
-                ORDER BY turn_index ASC, created_at ASC
-                """,
-                (session_id, uid),
-            ).fetchall()
+        rows = self.fetchall(
+            select(ltt.c.trace_json)
+            .where(self.scope(ltt.c.session_id == session_id))
+            .order_by(ltt.c.turn_index.asc(), ltt.c.created_at.asc())
+        )
 
         turns: list[TurnTrace] = []
         for i, row in enumerate(rows):
@@ -66,64 +64,57 @@ class TracePersistence:
         now = _now()
         created_at = turn.created_at or now
         trace_json = json.dumps(turn_to_dict(turn), ensure_ascii=False)
-        uid = get_user_id()
-        with trace_connect() as conn:
-            conn.execute(
-                """
-                INSERT INTO llm_turn_traces
-                (turn_id, session_id, turn_index, user_text, status, created_at, updated_at, trace_json, user_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(turn_id) DO UPDATE SET
-                    session_id=excluded.session_id,
-                    turn_index=excluded.turn_index,
-                    user_text=excluded.user_text,
-                    status=excluded.status,
-                    updated_at=excluded.updated_at,
-                    trace_json=excluded.trace_json,
-                    user_id=excluded.user_id
-                """,
-                (
-                    turn.turn_id,
-                    turn.session_id,
-                    turn_index,
-                    turn.user_text,
-                    turn.status,
-                    created_at,
-                    now,
-                    trace_json,
-                    uid,
-                ),
+        values = {
+            "turn_id": turn.turn_id,
+            "session_id": turn.session_id,
+            "turn_index": turn_index,
+            "user_text": turn.user_text,
+            "status": turn.status,
+            "created_at": created_at,
+            "updated_at": now,
+            "trace_json": trace_json,
+            "user_id": self.current_user_id(),
+        }
+
+        def _write(conn) -> None:
+            stmt = pg_insert(ltt).values(values)
+            excluded = stmt.excluded
+            conn.execute_stmt(
+                stmt.on_conflict_do_update(
+                    index_elements=[ltt.c.turn_id],
+                    set_={
+                        "session_id": excluded.session_id,
+                        "turn_index": excluded.turn_index,
+                        "user_text": excluded.user_text,
+                        "status": excluded.status,
+                        "updated_at": excluded.updated_at,
+                        "trace_json": excluded.trace_json,
+                        "user_id": excluded.user_id,
+                    },
+                )
             )
-            self._prune_session(conn, turn.session_id, uid)
+            self._prune_session(conn, turn.session_id)
+
+        self.run(_write)
 
     def delete_session(self, session_id: str) -> None:
-        uid = get_user_id()
-        with trace_connect() as conn:
-            conn.execute(
-                "DELETE FROM llm_turn_traces WHERE session_id=? AND user_id=?",
-                (session_id, uid),
-            )
+        self.delete_matching(self.scope(ltt.c.session_id == session_id))
 
-    def _prune_session(self, conn, session_id: str, user_id: str) -> None:
-        row = conn.execute(
-            """
-            SELECT COUNT(*) AS cnt FROM llm_turn_traces WHERE session_id=? AND user_id=?
-            """,
-            (session_id, user_id),
-        ).fetchone()
-        count = int(row["cnt"]) if row else 0
+    def _prune_session(self, conn, session_id: str) -> None:
+        scope = self.scope(ltt.c.session_id == session_id)
+        row = conn.execute_stmt(select(func.count()).select_from(ltt).where(scope)).fetchone()
+        count = int(row[0]) if row is not None else 0
         if count <= MAX_TURNS_PER_SESSION:
             return
         overflow = count - MAX_TURNS_PER_SESSION
-        conn.execute(
-            """
-            DELETE FROM llm_turn_traces
-            WHERE turn_id IN (
-                SELECT turn_id FROM llm_turn_traces
-                WHERE session_id=? AND user_id=?
-                ORDER BY turn_index ASC, created_at ASC
-                LIMIT ?
-            )
-            """,
-            (session_id, user_id, overflow),
+        subq = (
+            select(ltt.c.turn_id)
+            .where(scope)
+            .order_by(ltt.c.turn_index.asc(), ltt.c.created_at.asc())
+            .limit(overflow)
         )
+        conn.execute_stmt(delete(ltt).where(ltt.c.turn_id.in_(subq)))
+
+
+class TracePersistence(TraceRepository):
+    """按 session 读写 TurnTrace（对外兼容名）。"""

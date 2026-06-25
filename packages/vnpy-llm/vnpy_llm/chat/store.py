@@ -6,147 +6,109 @@ import uuid
 from contextlib import contextmanager
 from datetime import datetime
 
-from vnpy_ashare.storage.auth.scope import get_user_id
+from sqlalchemy import delete, func, insert, select, update
+
 from vnpy_llm.domain.chat import ChatMessage, ChatSession
-from vnpy_common.storage.session import chat_session
+from vnpy_llm.storage.repository.chat import ChatUserScopedRepository
+from vnpy_common.storage.tables.chat import chat_messages as cm
+from vnpy_common.storage.tables.chat import chat_sessions as cs
 
-
-@contextmanager
-def _connect():
-    with chat_session() as conn:
-        yield conn
+MAX_MESSAGES_PER_SESSION = 50
+MAX_TOOL_RESULT_CHARS = 2000
 
 
 def _now() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
-MAX_MESSAGES_PER_SESSION = 50
-MAX_TOOL_RESULT_CHARS = 2000
+def _session_row_to_model(row) -> ChatSession:
+    return ChatSession.model_validate(
+        {
+            "id": str(row["id"]),
+            "title": str(row["title"] or "新会话"),
+            "created_at": str(row["created_at"]),
+            "updated_at": str(row["updated_at"]),
+            "message_count": int(row["message_count"]),
+            "scene": str(row["scene"] or ""),
+        }
+    )
 
 
-class ChatStore:
-    """会话与消息的 CRUD；单会话最多保留 MAX_MESSAGES_PER_SESSION 条。"""
+class ChatRepository(ChatUserScopedRepository):
+    table = cs
+
+    def _sessions_with_counts_select(self):
+        return (
+            select(
+                cs.c.id,
+                cs.c.title,
+                cs.c.scene,
+                cs.c.created_at,
+                cs.c.updated_at,
+                func.count(cm.c.id).label("message_count"),
+            )
+            .select_from(cs)
+            .outerjoin(cm, (cm.c.session_id == cs.c.id) & (cm.c.user_id == cs.c.user_id))
+            .where(self.scope())
+            .group_by(cs.c.id)
+        )
 
     def get_or_create_default_session(self) -> str:
         """获取最近会话 id，无则创建「默认会话」。"""
-        uid = get_user_id()
-        with _connect() as conn:
-            row = conn.execute(
-                "SELECT id FROM sessions WHERE user_id = ? ORDER BY updated_at DESC LIMIT 1",
-                (uid,),
-            ).fetchone()
-            if row is not None:
-                return str(row["id"])
-            session_id = uuid.uuid4().hex
-            now = _now()
-            conn.execute(
-                "INSERT INTO sessions (id, title, scene, created_at, updated_at, user_id) VALUES (?, ?, ?, ?, ?, ?)",
-                (session_id, "默认会话", "", now, now, uid),
-            )
-            return session_id
+        row = self.fetchone(
+            select(cs.c.id).where(self.scope()).order_by(cs.c.updated_at.desc()).limit(1)
+        )
+        if row is not None:
+            return str(row["id"])
+        session_id = uuid.uuid4().hex
+        now = _now()
+        self.insert_one_for_user(id=session_id, title="默认会话", scene="", created_at=now, updated_at=now)
+        return session_id
 
     def create_session(self, *, title: str = "新会话", scene: str = "") -> str:
         """创建新会话并返回 id。"""
-        uid = get_user_id()
         session_id = uuid.uuid4().hex
         now = _now()
-        with _connect() as conn:
-            conn.execute(
-                "INSERT INTO sessions (id, title, scene, created_at, updated_at, user_id) VALUES (?, ?, ?, ?, ?, ?)",
-                (session_id, title, scene.strip(), now, now, uid),
-            )
+        self.insert_one_for_user(
+            id=session_id,
+            title=title,
+            scene=scene.strip(),
+            created_at=now,
+            updated_at=now,
+        )
         return session_id
 
     def list_sessions(self, *, limit: int = 50) -> list[ChatSession]:
         """按更新时间倒序列出当前用户会话。"""
-        uid = get_user_id()
-        with _connect() as conn:
-            rows = conn.execute(
-                """
-                SELECT s.id, s.title, s.scene, s.created_at, s.updated_at,
-                       COUNT(m.id) AS message_count
-                FROM sessions s
-                LEFT JOIN messages m ON m.session_id = s.id AND m.user_id = s.user_id
-                WHERE s.user_id = ?
-                GROUP BY s.id
-                ORDER BY s.updated_at DESC
-                LIMIT ?
-                """,
-                (uid, limit),
-            ).fetchall()
-        return [
-            ChatSession.model_validate(
-                {
-                    "id": str(row["id"]),
-                    "title": str(row["title"] or "新会话"),
-                    "created_at": str(row["created_at"]),
-                    "updated_at": str(row["updated_at"]),
-                    "message_count": int(row["message_count"]),
-                    "scene": str(row["scene"] or ""),
-                }
-            )
-            for row in rows
-        ]
+        stmt = self._sessions_with_counts_select().order_by(cs.c.updated_at.desc()).limit(limit)
+        rows = self.fetchall(stmt)
+        return [_session_row_to_model(row) for row in rows]
 
     def get_session(self, session_id: str) -> ChatSession | None:
-        uid = get_user_id()
-        with _connect() as conn:
-            row = conn.execute(
-                """
-                SELECT s.id, s.title, s.scene, s.created_at, s.updated_at,
-                       COUNT(m.id) AS message_count
-                FROM sessions s
-                LEFT JOIN messages m ON m.session_id = s.id AND m.user_id = s.user_id
-                WHERE s.id = ? AND s.user_id = ?
-                GROUP BY s.id
-                """,
-                (session_id, uid),
-            ).fetchone()
-        if row is None:
-            return None
-        return ChatSession.model_validate(
-            {
-                "id": str(row["id"]),
-                "title": str(row["title"] or "新会话"),
-                "created_at": str(row["created_at"]),
-                "updated_at": str(row["updated_at"]),
-                "message_count": int(row["message_count"]),
-                "scene": str(row["scene"] or ""),
-            }
-        )
+        stmt = self._sessions_with_counts_select().where(self.scope(cs.c.id == session_id))
+        row = self.fetchone(stmt)
+        return _session_row_to_model(row) if row is not None else None
 
     def update_session_scene(self, session_id: str, scene: str) -> None:
-        uid = get_user_id()
-        cleaned = scene.strip()
-        with _connect() as conn:
-            conn.execute(
-                "UPDATE sessions SET scene=? WHERE id=? AND user_id=?",
-                (cleaned, session_id, uid),
-            )
+        self.update_matching({"scene": scene.strip()}, self.scope(cs.c.id == session_id))
 
     def update_session_title(self, session_id: str, title: str) -> None:
-        uid = get_user_id()
         cleaned = title.strip() or "新会话"
-        with _connect() as conn:
-            conn.execute(
-                "UPDATE sessions SET title=? WHERE id=? AND user_id=?",
-                (cleaned, session_id, uid),
-            )
+        self.update_matching({"title": cleaned}, self.scope(cs.c.id == session_id))
 
     def delete_session(self, session_id: str) -> None:
-        uid = get_user_id()
-        with _connect() as conn:
-            conn.execute("DELETE FROM messages WHERE session_id=? AND user_id=?", (session_id, uid))
-            conn.execute("DELETE FROM sessions WHERE id=? AND user_id=?", (session_id, uid))
+        def _write(conn) -> None:
+            conn.execute_stmt(delete(cm).where(self.scope_table(cm, cm.c.session_id == session_id)))
+            self.delete_where(conn, self.scope(cs.c.id == session_id))
+
+        self.run(_write)
 
     def list_messages(self, session_id: str) -> list[ChatMessage]:
-        uid = get_user_id()
-        with _connect() as conn:
-            rows = conn.execute(
-                "SELECT role, content, created_at FROM messages WHERE session_id=? AND user_id=? ORDER BY id",
-                (session_id, uid),
-            ).fetchall()
+        rows = self.fetchall(
+            select(cm.c.role, cm.c.content, cm.c.created_at)
+            .where(self.scope_table(cm, cm.c.session_id == session_id))
+            .order_by(cm.c.id.asc())
+        )
         messages = [
             ChatMessage.model_validate(
                 {
@@ -163,19 +125,40 @@ class ChatStore:
 
     def append_message(self, session_id: str, *, role: str, content: str) -> None:
         """追加消息并刷新会话 updated_at。"""
-        uid = get_user_id()
         now = _now()
-        with _connect() as conn:
-            conn.execute(
-                "INSERT INTO messages (session_id, role, content, created_at, user_id) VALUES (?, ?, ?, ?, ?)",
-                (session_id, role, content, now, uid),
+
+        def _write(conn) -> None:
+            conn.execute_stmt(
+                insert(cm).values(
+                    session_id=session_id,
+                    role=role,
+                    content=content,
+                    created_at=now,
+                    user_id=self.current_user_id(),
+                )
             )
-            conn.execute(
-                "UPDATE sessions SET updated_at=? WHERE id=? AND user_id=?",
-                (now, session_id, uid),
+            conn.execute_stmt(
+                update(cs).where(self.scope(cs.c.id == session_id)).values(updated_at=now)
             )
 
+        self.run(_write)
+
     def clear_messages(self, session_id: str) -> None:
-        uid = get_user_id()
-        with _connect() as conn:
-            conn.execute("DELETE FROM messages WHERE session_id=? AND user_id=?", (session_id, uid))
+        def _write(conn) -> None:
+            conn.execute_stmt(
+                delete(cm).where(self.scope_table(cm, cm.c.session_id == session_id))
+            )
+
+        self.run(_write)
+
+_repo = ChatRepository()
+
+
+@contextmanager
+def _connect():
+    with _repo.session() as conn:
+        yield conn
+
+
+class ChatStore(ChatRepository):
+    """会话与消息的 CRUD；单会话最多保留 MAX_MESSAGES_PER_SESSION 条。"""

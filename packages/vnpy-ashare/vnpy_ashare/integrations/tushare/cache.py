@@ -6,7 +6,11 @@ import json
 from datetime import datetime, timedelta
 from typing import Any
 
-from vnpy_ashare.storage.cache.db_session import app_db_session
+from sqlalchemy import delete, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+from vnpy_ashare.storage.repository.app import AppBaseRepository
+from vnpy_common.storage.tables import tushare_factor_cache as tfc
 
 DATASET_DAILY_BASIC = "daily_basic"
 DATASET_MONEYFLOW = "moneyflow"
@@ -34,10 +38,6 @@ DEFAULT_MAX_AGE = timedelta(hours=24)
 INDUSTRY_MAX_AGE = timedelta(days=7)
 
 
-def _connect():
-    return app_db_session("")
-
-
 def _parse_fetched_at(value: str) -> datetime | None:
     try:
         return datetime.fromisoformat(value)
@@ -52,37 +52,67 @@ def is_cache_fresh(fetched_at: str, *, max_age: timedelta = DEFAULT_MAX_AGE) -> 
     return datetime.now() - parsed <= max_age
 
 
+class TushareFactorCacheRepository(AppBaseRepository):
+    table = tfc
+
+    def get_cached_rows(
+        self,
+        dataset: str,
+        trade_date: str = "",
+        *,
+        max_age: timedelta = DEFAULT_MAX_AGE,
+    ) -> list[dict[str, Any]] | None:
+        row = self.fetchone(
+            select(tfc.c.fetched_at, tfc.c.payload).where(
+                tfc.c.dataset == dataset,
+                tfc.c.trade_date == trade_date,
+            )
+        )
+        if row is None:
+            return None
+        if not is_cache_fresh(str(row["fetched_at"]), max_age=max_age):
+            return None
+        payload = json.loads(str(row["payload"]))
+        if not isinstance(payload, list):
+            return None
+        return payload
+
+    def set_cached_rows(self, dataset: str, trade_date: str, rows: list[dict[str, Any]]) -> None:
+        fetched_at = datetime.now().isoformat(timespec="seconds")
+        payload = json.dumps(rows, ensure_ascii=False)
+        values = {
+            "dataset": dataset,
+            "trade_date": trade_date,
+            "fetched_at": fetched_at,
+            "payload": payload,
+        }
+
+        def _write(conn) -> None:
+            stmt = pg_insert(tfc).values(values)
+            excluded = stmt.excluded
+            conn.execute_stmt(
+                stmt.on_conflict_do_update(
+                    index_elements=[tfc.c.dataset, tfc.c.trade_date],
+                    set_={"fetched_at": excluded.fetched_at, "payload": excluded.payload},
+                )
+            )
+
+        self.run(_write)
+
+    def clear_all(self) -> None:
+        self.delete_matching()
+
+
+_repo = TushareFactorCacheRepository()
+
+
 def get_cached_rows(dataset: str, trade_date: str = "", *, max_age: timedelta = DEFAULT_MAX_AGE) -> list[dict[str, Any]] | None:
     """读取缓存的行列表；过期或不存在时返回 None。"""
-    with _connect() as conn:
-        row = conn.execute(
-            "SELECT fetched_at, payload FROM tushare_factor_cache WHERE dataset = ? AND trade_date = ?",
-            (dataset, trade_date),
-        ).fetchone()
-    if row is None:
-        return None
-    if not is_cache_fresh(str(row["fetched_at"]), max_age=max_age):
-        return None
-    payload = json.loads(str(row["payload"]))
-    if not isinstance(payload, list):
-        return None
-    return payload
+    return _repo.get_cached_rows(dataset, trade_date, max_age=max_age)
 
 
 def set_cached_rows(dataset: str, trade_date: str, rows: list[dict[str, Any]]) -> None:
-    fetched_at = datetime.now().isoformat(timespec="seconds")
-    payload = json.dumps(rows, ensure_ascii=False)
-    with _connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO tushare_factor_cache(dataset, trade_date, fetched_at, payload)
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT(dataset, trade_date) DO UPDATE SET
-                fetched_at = excluded.fetched_at,
-                payload = excluded.payload
-            """,
-            (dataset, trade_date, fetched_at, payload),
-        )
+    _repo.set_cached_rows(dataset, trade_date, rows)
 
 
 def get_cached_pct_map(trade_date: str, *, max_age: timedelta = DEFAULT_MAX_AGE) -> dict[str, float] | None:
@@ -209,5 +239,4 @@ def set_cached_industry_map(mapping: dict[str, str]) -> None:
 
 def clear_tushare_cache() -> None:
     """测试或强制刷新时清空因子缓存。"""
-    with _connect() as conn:
-        conn.execute("DELETE FROM tushare_factor_cache")
+    _repo.clear_all()

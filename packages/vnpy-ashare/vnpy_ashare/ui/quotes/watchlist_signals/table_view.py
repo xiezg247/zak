@@ -283,8 +283,19 @@ class SignalPanelTableView(QtWidgets.QWidget):
 
     def _on_info_row_requested(self, row: int) -> None:
         vt_symbol = self._model.vt_symbol_at(row)
-        if vt_symbol:
-            self._show_signal_reason_dialog(vt_symbol)
+        if not vt_symbol:
+            return
+        self._suppress_selection_signal = True
+        try:
+            self.show_signal_reason(vt_symbol)
+        finally:
+            QtCore.QTimer.singleShot(0, self._release_selection_suppress)
+
+    def _release_selection_suppress(self) -> None:
+        self._suppress_selection_signal = False
+
+    def show_signal_reason(self, vt_symbol: str) -> None:
+        self._show_signal_reason_dialog(vt_symbol)
 
     def _show_signal_reason_dialog(self, vt_symbol: str) -> None:
         page = self._page

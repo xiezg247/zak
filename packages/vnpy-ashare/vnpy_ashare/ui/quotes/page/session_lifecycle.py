@@ -17,6 +17,16 @@ from vnpy_ashare.ui.quotes.page.roles import STRATEGY_MONITOR_PAGE, WATCHLIST_PA
 from vnpy_ashare.ui.quotes.page.worker_lifecycle import teardown_quotes_page_workers
 
 
+def _strategy_stale_sweep_enabled(page: Any) -> bool:
+    if page.page_name != STRATEGY_MONITOR_PAGE:
+        return True
+    signal_panel = getattr(page, "signal_panel", None)
+    position_panel = getattr(page, "position_panel", None)
+    signal_on = signal_panel is not None and signal_panel.enabled
+    position_on = position_panel is not None and position_panel.enabled
+    return signal_on or position_on
+
+
 def _deferred_watchlist_activate(page: Any) -> None:
     """自选页延后任务：分组/图表/布局/多维看盘等，避免 Tab 切换卡死。"""
     if not page._active or page.page_name != WATCHLIST_PAGE:
@@ -52,7 +62,19 @@ def _deferred_watchlist_activate(page: Any) -> None:
 def _deferred_strategy_monitor_activate(page: Any) -> None:
     if not page._active or page.page_name != STRATEGY_MONITOR_PAGE:
         return
-    refresh_emotion_cycle_chip_for_page(page)
+    if page._watchlist_bootstrap is not None:
+        page._watchlist_bootstrap.on_activate(page)
+    else:
+        pool = page._watchlist._pool_from_service()
+        page.all_stocks = list(pool)
+        page.display_stocks = list(pool)
+        page._watchlist.refresh_keys()
+    if page.config.show_watchlist_signals or page.config.show_watchlist_positions:
+        if _strategy_stale_sweep_enabled(page):
+            page._strategy_refresh.start()
+        else:
+            page._strategy_refresh.stop()
+    page._signals.on_page_activated()
     feature = getattr(page, "_strategy_monitor_feature", None)
     if feature is not None:
         feature.on_activate()
@@ -92,16 +114,6 @@ def activate_quotes_page(page: Any) -> None:
         return
 
     if page.page_name == STRATEGY_MONITOR_PAGE:
-        if page._watchlist_bootstrap is not None:
-            page._watchlist_bootstrap.on_activate(page)
-        else:
-            pool = page._watchlist._pool_from_service()
-            page.all_stocks = list(pool)
-            page.apply_filter()
-            page._watchlist.refresh_keys()
-        if page.config.show_watchlist_signals or page.config.show_watchlist_positions:
-            page._strategy_refresh.start()
-        page._signals.on_page_activated()
         QtCore.QTimer.singleShot(0, lambda: _deferred_strategy_monitor_activate(page))
         return
 
@@ -145,7 +157,7 @@ def activate_quotes_page(page: Any) -> None:
 
 
 def deactivate_quotes_page(page: Any) -> None:
-    if page.page_name == WATCHLIST_PAGE and hasattr(page, "end_tab_switch_loading"):
+    if page.page_name in (WATCHLIST_PAGE, STRATEGY_MONITOR_PAGE) and hasattr(page, "end_tab_switch_loading"):
         page.end_tab_switch_loading()
     if page.config.use_radar_cards:
         controller = getattr(page, "_radar_controller", None)

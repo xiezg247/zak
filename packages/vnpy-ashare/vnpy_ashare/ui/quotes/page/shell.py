@@ -40,7 +40,7 @@ from vnpy_ashare.ui.quotes.page.config import (
     load_market_auto_refresh_pref,
     quote_source_label,
 )
-from vnpy_ashare.ui.quotes.page.roles import WATCHLIST_PAGE
+from vnpy_ashare.ui.quotes.page.roles import is_strategy_monitor_page
 from vnpy_ashare.ui.quotes.page.market_board_filter import configure_market_board_combo
 from vnpy_ashare.ui.quotes.page.run_log import (
     load_run_output_expanded,
@@ -264,7 +264,7 @@ class QuotesPageShell:
         page.add_signal_panel_button.setObjectName("SecondaryButton")
         page.add_signal_panel_button.clicked.connect(page.add_selection_to_signal_panel)
         page.add_signal_panel_button.setVisible(
-            page.config.show_watchlist_signals or page.page_name == WATCHLIST_PAGE
+            page.config.show_watchlist_signals and not is_strategy_monitor_page(page.page_name)
         )
 
         page.quick_note_button = QtWidgets.QPushButton("记一笔", page)

@@ -6,9 +6,23 @@ from datetime import datetime, timezone
 from typing import Any
 
 from pydantic import Field
+from sqlalchemy import select
 
-from vnpy_ashare.storage.connection import connect
+from vnpy_ashare.storage.repository.app import AppBaseRepository
 from vnpy_common.domain.base import FrozenModel
+from vnpy_common.storage.repository import bulk_upsert
+from vnpy_common.storage.tables import disclosure_calendar as dc
+
+_DISCLOSURE_COLUMNS = (
+    dc.c.ts_code,
+    dc.c.end_date,
+    dc.c.pre_date,
+    dc.c.ann_date,
+    dc.c.actual_date,
+    dc.c.fetched_at,
+)
+
+_UPSERT_UPDATE_COLUMNS = ("pre_date", "ann_date", "actual_date", "fetched_at")
 
 
 class DisclosureRow(FrozenModel):
@@ -24,52 +38,48 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
-def upsert_disclosure_rows(ts_code: str, rows: list[dict[str, Any]]) -> int:
-    if not rows:
-        return 0
-    fetched_at = _now_iso()
-    payload = [
-        (
-            ts_code,
-            str(row.get("end_date", "")),
-            str(row.get("pre_date") or ""),
-            str(row.get("ann_date") or ""),
-            str(row.get("actual_date") or ""),
-            fetched_at,
-        )
-        for row in rows
-        if row.get("end_date")
-    ]
-    if not payload:
-        return 0
-    with connect() as conn:
-        conn.executemany(
-            """
-            INSERT INTO disclosure_calendar (
-                ts_code, end_date, pre_date, ann_date, actual_date, fetched_at
-            ) VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT(ts_code, end_date) DO UPDATE SET
-                pre_date=excluded.pre_date,
-                ann_date=excluded.ann_date,
-                actual_date=excluded.actual_date,
-                fetched_at=excluded.fetched_at
-            """,
-            payload,
-        )
-    return len(payload)
+class DisclosureRepository(AppBaseRepository):
+    table = dc
 
+    def upsert_rows(self, ts_code: str, rows: list[dict[str, Any]]) -> int:
+        if not rows:
+            return 0
+        fetched_at = _now_iso()
+        values = [
+            {
+                "ts_code": ts_code,
+                "end_date": str(row.get("end_date", "")),
+                "pre_date": str(row.get("pre_date") or ""),
+                "ann_date": str(row.get("ann_date") or ""),
+                "actual_date": str(row.get("actual_date") or ""),
+                "fetched_at": fetched_at,
+            }
+            for row in rows
+            if row.get("end_date")
+        ]
+        if not values:
+            return 0
 
-def list_disclosure_calendar(ts_code: str, limit: int = 8) -> list[DisclosureRow]:
-    with connect() as conn:
-        cur = conn.execute(
-            """
-            SELECT ts_code, end_date, pre_date, ann_date, actual_date, fetched_at
-            FROM disclosure_calendar
-            WHERE ts_code = ?
-            ORDER BY end_date DESC
-            LIMIT ?
-            """,
-            (ts_code, limit),
+        def _write(conn) -> None:
+            bulk_upsert(
+                conn,
+                self.table,
+                values,
+                conflict_columns=("ts_code", "end_date"),
+                update_columns=_UPSERT_UPDATE_COLUMNS,
+            )
+
+        self.run(_write)
+        return len(values)
+
+    def list_calendar(self, ts_code: str, limit: int = 8) -> list[DisclosureRow]:
+        rows = self.fetchall(
+            self.select_columns(
+                *_DISCLOSURE_COLUMNS,
+                where=(dc.c.ts_code == ts_code,),
+                order_by=(dc.c.end_date.desc(),),
+                limit=limit,
+            )
         )
         return [
             DisclosureRow(
@@ -80,21 +90,31 @@ def list_disclosure_calendar(ts_code: str, limit: int = 8) -> list[DisclosureRow
                 actual_date=row["actual_date"],
                 fetched_at=row["fetched_at"],
             )
-            for row in cur.fetchall()
+            for row in rows
         ]
+
+    def latest_ann_date_after(self, ts_code: str, since_yyyymmdd: str) -> str | None:
+        row = self.fetchone(
+            select(dc.c.ann_date)
+            .where(dc.c.ts_code == ts_code, dc.c.ann_date > since_yyyymmdd)
+            .order_by(dc.c.ann_date.desc())
+            .limit(1)
+        )
+        if not row or not row["ann_date"]:
+            return None
+        return str(row["ann_date"])
+
+
+_repo = DisclosureRepository()
+
+
+def upsert_disclosure_rows(ts_code: str, rows: list[dict[str, Any]]) -> int:
+    return _repo.upsert_rows(ts_code, rows)
+
+
+def list_disclosure_calendar(ts_code: str, limit: int = 8) -> list[DisclosureRow]:
+    return _repo.list_calendar(ts_code, limit)
 
 
 def latest_ann_date_after(ts_code: str, since_yyyymmdd: str) -> str | None:
-    with connect() as conn:
-        row = conn.execute(
-            """
-            SELECT ann_date FROM disclosure_calendar
-            WHERE ts_code = ? AND ann_date > ?
-            ORDER BY ann_date DESC
-            LIMIT 1
-            """,
-            (ts_code, since_yyyymmdd),
-        ).fetchone()
-    if not row or not row["ann_date"]:
-        return None
-    return str(row["ann_date"])
+    return _repo.latest_ann_date_after(ts_code, since_yyyymmdd)

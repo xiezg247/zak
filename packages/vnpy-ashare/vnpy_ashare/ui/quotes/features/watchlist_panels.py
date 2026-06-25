@@ -9,7 +9,7 @@ from vnpy_ashare.config.preferences.watchlist_signal import SIGNAL_PANEL_MAX_SYM
 from vnpy_ashare.domain.symbols.stock import lookup_by_vt_symbol
 from vnpy_ashare.ui.quotes._host_widget import as_qwidget
 from vnpy_ashare.ui.quotes.page.roles import STRATEGY_MONITOR_PAGE, WATCHLIST_PAGE
-from vnpy_ashare.ui.quotes.page.strategy_bridge import add_items_to_strategy_monitor, focus_watchlist_symbol_from_page
+from vnpy_ashare.ui.quotes.page.strategy_bridge import add_items_to_strategy_monitor
 from vnpy_ashare.ui.quotes.watchlist_signals.splitter import apply_center_splitter_sizes
 
 if TYPE_CHECKING:
@@ -31,8 +31,11 @@ class WatchlistPanelsFeature:
         panel.enabled_changed.connect(page._signals.on_panel_enabled_changed)
         panel.config_changed.connect(self.on_signal_panel_config_changed)
         panel.refresh_requested.connect(page.refresh_watchlist_signals)
-        panel.row_activated.connect(self.on_signal_panel_row_activated)
-        panel.row_selected.connect(self.on_signal_panel_row_activated)
+        if page.page_name == STRATEGY_MONITOR_PAGE:
+            panel.row_activated.connect(self.on_strategy_signal_row_activated)
+        else:
+            panel.row_activated.connect(self.on_signal_panel_row_activated)
+            panel.row_selected.connect(self.on_signal_panel_row_activated)
         panel.expansion_changed.connect(self.on_signal_panel_expansion_changed)
         panel.ai_interpret_requested.connect(page._actions.ask_ai_for_signal_panel)
         panel.ai_scan_requested.connect(page._actions.ask_ai_for_signal_panel_batch)
@@ -70,9 +73,6 @@ class WatchlistPanelsFeature:
 
     def on_signal_panel_row_activated(self, vt_symbol: str) -> None:
         page = self._page
-        if page.page_name == STRATEGY_MONITOR_PAGE:
-            focus_watchlist_symbol_from_page(page, vt_symbol)
-            return
         item = page.find_stock_item(vt_symbol)
         if item is None:
             return
@@ -88,6 +88,11 @@ class WatchlistPanelsFeature:
                 fast_window=cfg.fast_window,
                 slow_window=cfg.slow_window,
             )
+
+    def on_strategy_signal_row_activated(self, vt_symbol: str) -> None:
+        panel = getattr(self._page, "signal_panel", None)
+        if panel is not None:
+            panel.show_signal_reason(vt_symbol)
 
     def on_position_panel_expansion_changed(self, _expanded: bool) -> None:
         apply_center_splitter_sizes(self._page)
