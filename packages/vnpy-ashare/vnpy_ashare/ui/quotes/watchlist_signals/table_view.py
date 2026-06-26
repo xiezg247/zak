@@ -625,7 +625,7 @@ def _resolve_signal_row_name(item, quote) -> str:
 
 def _resolve_quote_last_price(quote, snapshot: SignalSnapshot | None) -> float | None:
     if quote is not None and quote.last_price > 0:
-        return quote.last_price
+        return float(quote.last_price)
     if snapshot is not None and snapshot.last_close is not None and snapshot.last_close > 0:
         return snapshot.last_close
     return None
