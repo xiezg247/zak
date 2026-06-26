@@ -72,7 +72,7 @@ def database_settings_from_env(env: dict[str, str]) -> dict[str, Any]:
 
 
 def meta_database_settings(*, env: dict[str, str] | None = None) -> dict[str, str]:
-    """业务元数据 / 对话走 PostgreSQL DATABASE_URL，不再写入 vt_setting SQLite 路径。"""
+    """业务元数据 / 对话走 PostgreSQL `DATABASE_URL`；vt_setting 不写入本地 DB 路径。"""
     _ = env
     return {}
 

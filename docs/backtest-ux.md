@@ -25,7 +25,7 @@ uv run python cli.py data download --symbol 600519 --exchange SSE --period 1m --
 
 分 K 策略：`AshareLimitBoardMinuteStrategy`、`AshareIntradayBreakoutMinuteStrategy`、`AsharePullbackMinuteStrategy`、`AshareOvernightExitMinuteStrategy` 等。批量模板 `ultra_short_*_minute`。
 
-完成后写入 `zak.db` `backtest_runs` + `context_store`。代码：`ui/backtest/`、`services/backtest.py`。
+完成后写入 PG `app.backtest_runs` + `context_store`。代码：`ui/backtest/`、`services/backtest.py`。
 
 ---
 

@@ -15,7 +15,7 @@ def _calendar_end(today: date | None = None) -> date:
 
 
 def sync_trade_calendar_job() -> JobResult:
-    """从 Tushare 同步 A 股交易日历到本地 SQLite。"""
+    """从 Tushare 同步 A 股交易日历到 PostgreSQL。"""
     try:
         get_tushare_pro()
     except TushareNotConfiguredError as ex:

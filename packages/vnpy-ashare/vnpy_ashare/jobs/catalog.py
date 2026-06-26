@@ -58,7 +58,7 @@ JOB_SPECS: tuple[JobSpec, ...] = (
     JobSpec(
         job_id="sync_universe",
         name="同步 A 股列表",
-        description="从 TickFlow 更新全市场标的到本地 SQLite",
+        description="从 TickFlow 更新全市场标的到 PostgreSQL app.universe",
         config_attr="sync_universe",
     ),
     JobSpec(
@@ -71,7 +71,7 @@ JOB_SPECS: tuple[JobSpec, ...] = (
     JobSpec(
         job_id="sync_trade_calendar",
         name="同步交易日历",
-        description="从 Tushare 更新 A 股交易日历到本地 SQLite",
+        description="从 Tushare 更新 A 股交易日历到 PostgreSQL app.trade_calendar",
         config_attr="sync_trade_calendar",
     ),
     JobSpec(

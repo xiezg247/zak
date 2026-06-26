@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 
-from vnpy_ashare.storage.connection import connect, init_app_db
+from vnpy_ashare.storage.connection import connect
 from vnpy_common.storage.session import cache_session
 
 _schema_applied: set[str] = set()
@@ -29,7 +29,6 @@ def cache_db_session(
 @contextmanager
 def app_db_session(schema: str) -> Iterator:
     """app schema 扩展表会话。"""
-    init_app_db()
     with connect() as conn:
         if schema.strip():
             conn.executescript(schema)

@@ -9,7 +9,7 @@ from vnpy_ashare.storage.repositories.symbol_suspend import DEFAULT_LOOKBACK_DAY
 
 
 def sync_suspend_daily_job(*, lookback_days: int = DEFAULT_LOOKBACK_DAYS) -> JobResult:
-    """拉取最近若干交易日的全市场停牌记录到本地 SQLite。"""
+    """拉取最近若干交易日的全市场停牌记录到 PostgreSQL。"""
     try:
         get_tushare_pro()
     except TushareNotConfiguredError as ex:

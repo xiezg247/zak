@@ -8,12 +8,10 @@ from unittest.mock import patch
 from vnpy_ashare.jobs.core.result import JobResult
 from vnpy_ashare.scheduler.job_meta import clear_job_run_meta, load_job_run_meta, save_job_run_meta
 from vnpy_ashare.scheduler.manager import TaskSchedulerManager
-from vnpy_ashare.storage.connection import init_app_db
 
 
 class SchedulerJobMetaTests(unittest.TestCase):
     def setUp(self) -> None:
-        init_app_db()
         clear_job_run_meta("sync_universe")
 
     def tearDown(self) -> None:

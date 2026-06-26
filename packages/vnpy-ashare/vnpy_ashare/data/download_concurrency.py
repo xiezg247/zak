@@ -222,7 +222,7 @@ def _is_retryable(exc: BaseException) -> bool:
 
 
 def run_with_retry(func: Callable[[], R]) -> R:
-    """遇 SQLite 锁 / 限流时短暂退避重试。"""
+    """遇数据库锁 / 限流时短暂退避重试。"""
     last_exc: BaseException | None = None
     for attempt in range(_MAX_ATTEMPTS):
         try:

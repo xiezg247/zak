@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from contextlib import contextmanager
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from vnpy_common.storage.session import connect_app
@@ -16,10 +16,6 @@ from vnpy_common.storage.tables import meta
 def connect() -> Iterator:
     with connect_app() as conn:
         yield conn
-
-
-def init_app_db() -> None:
-    """确保业务库连接可用（表由 Alembic 管理，请先 ``cli.py db upgrade``）。"""
 
 
 def _set_meta(conn, key: str, value: str) -> None:
@@ -38,12 +34,15 @@ def _get_meta(conn, key: str) -> str | None:
 
 
 def get_meta(key: str) -> str | None:
-    init_app_db()
     with connect() as conn:
         return _get_meta(conn, key)
 
 
 def set_meta(key: str, value: str) -> None:
-    init_app_db()
     with connect() as conn:
         _set_meta(conn, key, value)
+
+
+def delete_meta(key: str) -> None:
+    with connect() as conn:
+        conn.execute_stmt(delete(meta).where(meta.c.key == key))

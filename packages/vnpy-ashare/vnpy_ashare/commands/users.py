@@ -6,11 +6,10 @@ import argparse
 
 from vnpy_ashare.storage.auth.prune_users import prune_to_default_user
 from vnpy_ashare.storage.auth.users import create_user, list_users
-from vnpy_ashare.storage.connection import connect, init_app_db
+from vnpy_ashare.storage.connection import connect
 
 
 def _cmd_create(args: argparse.Namespace) -> int:
-    init_app_db()
     with connect() as conn:
         user = create_user(conn, username=args.username, password=args.password, display_name=args.display_name or args.username)
     print(f"已创建用户：{user.username} ({user.id})")
@@ -19,7 +18,6 @@ def _cmd_create(args: argparse.Namespace) -> int:
 
 
 def _cmd_list(_args: argparse.Namespace) -> int:
-    init_app_db()
     with connect() as conn:
         users = list_users(conn)
     if not users:

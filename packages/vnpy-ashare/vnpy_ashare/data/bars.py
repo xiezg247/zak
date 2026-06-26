@@ -29,7 +29,7 @@ from vnpy_ashare.storage.repositories.watchlist import import_watchlist_csv, loa
 
 
 def load_watchlist(path: Path | None = None, ashare_only: bool = True) -> list[StockItem]:
-    """从 SQLite 读取自选池；若指定 path 则从 CSV 导入后返回。"""
+    """从 PostgreSQL app.watchlist 读取自选池；若指定 path 则从 CSV 导入后返回。"""
     if path is not None:
         import_watchlist_csv(path)
 

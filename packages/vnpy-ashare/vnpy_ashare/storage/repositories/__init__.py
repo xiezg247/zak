@@ -1,1 +1,1 @@
-"""zak.db 按表拆分的 repository。"""
+"""PostgreSQL `app` schema 按表拆分的 repository。"""

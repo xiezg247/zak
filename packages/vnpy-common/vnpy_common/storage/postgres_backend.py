@@ -1,7 +1,7 @@
 """PostgreSQL 后端 —— SQLAlchemy 池化连接 + 统一查询接口。
 
 Repository 层通过 DbConnection.execute() 调用，
-传入 ? 占位符 SQL，本后端通过 exec_driver_sql 直通 psycopg。
+SQL 使用 psycopg 原生 ``%s`` 占位符，经 exec_driver_sql 直通。
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from sqlalchemy.sql.expression import Executable
 
 from vnpy_common.storage.compat import DbRow
 from vnpy_common.storage.config import APP_SEARCH_PATH
-from vnpy_common.storage.dialect import split_sql_script, to_positional_sql
+from vnpy_common.storage.dialect import split_sql_script
 from vnpy_common.storage.pool import get_connection
 
 CACHE_SEARCH_PATH = "cache, app, chat, auth, system, public"
@@ -40,10 +40,9 @@ class PostgresBackend:
         params: Sequence[Any] | Mapping[str, Any] | None = None,
     ) -> tuple[list[DbRow], int | None]:
         self._check_not_closed()
-        pg_sql = to_positional_sql(sql)
         # SQLAlchemy exec_driver_sql 严格要求 tuple/dict，不接受 list
         coerced = tuple(params) if isinstance(params, list) else params
-        result = self._conn.exec_driver_sql(pg_sql, coerced)
+        result = self._conn.exec_driver_sql(sql, coerced)
         self.last_rowcount = int(result.rowcount)
         if not result.returns_rows:
             return [], None
@@ -78,19 +77,17 @@ class PostgresBackend:
     ) -> None:
         """批量执行 —— 复用底层 psycopg cursor 以支持真正的 executemany。"""
         self._check_not_closed()
-        pg_sql = to_positional_sql(sql)
         # SQLAlchemy 的 exec_driver_sql 不支持 executemany 语义；
         # 通过底层 psycopg.Connection 直接操作。
         raw_conn = self._conn.connection  # psycopg.Connection
         with raw_conn.cursor() as cur:  # type: ignore[attr-defined]
-            cur.executemany(pg_sql, params_seq)
+            cur.executemany(sql, params_seq)
             self.last_rowcount = int(cur.rowcount)
 
     def executescript(self, script: str) -> None:
         self._check_not_closed()
         for statement in split_sql_script(script):
-            pg_sql = to_positional_sql(statement)
-            self._conn.exec_driver_sql(pg_sql)
+            self._conn.exec_driver_sql(statement)
 
     # ------------------------------------------------------------------
     # 事务

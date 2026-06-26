@@ -9,8 +9,6 @@ from vnpy_ashare.storage.repositories import stock_analysis_reports as repo
 
 
 def test_persist_team_analysis_report(tmp_path, monkeypatch):
-    monkeypatch.setattr(repo, "init_app_db", lambda: None)
-
     captured: dict = {}
 
     def _fake_create_report(symbol, exchange, **kwargs):

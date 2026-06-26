@@ -15,7 +15,7 @@ def _insert_signal_row(*, vt_symbol: str, updated_at: str) -> None:
             """
             INSERT INTO watchlist_signal_cache (
                 vt_symbol, config_key, bar_as_of, payload, updated_at
-            ) VALUES (?, ?, ?, ?, ?)
+            ) VALUES (%s, %s, %s, %s, %s)
             ON CONFLICT (vt_symbol, config_key, bar_as_of) DO UPDATE SET
                 payload = excluded.payload,
                 updated_at = excluded.updated_at

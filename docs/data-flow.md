@@ -8,7 +8,7 @@ zak 数据按四档触发，避免启动时全市场重算。
 
 | 档位 | 时机 | 原则 |
 |------|------|------|
-| 冷启动 | 打开 App | 只读本地 SQLite / 磁盘缓存 |
+| 冷启动 | 打开 App | 只读 PG / Redis；不触发全市场重算 |
 | 打开页面 | Tab activate | Worker + 页内 Timer |
 | 定时任务 | Scheduler / CLI | 批量写 Redis / 缓存 |
 | 用户操作 | 按钮 / AI | 即时执行 |

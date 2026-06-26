@@ -45,7 +45,7 @@ def get_cached_hint(
     now = datetime.now().isoformat(timespec="seconds")
     with _connect() as conn:
         row = conn.execute(
-            "SELECT hint FROM radar_ai_hint_cache WHERE cache_key = ? AND expires_at > ?",
+            "SELECT hint FROM radar_ai_hint_cache WHERE cache_key = %s AND expires_at > %s",
             (key, now),
         ).fetchone()
     if row is None:
@@ -72,7 +72,7 @@ def put_cached_hint(
             """
             INSERT INTO radar_ai_hint_cache (
                 cache_key, card_id, variant, fingerprint, hint, updated_at, expires_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT(cache_key) DO UPDATE SET
                 hint = excluded.hint,
                 updated_at = excluded.updated_at,

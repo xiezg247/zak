@@ -9,7 +9,6 @@ from vnpy_ashare.commands.screener import print_screen_rows
 from vnpy_ashare.screener.recipe.recipe import list_recipe_catalog, resolve_recipe
 from vnpy_ashare.screener.recipe.recipe_runner import run_recipe
 from vnpy_ashare.screener.run.export import export_rows_to_csv
-from vnpy_ashare.storage.connection import init_app_db
 
 
 def _cmd_recipe_list(_args: argparse.Namespace) -> int:
@@ -20,7 +19,6 @@ def _cmd_recipe_list(_args: argparse.Namespace) -> int:
 
 
 def _cmd_recipe_run(args: argparse.Namespace) -> int:
-    init_app_db()
     recipe = resolve_recipe(args.recipe_id)
     if recipe is None:
         print(f"未知配方：{args.recipe_id}", file=sys.stderr)

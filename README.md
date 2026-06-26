@@ -71,20 +71,21 @@ class MyStrategy(AShareTemplate):
 
 ## 数据存储
 
-业务元数据、AI 对话、Cache **仅 PostgreSQL**（`DATABASE_URL` / `APP_DATABASE_DRIVER=postgresql`）。K 线仍由 VeighNa `DATABASE_NAME` 切换（`sqlite` 本地 / `postgresql` 远程）。
+**仅 PostgreSQL**：业务元数据、AI 对话、Cache 与 K 线共用同一 PG 实例（`DATABASE_URL` + VeighNa `DATABASE_NAME=postgresql`，schema 分离）。
 
 | 存储 | 数据类型 |
 |------|----------|
-| PostgreSQL `app` / `chat` / `auth` / `cache` | 自选、选股、笔记、AI 会话、计算缓存等 |
-| `database.db` 或 PG `public` | K 线（VeighNa） |
+| PostgreSQL `app` / `chat` / `auth` / `cache` / `system` | 自选、选股、笔记、AI 会话、计算缓存、调度配置等 |
+| PostgreSQL `public` | K 线（VeighNa `dbbardata` 等） |
 | QSettings | 纯 UI 偏好（本机） |
 
-首次配置：`cli.py db upgrade`。详见 [docs/multi-user-pg.md](docs/multi-user-pg.md)。
+首次配置：`cli.py db upgrade`。多人共用见 [docs/multi-user-pg.md](docs/multi-user-pg.md)。
 
-### 切换为 PostgreSQL
+### PostgreSQL 配置
 
 ```bash
 # 1. 修改 .env
+DATABASE_URL=postgresql://zak:zak@localhost:5432/zak
 DATABASE_NAME=postgresql
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
@@ -98,7 +99,8 @@ uv sync
 # 3. 启动 PostgreSQL（本地 Docker）
 bash bin/start-postgresql.sh
 
-# 4. 同步配置并重启 GUI
+# 4. 初始化 schema 并同步 GUI 配置
+uv run python cli.py db upgrade
 # 在设置页点「从 .env 同步」，或删除 ~/.vntrader/vt_setting.json 后重启
 ```
 

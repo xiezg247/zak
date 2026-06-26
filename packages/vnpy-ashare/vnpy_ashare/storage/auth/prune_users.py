@@ -4,11 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from vnpy_ashare.storage.auth.migrate import PRIVATE_TABLES
+from vnpy_ashare.storage.auth.private_tables import PRIVATE_TABLES
 from vnpy_ashare.storage.auth.users import (
     _invalidate_default_user_cache,
     create_user,
-    ensure_users_schema,
     get_or_create_default_user_id,
     users_table,
 )
@@ -42,7 +41,7 @@ class PruneUsersReport:
 def _list_non_default_users(conn) -> list[tuple[str, str]]:
     table = users_table()
     rows = conn.execute(
-        f"SELECT id, username FROM {table} WHERE username != ?",
+        f"SELECT id, username FROM {table} WHERE username != %s",
         (DEFAULT_USERNAME,),
     ).fetchall()
     return [(str(row["id"]), str(row["username"])) for row in rows]
@@ -52,7 +51,7 @@ def _delete_user_scoped_rows(conn, *, table: str, user_ids: list[str], schema: s
     if not user_ids:
         return
     qualified = f"{schema}.{table}"
-    placeholders = ", ".join("?" for _ in user_ids)
+    placeholders = ", ".join("%s" for _ in user_ids)
     conn.execute(
         f"DELETE FROM {qualified} WHERE user_id IN ({placeholders})",
         tuple(user_ids),
@@ -67,7 +66,7 @@ def _prune_user_data(conn, user_ids: list[str], tables: tuple[str, ...], schema:
 def _ensure_default_user(conn) -> str:
     table = users_table()
     row = conn.execute(
-        f"SELECT id FROM {table} WHERE username = ?",
+        f"SELECT id FROM {table} WHERE username = %s",
         (DEFAULT_USERNAME,),
     ).fetchone()
     if row is not None:
@@ -78,10 +77,9 @@ def _ensure_default_user(conn) -> str:
 
 def prune_to_default_user() -> PruneUsersReport:
     """删除 default 以外所有用户及其 app/chat/auth 私有数据。"""
-    from vnpy_ashare.storage.connection import connect, init_app_db
+    from vnpy_ashare.storage.connection import connect
     from vnpy_common.storage.session import chat_session
 
-    init_app_db()
     _invalidate_default_user_cache()
 
     other_ids: list[str] = []
@@ -90,7 +88,6 @@ def prune_to_default_user() -> PruneUsersReport:
 
     with connect() as conn:
         with conn.transaction():
-            ensure_users_schema(conn)
             default_id = _ensure_default_user(conn)
             others = _list_non_default_users(conn)
             other_ids = [user_id for user_id, _ in others]
@@ -100,7 +97,7 @@ def prune_to_default_user() -> PruneUsersReport:
                 _prune_user_data(conn, other_ids, _APP_USER_TABLES, "app")
                 _delete_user_scoped_rows(conn, table="user_preferences", user_ids=other_ids, schema="auth")
                 table = users_table()
-                placeholders = ", ".join("?" for _ in other_ids)
+                placeholders = ", ".join("%s" for _ in other_ids)
                 conn.execute(
                     f"DELETE FROM {table} WHERE id IN ({placeholders})",
                     tuple(other_ids),

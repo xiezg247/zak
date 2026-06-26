@@ -1,6 +1,6 @@
 # 数据设计
 
-元数据与行情**分离**；业务库由 **Alembic + PostgreSQL** 管理（`app` / `chat` / `auth` / `cache` / `system` schema）。AI 运行时态在 `context_store`（内存）。
+元数据与行情**分离**；持久化由 **Alembic + PostgreSQL** 管理（`app` / `chat` / `auth` / `cache` / `system` / `public` schema）。AI 运行时态在 `context_store`（内存）。
 
 ---
 
@@ -8,21 +8,20 @@
 
 | 存储 | 位置 | 内容 |
 |------|------|------|
-| **PostgreSQL** | `.env` → `DATABASE_URL` | 自选、笔记、选股、AI 会话、Cache、用户偏好等 |
-| **K 线 DB** | `database.db`（SQLite）或 PG `public` | VeighNa `dbbardata` 等；`DATABASE_NAME` 切换 |
+| **PostgreSQL** | `.env` → `DATABASE_URL` | 自选、笔记、选股、AI 会话、Cache、用户偏好、K 线 |
 | **QSettings** | 本机 OS 级 | 纯 UI 偏好 |
 | **Redis** | `.env` | 行情快照、涨幅榜 |
 
 ```text
-GUI → Service → Repository → PostgreSQL（业务）
-K 线 → VeighNa → database.db 或 PG public
+GUI → Service → Repository → PostgreSQL（app / chat / auth / cache / system）
+K 线 → VeighNa → PostgreSQL public（dbbardata 等）
 ```
 
-入口：`storage/connection.py`、`vnpy_common/storage/session.py`；迁移 `cli.py db upgrade`。
+入口：`storage/connection.py`、`vnpy_common/storage/session.py`；schema 升级 `cli.py db upgrade`。
 
 ---
 
-## App DB 表（`zak.db`）
+## App schema 表（`app.*`）
 
 | 表 | 文档 |
 |----|------|

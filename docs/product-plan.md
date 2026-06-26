@@ -56,8 +56,8 @@
 |------|------|------|
 | 实时/历史行情、日分钟 K | TickFlow | 看盘、下载、回测 |
 | 财务、资金流、估值 | Tushare | 选股因子 |
-| 自选、全 A、回测/选股历史 | `~/.vntrader/zak.db` | 元数据（固定 SQLite） |
-| 本地 K 线 | `database.db` 或 PostgreSQL | 回测、本地页 |
+| 自选、全 A、回测/选股历史 | PostgreSQL `app` | 业务元数据 |
+| K 线 | PostgreSQL `public` | 回测、本地页 |
 | 涨幅榜快照 | Redis | 市场页 |
 
 AI 与选股不编造行情；工具路由见 [ai-data-routing.md](./ai-data-routing.md)。

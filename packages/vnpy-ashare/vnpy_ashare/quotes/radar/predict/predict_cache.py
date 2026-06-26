@@ -39,7 +39,7 @@ def get_predict_cache(variant: str) -> PredictCacheEntry | None:
         return None
     with _connect() as conn:
         row = conn.execute(
-            "SELECT * FROM radar_predict_cache WHERE variant = ?",
+            "SELECT * FROM radar_predict_cache WHERE variant = %s",
             (text,),
         ).fetchone()
     if row is None:
@@ -89,7 +89,7 @@ def put_predict_cache(
             INSERT INTO radar_predict_cache (
                 variant, rows_json, scanned_total, excluded_count,
                 prefilter_total, refined_total, kline_missing, model_label, computed_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT(variant) DO UPDATE SET
                 rows_json = excluded.rows_json,
                 scanned_total = excluded.scanned_total,

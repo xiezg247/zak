@@ -71,7 +71,7 @@ def get_horizon_cache(variant: str, *, strategy_key: str = "") -> HorizonCacheEn
     storage_key = horizon_cache_storage_key(text, key) if key else text
     with _connect() as conn:
         row = conn.execute(
-            "SELECT * FROM radar_horizon_cache WHERE variant = ?",
+            "SELECT * FROM radar_horizon_cache WHERE variant = %s",
             (storage_key,),
         ).fetchone()
     if row is None:
@@ -109,7 +109,7 @@ def put_horizon_cache(
                 variant, rows_json, scanned_total, excluded_count,
                 prefilter_total, refined_total, kline_missing,
                 strategy_key, computed_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT(variant) DO UPDATE SET
                 rows_json = excluded.rows_json,
                 scanned_total = excluded.scanned_total,

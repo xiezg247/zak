@@ -20,7 +20,7 @@ class BaseRepository:
     table: Table
 
     def prepare(self) -> None:
-        """每次开连接前调用（如 init_app_db）。"""
+        """子类可覆盖：开连接前的准备步骤。"""
 
     @contextmanager
     def session(self) -> Iterator[DbConnection]:

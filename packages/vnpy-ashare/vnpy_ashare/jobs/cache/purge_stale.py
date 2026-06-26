@@ -29,22 +29,22 @@ def purge_stale_cache_job() -> JobResult:
 
     deleted: dict[str, int] = {}
     with cache_session("", "") as conn:
-        conn.execute("DELETE FROM radar_ai_hint_cache WHERE expires_at <= ?", (now_text,))
+        conn.execute("DELETE FROM radar_ai_hint_cache WHERE expires_at <= %s", (now_text,))
         deleted["radar_ai_hint"] = conn.last_rowcount
 
-        conn.execute("DELETE FROM sector_flow_outlook_llm_cache WHERE expires_at <= ?", (now_text,))
+        conn.execute("DELETE FROM sector_flow_outlook_llm_cache WHERE expires_at <= %s", (now_text,))
         deleted["sector_flow_outlook_llm"] = conn.last_rowcount
 
-        conn.execute("DELETE FROM watchlist_signal_cache WHERE updated_at < ?", (signal_cutoff,))
+        conn.execute("DELETE FROM watchlist_signal_cache WHERE updated_at < %s", (signal_cutoff,))
         deleted["watchlist_signal"] = conn.last_rowcount
 
-        conn.execute("DELETE FROM watchlist_position_cache WHERE updated_at < ?", (position_cutoff,))
+        conn.execute("DELETE FROM watchlist_position_cache WHERE updated_at < %s", (position_cutoff,))
         deleted["watchlist_position"] = conn.last_rowcount
 
-        conn.execute("DELETE FROM radar_predict_cache WHERE computed_at < ?", (radar_snapshot_cutoff,))
+        conn.execute("DELETE FROM radar_predict_cache WHERE computed_at < %s", (radar_snapshot_cutoff,))
         deleted["radar_predict"] = conn.last_rowcount
 
-        conn.execute("DELETE FROM radar_horizon_cache WHERE computed_at < ?", (radar_snapshot_cutoff,))
+        conn.execute("DELETE FROM radar_horizon_cache WHERE computed_at < %s", (radar_snapshot_cutoff,))
         deleted["radar_horizon"] = conn.last_rowcount
 
     total = sum(deleted.values())

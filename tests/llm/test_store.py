@@ -8,7 +8,6 @@ import uuid
 
 import vnpy_llm.chat.store as store
 from vnpy_ashare.storage.auth.users import get_or_create_default_user_id
-from vnpy_ashare.storage.connection import init_app_db
 from vnpy_common.auth.context import clear_current_user, set_current_user
 from vnpy_common.storage.config import force_database_url, reset_storage_config
 
@@ -20,7 +19,6 @@ class TestChatRepository(unittest.TestCase):
             self.skipTest("需要 DATABASE_URL")
         reset_storage_config()
         force_database_url(url)
-        init_app_db()
         set_current_user(get_or_create_default_user_id())
         self.chat_store = store.ChatRepository()
 

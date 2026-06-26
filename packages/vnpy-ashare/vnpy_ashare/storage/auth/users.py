@@ -24,12 +24,6 @@ def users_table() -> str:
 def _now_iso() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-
-def ensure_users_schema(conn) -> None:
-    """Alembic 已建表；保留空实现供启动流程等调用。"""
-    _ = conn
-
-
 def create_user(
     conn,
     *,
@@ -48,7 +42,7 @@ def create_user(
     conn.execute(
         f"""
         INSERT INTO {table} (id, username, display_name, password_hash, is_active, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
         """,
         (
             user_id,
@@ -67,7 +61,7 @@ def authenticate(conn, *, username: str, password: str) -> UserRecord | None:
     name = username.strip()
     table = users_table()
     row = conn.execute(
-        f"SELECT id, username, display_name, password_hash FROM {table} WHERE username = ? AND is_active = true",
+        f"SELECT id, username, display_name, password_hash FROM {table} WHERE username = %s AND is_active = true",
         (name,),
     ).fetchone()
     if row is None:
@@ -95,10 +89,9 @@ def get_or_create_default_user_id() -> str:
     from vnpy_ashare.storage.connection import connect
 
     with connect() as conn:
-        ensure_users_schema(conn)
         table = users_table()
         row = conn.execute(
-            f"SELECT id FROM {table} WHERE username = ?",
+            f"SELECT id FROM {table} WHERE username = %s",
             (DEFAULT_USERNAME,),
         ).fetchone()
         if row is not None:
@@ -111,7 +104,7 @@ def get_or_create_default_user_id() -> str:
             if not _is_unique_violation(exc):
                 raise
             row = conn.execute(
-                f"SELECT id FROM {table} WHERE username = ?",
+                f"SELECT id FROM {table} WHERE username = %s",
                 (DEFAULT_USERNAME,),
             ).fetchone()
             if row is None:
@@ -132,11 +125,9 @@ def _is_unique_violation(exc: BaseException) -> bool:
 
 
 def list_active_users() -> list[UserRecord]:
-    from vnpy_ashare.storage.connection import connect, init_app_db
+    from vnpy_ashare.storage.connection import connect
 
-    init_app_db()
     with connect() as conn:
-        ensure_users_schema(conn)
         return list_users(conn)
 
 
@@ -144,5 +135,4 @@ def login(username: str, password: str) -> UserRecord | None:
     from vnpy_ashare.storage.connection import connect
 
     with connect() as conn:
-        ensure_users_schema(conn)
         return authenticate(conn, username=username, password=password)

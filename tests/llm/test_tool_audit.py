@@ -7,7 +7,6 @@ import unittest
 
 import vnpy_llm.tools.audit as tool_audit
 from vnpy_ashare.storage.auth.users import get_or_create_default_user_id
-from vnpy_ashare.storage.connection import init_app_db
 from vnpy_common.auth.context import clear_current_user, set_current_user
 from vnpy_common.storage.config import force_database_url, reset_storage_config
 
@@ -19,7 +18,6 @@ class ToolAuditTests(unittest.TestCase):
             self.skipTest("需要 DATABASE_URL")
         reset_storage_config()
         force_database_url(url)
-        init_app_db()
         set_current_user(get_or_create_default_user_id())
 
     def tearDown(self) -> None:

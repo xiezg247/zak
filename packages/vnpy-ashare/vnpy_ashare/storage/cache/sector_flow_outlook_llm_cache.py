@@ -106,7 +106,7 @@ def get_outlook_llm_cache(
     now = __import__("datetime").datetime.now().isoformat(timespec="seconds")
     with _connect() as conn:
         row = conn.execute(
-            "SELECT * FROM sector_flow_outlook_llm_cache WHERE cache_key = ? AND expires_at > ?",
+            "SELECT * FROM sector_flow_outlook_llm_cache WHERE cache_key = %s AND expires_at > %s",
             (key, now),
         ).fetchone()
     if row is None:
@@ -166,7 +166,7 @@ def put_outlook_llm_cache(
             INSERT INTO sector_flow_outlook_llm_cache (
                 cache_key, sector_kind, strategy_key, fingerprint,
                 forward_dates_json, rows_json, updated_at, expires_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT(cache_key) DO UPDATE SET
                 forward_dates_json = excluded.forward_dates_json,
                 rows_json = excluded.rows_json,

@@ -14,7 +14,7 @@ def test_cache_session_roundtrip(pg_storage) -> None:
     );
     """
     with cache_db_session(schema) as conn:
-        conn.execute("INSERT INTO _cache_session_smoke (value) VALUES (?)", ("ok",))
+        conn.execute("INSERT INTO _cache_session_smoke (value) VALUES (%s)", ("ok",))
     with cache_db_session(schema) as conn:
         row = conn.execute("SELECT value FROM _cache_session_smoke ORDER BY id DESC LIMIT 1").fetchone()
     assert row is not None

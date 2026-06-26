@@ -42,7 +42,7 @@ def dump_json(
     exclude_none: bool = False,
     exclude: Set[str] | Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """``model_dump(mode=\"json\")`` 统一入口（SQLite / HTTP / Skill JSON）。"""
+    """``model_dump(mode=\"json\")`` 统一入口（PG / HTTP / Skill JSON）。"""
     kwargs: dict[str, Any] = {
         "mode": "json",
         "exclude_defaults": exclude_defaults,

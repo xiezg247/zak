@@ -12,7 +12,7 @@ from vnpy_ashare.quotes.market.emotion_ladder_continuity import (
     compute_ladder_continuity,
     is_limit_down_change,
 )
-from vnpy_ashare.storage.connection import connect, init_app_db
+from vnpy_ashare.storage.connection import connect
 from vnpy_ashare.storage.repositories.emotion_ladder_daily import (
     load_ladder_snapshot,
     save_ladder_snapshot,
@@ -21,7 +21,6 @@ from vnpy_ashare.storage.repositories.emotion_ladder_daily import (
 
 class EmotionLadderContinuityTest(unittest.TestCase):
     def setUp(self) -> None:
-        init_app_db()
         with connect() as conn:
             conn.execute("DELETE FROM emotion_limit_ladder_daily")
             conn.execute("DELETE FROM meta WHERE key LIKE 'emotion_ladder_counts:%'")

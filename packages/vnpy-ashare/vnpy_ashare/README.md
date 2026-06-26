@@ -49,7 +49,7 @@ vnpy_ashare/
 | `ai/context/store.py` | 终端 AI 共享内存态 |
 | `data/bar_health.py` | 本地 K 线健康检测 |
 
-元数据默认在 `~/.vntrader/zak.db`；CSV 备份见 `cli.py meta export`。
+元数据存 PostgreSQL（`DATABASE_URL`）；CSV 备份见 `cli.py meta export`。
 
 完整文档见 [docs/README.md](../../../docs/README.md)。
 
@@ -67,7 +67,7 @@ vnpy_ashare/
 | `services/stock/` | 个股分析子模块 | `profile`、`events`、`context` |
 | `config/preferences/` | 用户偏好（QSettings） | `watchlist_signal`、`watchlist_position` |
 | `ui/features/` | 跨页 UI 能力 | `stock_analysis`（看盘 / 选股 / 雷达入口） |
-| `storage/repositories/` | zak.db 表读写 | `watchlist`、`universe`、`financial`、`valuation`、`disclosure`、`trade_calendar`、`symbols` |
+| `storage/repositories/` | PG `app` schema 表读写 | `watchlist`、`universe`、`financial`、`valuation`、`disclosure`、`trade_calendar`、`symbols` |
 | `vnpy_common`（独立包） | 跨 App 基础设施 | paths、UI 主题 |
 
 符号互转统一从 `domain.symbols` 导入；数值解析用 `domain.numbers.safe_float`。

@@ -17,7 +17,6 @@ from vnpy_ashare.screener.hard_filters import (
     recipe_min_amount_yuan,
     recipe_min_total_mv_wan,
 )
-from vnpy_ashare.storage.connection import init_app_db
 
 
 class HardFilterPrefsTests(unittest.TestCase):
@@ -29,7 +28,6 @@ class HardFilterPrefsTests(unittest.TestCase):
             self.skipTest("需要 DATABASE_URL")
         reset_storage_config()
         force_database_url(url)
-        init_app_db()
 
     def tearDown(self) -> None:
         from vnpy_common.storage.config import reset_storage_config

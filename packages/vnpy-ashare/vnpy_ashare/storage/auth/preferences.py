@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any, TypeVar
 
 from vnpy_ashare.storage.auth.scope import get_user_id
-from vnpy_ashare.storage.connection import connect, init_app_db
+from vnpy_ashare.storage.connection import connect
 
 T = TypeVar("T")
 
@@ -16,11 +16,6 @@ _PREFERENCES_TABLE = "auth.user_preferences"
 
 def preferences_table() -> str:
     return _PREFERENCES_TABLE
-
-
-def ensure_user_preferences_schema(conn) -> None:
-    _ = conn
-
 
 def _now_iso() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -47,12 +42,11 @@ def get_pref(namespace: str, key: str, default: T | None = None) -> T | Any | No
     pref_key = key.strip()
     if not ns or not pref_key:
         return default
-    init_app_db()
     uid = get_user_id()
     table = preferences_table()
     with connect() as conn:
         row = conn.execute(
-            f"SELECT value_json FROM {table} WHERE user_id = ? AND namespace = ? AND key = ?",
+            f"SELECT value_json FROM {table} WHERE user_id = %s AND namespace = %s AND key = %s",
             (uid, ns, pref_key),
         ).fetchone()
     if row is None:
@@ -69,7 +63,6 @@ def set_pref(namespace: str, key: str, value: Any) -> None:
     pref_key = key.strip()
     if not ns or not pref_key:
         return
-    init_app_db()
     uid = get_user_id()
     now = _now_iso()
     payload = _encode_value(value)
@@ -78,7 +71,7 @@ def set_pref(namespace: str, key: str, value: Any) -> None:
         conn.execute(
             f"""
             INSERT INTO {table} (user_id, namespace, key, value_json, updated_at)
-            VALUES (?, ?, ?, ?::jsonb, ?)
+            VALUES (%s, %s, %s, %s::jsonb, %s)
             ON CONFLICT (user_id, namespace, key) DO UPDATE SET
                 value_json = EXCLUDED.value_json,
                 updated_at = EXCLUDED.updated_at
@@ -102,10 +95,9 @@ def batch_get_prefs(keys: list[tuple[str, str]]) -> dict[tuple[str, str], Any]:
     if not valid:
         return {}
 
-    init_app_db()
     uid = get_user_id()
     table = preferences_table()
-    placeholders = ",".join("(?, ?)" for _ in valid)
+    placeholders = ",".join("(%s, %s)" for _ in valid)
     flat_params: list[str] = []
     for ns, pref_key in valid:
         flat_params.append(ns)
@@ -113,7 +105,7 @@ def batch_get_prefs(keys: list[tuple[str, str]]) -> dict[tuple[str, str], Any]:
 
     with connect() as conn:
         rows = conn.execute(
-            f"SELECT namespace, key, value_json FROM {table} WHERE user_id = ? AND (namespace, key) IN ({placeholders})",
+            f"SELECT namespace, key, value_json FROM {table} WHERE user_id = %s AND (namespace, key) IN ({placeholders})",
             (uid, *flat_params),
         ).fetchall()
 
@@ -128,12 +120,11 @@ def batch_get_prefs(keys: list[tuple[str, str]]) -> dict[tuple[str, str], Any]:
 
 
 def delete_pref(namespace: str, key: str) -> bool:
-    init_app_db()
     uid = get_user_id()
     table = preferences_table()
     with connect() as conn:
         cursor = conn.execute(
-            f"DELETE FROM {table} WHERE user_id = ? AND namespace = ? AND key = ?",
+            f"DELETE FROM {table} WHERE user_id = %s AND namespace = %s AND key = %s",
             (uid, namespace.strip(), key.strip()),
         )
         return bool(cursor.rowcount > 0)
@@ -150,10 +141,9 @@ def delete_prefs(keys: list[tuple[str, str]]) -> int:
     if not valid:
         return 0
 
-    init_app_db()
     uid = get_user_id()
     table = preferences_table()
-    placeholders = ",".join("(?, ?)" for _ in valid)
+    placeholders = ",".join("(%s, %s)" for _ in valid)
     flat_params: list[str] = []
     for ns, pref_key in valid:
         flat_params.append(ns)
@@ -161,7 +151,7 @@ def delete_prefs(keys: list[tuple[str, str]]) -> int:
 
     with connect() as conn:
         cursor = conn.execute(
-            f"DELETE FROM {table} WHERE user_id = ? AND (namespace, key) IN ({placeholders})",
+            f"DELETE FROM {table} WHERE user_id = %s AND (namespace, key) IN ({placeholders})",
             (uid, *flat_params),
         )
         return int(cursor.rowcount or 0)

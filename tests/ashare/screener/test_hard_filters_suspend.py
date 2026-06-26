@@ -26,7 +26,7 @@ def _insert_suspend(symbol: str, exchange: str, cal_date: date) -> None:
         conn.execute(
             """
             INSERT INTO symbol_suspend_days(symbol, exchange, cal_date, suspend_type)
-            VALUES (?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s)
             """,
             (symbol, exchange, cal_date.isoformat(), "S"),
         )

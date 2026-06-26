@@ -17,7 +17,7 @@ from vnpy_ashare.screener.hard_filter_prefs import (
 )
 from vnpy_ashare.storage.auth.preferences import get_pref, set_pref
 from vnpy_ashare.storage.auth.users import create_user
-from vnpy_ashare.storage.connection import connect, init_app_db
+from vnpy_ashare.storage.connection import connect
 from vnpy_common.auth.context import clear_current_user, set_current_user
 from vnpy_common.storage.config import reset_storage_config
 
@@ -76,7 +76,6 @@ class TestUserPreferencesIsolation(unittest.TestCase):
             self.skipTest("需要 DATABASE_URL")
         reset_storage_config()
         force_database_url(url)
-        init_app_db()
         suffix = uuid.uuid4().hex[:8]
         with connect() as conn:
             alice = create_user(conn, username=f"alice_{suffix}", password="secret")

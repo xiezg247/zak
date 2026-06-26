@@ -16,7 +16,7 @@ PositionSource = Literal["manual", "gateway", "paper"]
 
 
 class PositionRecord(FrozenModel):
-    """zak.db 持仓行（投研记账）。"""
+    """PG `app.watchlist_positions` 持仓行（投研记账）。"""
 
     symbol: str = Field(description="六位股票代码")
     exchange: str = Field(description="交易所代码")

@@ -91,7 +91,7 @@ class UniverseLoadWorker(QtCore.QThread):
 
 
 class UniverseSyncWorker(QtCore.QThread):
-    """同步 A 股列表到本地 SQLite。"""
+    """同步 A 股列表到 PostgreSQL app.universe。"""
 
     finished = QtCore.Signal(str)
     failed = QtCore.Signal(str)

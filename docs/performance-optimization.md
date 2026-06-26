@@ -1,7 +1,7 @@
 # 性能优化方案
 
 > 面向 **极致短线** 场景的 zak 全链路性能规划。  
-> 前提：**仅 PostgreSQL** 作为持久化存储（业务 `app`/`chat`/`auth`/`cache`/`system` + K 线 `public`），**不再支持 SQLite**。  
+> 前提：**仅 PostgreSQL** 作为持久化存储（业务 `app`/`chat`/`auth`/`cache`/`system` + K 线 `public`）。  
 > 相关：[架构说明](./architecture.md) · [数据设计](./data-design.md) · [数据流](./data-flow.md) · [多人 PG](./multi-user-pg.md)
 
 ---
@@ -69,8 +69,6 @@
 | 可重建缓存 | PG `cache.*` | 雷达预测、信号磁盘缓存、LLM 中间结果 |
 | 运行时态 | 内存 `context_store` | AI 上下文；不持久化 |
 | UI 偏好 | QSettings | 列宽、窗口几何；与性能无关 |
-
-**废弃路径（优化方案不再考虑）**：`~/.vntrader/zak.db`、`database.db`、独立 `*.db` 磁盘缓存、`DATABASE_NAME=sqlite`。
 
 客户端启动：
 
@@ -228,11 +226,6 @@ TickFlow → collect_quotes → Redis (~5k HASH + 10× ZSET 全量重建)
 | `cache.*` | 可重建；大 JSON 用 `JSONB` + GIN（按需）；设 TTL 列定期清理 |
 | `auth.user_preferences` | 登录后整包加载；写时 invalidate |
 
-#### 5.3.4 不再使用的 SQLite 优化项
-
-以下**不纳入**本方案：WAL、`PRAGMA cache_size`、单机文件锁重试、`.db` 磁盘 cache 文件。  
-原 `sqlite_cache_session` / 独立 `*.db` 均已迁入 PG `cache` schema（见 [多人 PG §3.4](./multi-user-pg.md#34-cache-schema-表原独立-db-文件)）。
-
 ### 5.4 UI 层（PyQt）
 
 **目标**：主线程无 >50ms 阻塞。
@@ -389,7 +382,6 @@ ZAK_RANK_INCREMENTAL=1
 
 **明确不做（YAGNI）**：
 
-- 恢复或兼容 SQLite 路径  
 - 全面 PyQt → Web 重写  
 - Phase 1 引入 Rust  
 - 无度量的大范围重构  

@@ -31,7 +31,7 @@ def test_pg_connect_app_roundtrip(pg_storage) -> None:
             )
             """
         )
-        conn.execute("INSERT INTO _pg_only_smoke (value) VALUES (?)", ("ok",))
+        conn.execute("INSERT INTO _pg_only_smoke (value) VALUES (%s)", ("ok",))
     with connect_app() as conn:
         row = conn.execute("SELECT value FROM _pg_only_smoke ORDER BY id DESC LIMIT 1").fetchone()
     assert row is not None
@@ -46,7 +46,7 @@ def test_pg_select_string_id_does_not_break(pg_storage) -> None:
         assert isinstance(row["id"], str)
 
 
-def test_pg_placeholder_compat(pg_storage) -> None:
+def test_pg_positional_params(pg_storage) -> None:
     _ = pg_storage
     with connect_app() as conn:
         conn.execute(
@@ -57,7 +57,7 @@ def test_pg_placeholder_compat(pg_storage) -> None:
             )
             """
         )
-        conn.execute("INSERT INTO _pg_placeholder_smoke (k, v) VALUES (?, ?) ON CONFLICT (k) DO NOTHING", ("a", "1"))
-        rows = conn.execute("SELECT k, v FROM _pg_placeholder_smoke WHERE k = ?", ("a",)).fetchall()
+        conn.execute("INSERT INTO _pg_placeholder_smoke (k, v) VALUES (%s, %s) ON CONFLICT (k) DO NOTHING", ("a", "1"))
+        rows = conn.execute("SELECT k, v FROM _pg_placeholder_smoke WHERE k = %s", ("a",)).fetchall()
     assert len(rows) == 1
     assert rows[0]["v"] == "1"

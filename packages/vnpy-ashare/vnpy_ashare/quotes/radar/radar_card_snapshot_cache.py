@@ -70,7 +70,7 @@ def peek_radar_card_snapshot(
     ttl = card_snapshot_max_age_sec(text_id) if max_age_sec is None else max_age_sec
     with _connect() as conn:
         row = conn.execute(
-            "SELECT payload_json, computed_at FROM radar_card_snapshot WHERE card_id = ? AND variant_key = ?",
+            "SELECT payload_json, computed_at FROM radar_card_snapshot WHERE card_id = %s AND variant_key = %s",
             (text_id, key),
         ).fetchone()
     if row is None:
@@ -107,7 +107,7 @@ def put_radar_card_snapshot(
         conn.execute(
             """
             INSERT INTO radar_card_snapshot (card_id, variant_key, payload_json, computed_at)
-            VALUES (?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s)
             ON CONFLICT(card_id, variant_key) DO UPDATE SET
                 payload_json = excluded.payload_json,
                 computed_at = excluded.computed_at

@@ -308,7 +308,7 @@ def enrich_radar_rows(rows: tuple[RadarRow, ...]) -> tuple[RadarRow, ...]:
 
 
 def radar_row_to_cache_dict(row: RadarRow) -> dict[str, Any]:
-    """RadarRow → SQLite 缓存 JSON 条目。"""
+    """RadarRow → cache schema JSON 条目。"""
     payload: dict[str, Any] = {
         "vt_symbol": row.vt_symbol,
         "name": row.name,
@@ -333,7 +333,7 @@ def radar_row_from_cache_dict(
     quote: dict[str, Any] | None = None,
     enrich: bool = True,
 ) -> RadarRow:
-    """SQLite 缓存 JSON 条目 → RadarRow（可选合并实时行情）。"""
+    """cache schema JSON 条目 → RadarRow（可选合并实时行情）。"""
     vt_symbol = str(raw.get("vt_symbol") or "").strip()
     row = RadarRow(
         vt_symbol=vt_symbol,

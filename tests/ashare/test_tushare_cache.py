@@ -28,15 +28,18 @@ class TushareCacheTests(unittest.TestCase):
         self.assertEqual(cached, rows)
 
     def test_cache_miss_on_expired(self) -> None:
-        from vnpy_ashare.integrations.tushare.cache import _connect
+        from vnpy_ashare.storage.connection import connect
 
         stale_at = (datetime.now() - timedelta(hours=25)).isoformat(timespec="seconds")
         payload = '[{"vt_symbol": "600519.SSE"}]'
-        with _connect() as conn:
+        with connect() as conn:
             conn.execute(
                 """
                 INSERT INTO tushare_factor_cache(dataset, trade_date, fetched_at, payload)
-                VALUES (?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT (dataset, trade_date) DO UPDATE SET
+                    fetched_at = EXCLUDED.fetched_at,
+                    payload = EXCLUDED.payload
                 """,
                 (DATASET_DAILY_BASIC, "20260604", stale_at, payload),
             )

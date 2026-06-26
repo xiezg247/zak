@@ -6,7 +6,6 @@ from datetime import datetime
 
 from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.integrations.tickflow.universe import fetch_universe_items
-from vnpy_ashare.storage.connection import init_app_db
 from vnpy_ashare.storage.repositories.universe import (
     CACHE_MAX_AGE,
     count_universe,
@@ -19,7 +18,6 @@ from vnpy_ashare.storage.repositories.universe import (
 
 def sync_universe(force: bool = False) -> int:
     """从 TickFlow 同步全 A 股标的列表到 PostgreSQL，返回当前标的数量。"""
-    init_app_db()
     if not force and universe_is_fresh(CACHE_MAX_AGE):
         return count_universe()
 
@@ -32,7 +30,6 @@ def sync_universe(force: bool = False) -> int:
 
 
 def load_universe(*, allow_sync: bool = False) -> list[StockItem]:
-    init_app_db()
     if not universe_exists():
         if allow_sync:
             sync_universe()

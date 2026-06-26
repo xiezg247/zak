@@ -7,28 +7,21 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.sql.elements import ColumnElement
 
 from vnpy_ashare.storage.auth.scope import get_user_id
-from vnpy_ashare.storage.connection import init_app_db
 from vnpy_common.storage.query import user_scope
 from vnpy_common.storage.repository import BaseRepository, UserScopedRepository
 from vnpy_common.storage.tables import meta
 
 
 class AppBaseRepository(BaseRepository):
-    """绑定 app 库 init。"""
-
-    def prepare(self) -> None:
-        init_app_db()
+    """app schema Repository 基类。"""
 
 
 class AppUserScopedRepository(UserScopedRepository):
-    """绑定 app 库 init + 当前 user_id 解析。"""
+    """app schema + 当前 user_id 过滤。"""
 
     @staticmethod
     def user_id_resolver() -> str:
         return get_user_id()
-
-    def prepare(self) -> None:
-        init_app_db()
 
     def scope_table(self, table, *extras: ColumnElement[bool]) -> ColumnElement[bool]:
         """对任意带 user_id 的表生成当前用户过滤。"""
