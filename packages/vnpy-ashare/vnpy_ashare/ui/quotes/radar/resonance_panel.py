@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Literal
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.quotes.radar.radar_loaders import RadarResonanceEntry
+from vnpy_ashare.quotes.radar.loaders import RadarResonanceEntry
 from vnpy_ashare.ui.components.splitter_utils import set_splitter_sizes_quiet
 from vnpy_ashare.ui.quotes.radar.resonance_row_widget import RadarResonanceRowWidget
 from vnpy_ashare.ui.quotes.radar.section_prefs import (

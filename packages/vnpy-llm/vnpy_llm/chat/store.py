@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import uuid
-from contextlib import contextmanager
 from datetime import datetime
 
 from sqlalchemy import delete, func, insert, select, update
@@ -35,6 +34,8 @@ def _session_row_to_model(row) -> ChatSession:
 
 
 class ChatRepository(ChatUserScopedRepository):
+    """会话与消息的 CRUD；单会话最多保留 MAX_MESSAGES_PER_SESSION 条。"""
+
     table = cs
 
     def _sessions_with_counts_select(self):
@@ -142,16 +143,3 @@ class ChatRepository(ChatUserScopedRepository):
             conn.execute_stmt(delete(cm).where(self.scope_table(cm, cm.c.session_id == session_id)))
 
         self.run(_write)
-
-
-_repo = ChatRepository()
-
-
-@contextmanager
-def _connect():
-    with _repo.session() as conn:
-        yield conn
-
-
-class ChatStore(ChatRepository):
-    """会话与消息的 CRUD；单会话最多保留 MAX_MESSAGES_PER_SESSION 条。"""

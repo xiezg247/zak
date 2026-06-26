@@ -4,12 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from contextlib import contextmanager
-from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-from vnpy_common.paths import legacy_app_db_path
 from vnpy_common.storage.session import connect_app
 from vnpy_common.storage.tables import meta
 
@@ -20,9 +18,8 @@ def connect() -> Iterator:
         yield conn
 
 
-def init_app_db() -> Path:
-    """应用库路径标记（不自动 migrate；请先 uv run python cli.py db upgrade）。"""
-    return legacy_app_db_path()
+def init_app_db() -> None:
+    """确保业务库连接可用（表由 Alembic 管理，请先 ``cli.py db upgrade``）。"""
 
 
 def _set_meta(conn, key: str, value: str) -> None:

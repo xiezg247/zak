@@ -2,30 +2,15 @@
 
 from __future__ import annotations
 
-import tempfile
 import unittest
-from pathlib import Path
 from unittest.mock import patch
 
+from tests.ashare.pg_unittest import PgAppStorageTestCase
 from vnpy_ashare.services.financial import compute_snapshots, sync_symbol_financials
 from vnpy_ashare.storage.repositories.financial import list_snapshots, upsert_report
 
 
-class FinancialDerivedTests(unittest.TestCase):
-    def setUp(self) -> None:
-        self._tmpdir = tempfile.TemporaryDirectory()
-        db_path = Path(self._tmpdir.name) / "test.db"
-
-        self._patch_path = patch("vnpy_ashare.storage.connection._db_path", return_value=db_path)
-        self._patch_path.start()
-
-        from vnpy_ashare.storage.connection import init_app_db
-
-        init_app_db()
-
-    def tearDown(self) -> None:
-        self._patch_path.stop()
-        self._tmpdir.cleanup()
+class FinancialDerivedTests(PgAppStorageTestCase):
 
     def test_compute_snapshots_yoy(self) -> None:
         ts_code = "600519.SH"

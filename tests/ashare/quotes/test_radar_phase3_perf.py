@@ -12,7 +12,7 @@ from vnpy_ashare.quotes.radar.radar_leader_pool_cache import (
     peek_leader_candidate_pool,
     store_leader_candidate_pool,
 )
-from vnpy_ashare.quotes.radar.radar_loaders import load_discovery_volume_surge, load_radar_card
+from vnpy_ashare.quotes.radar.loaders import load_discovery_volume_surge, load_radar_card
 from vnpy_ashare.screener.run.run_store import ScreenerRunRecord
 
 

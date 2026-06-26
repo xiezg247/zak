@@ -28,7 +28,6 @@ ChartRefreshHandler = Callable[[ThemeTokens, list[Any]], None]
 _chart_refresh_handler: ChartRefreshHandler | None = None
 
 _SETTINGS_KEY = "shell/theme"
-_LEGACY_THEME_PROFILES = ((QSETTINGS_ORG, "ashare_ui", "ui_theme"),)
 
 
 class ThemeManager(QtCore.QObject):
@@ -68,11 +67,6 @@ class ThemeManager(QtCore.QObject):
 
     def load_saved(self) -> ThemePreference:
         raw = QtCore.QSettings(QSETTINGS_ORG, SETTINGS_APP).value(_SETTINGS_KEY)
-        if raw is None:
-            for org, app, legacy_key in _LEGACY_THEME_PROFILES:
-                raw = QtCore.QSettings(org, app).value(legacy_key)
-                if raw is not None:
-                    break
         if raw is None:
             raw = DEFAULT_THEME_PREFERENCE
         if isinstance(raw, str) and raw in THEME_PREFERENCES:

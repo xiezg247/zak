@@ -16,7 +16,7 @@ from vnpy_ashare.storage.repositories.watchlist import (
     import_watchlist_csv,
     load_watchlist_rows,
 )
-from vnpy_common.paths import BACKUP_DIR, get_app_db_path
+from vnpy_common.paths import BACKUP_DIR
 
 
 def _cmd_export(args: argparse.Namespace) -> int:
@@ -40,7 +40,7 @@ def _cmd_export(args: argparse.Namespace) -> int:
     if export_watchlist_flag and len(load_watchlist_rows()) == 0:
         print("提示: 自选池为空，可在 GUI 中维护或通过 data download-batch --watchlist 导入")
 
-    print(f"数据源: {get_app_db_path()}")
+    print("数据源: PostgreSQL")
     return 0
 
 
@@ -65,7 +65,7 @@ def _cmd_import(args: argparse.Namespace) -> int:
         count = import_universe_csv(path)
         print(f"已导入全 A 股 {count} 只 <- {path}")
 
-    print(f"写入: {get_app_db_path()}")
+    print("写入: PostgreSQL")
     return 0
 
 

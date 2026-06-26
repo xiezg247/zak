@@ -29,11 +29,11 @@ class SectorFlowOutlookStrategyPrefsTests(unittest.TestCase):
         self._save_patch.stop()
         self._load_patch.stop()
 
-    def _load_scalar(self, namespace: str, key: str, *, load_legacy, migrate_key: str = ""):
+    def _load_scalar(self, namespace: str, key: str, *, load_default):
         stored = self._store.get((namespace, key))
         if stored is not None:
             return stored
-        return load_legacy()
+        return load_default()
 
     def _save_scalar(self, namespace: str, key: str, value: str) -> None:
         self._store[(namespace, key)] = value

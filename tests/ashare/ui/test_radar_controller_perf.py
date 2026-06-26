@@ -72,7 +72,7 @@ def test_enqueue_single_card_still_uses_refresh_card(qapp: QtWidgets.QApplicatio
 
 
 def test_on_card_loaded_debounces_resonance_sync(qapp: QtWidgets.QApplication) -> None:
-    from vnpy_ashare.quotes.radar.radar_loaders import RadarCardData
+    from vnpy_ashare.quotes.radar.loaders import RadarCardData
 
     controller, board, _panel = _make_controller(qapp)
     controller.refresh_card = controller.__class__.refresh_card  # restore real method not needed
@@ -191,7 +191,7 @@ def test_schedule_sibling_prefetch_queues_other_groups(qapp: QtWidgets.QApplicat
 
 
 def test_quote_only_load_skips_resonance_panel_sync(qapp: QtWidgets.QApplication) -> None:
-    from vnpy_ashare.quotes.radar.radar_loaders import RadarCardData
+    from vnpy_ashare.quotes.radar.loaders import RadarCardData
 
     page = QtWidgets.QWidget()
     board = MagicMock()

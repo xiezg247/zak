@@ -6,7 +6,6 @@ from dataclasses import dataclass
 
 from strategies.registry import OUTLOOK_STRATEGY_CLASS_NAMES, get_strategy_meta
 from strategies.signals import STRATEGY_SIGNAL_DEFAULTS, STRATEGY_SIGNAL_RECENT_DAYS
-from vnpy_ashare.config.preferences._settings import get_settings
 from vnpy_ashare.config.preferences._user_pref import load_scalar_pref, save_scalar_pref
 from vnpy_ashare.config.preferences.watchlist_signal import (
     DEFAULT_CLASS,
@@ -14,7 +13,6 @@ from vnpy_ashare.config.preferences.watchlist_signal import (
     load_watchlist_signal_config,
 )
 
-_SETTINGS_KEY = "quotes/radar/outlook_strategy_class"
 _PREF_NAMESPACE = "radar"
 _OUTLOOK_PREF_KEY = "outlook_strategy_class"
 _SECTOR_FLOW_PREF_KEY = "sector_flow_outlook_strategy_class"
@@ -52,19 +50,11 @@ def default_outlook_strategy_class() -> str:
     return DEFAULT_CLASS
 
 
-def _load_outlook_from_qsettings() -> str:
-    raw = str(get_settings().value(_SETTINGS_KEY, "") or "").strip()
-    if not raw:
-        return default_outlook_strategy_class()
-    return _normalize_class_name(raw)
-
-
 def load_outlook_strategy_class() -> str:
     return load_scalar_pref(
         _PREF_NAMESPACE,
         _OUTLOOK_PREF_KEY,
-        load_legacy=_load_outlook_from_qsettings,
-        migrate_key=_SETTINGS_KEY,
+        load_default=default_outlook_strategy_class,
     )
 
 
@@ -97,14 +87,6 @@ def outlook_signal_recent_days(class_name: str | None = None) -> int:
     return int(STRATEGY_SIGNAL_RECENT_DAYS.get(resolved, STRATEGY_SIGNAL_RECENT_DAYS[DEFAULT_CLASS]))
 
 
-_SECTOR_FLOW_OUTLOOK_SETTINGS_KEY = "quotes/sector_flow/outlook_strategy_class"
-
-
-def _load_sector_flow_outlook_from_qsettings() -> str:
-    raw = str(get_settings().value(_SECTOR_FLOW_OUTLOOK_SETTINGS_KEY, "") or "").strip()
-    if not raw:
-        return load_outlook_strategy_class()
-    return _normalize_class_name(raw)
 
 
 def load_sector_flow_outlook_strategy_class() -> str:
@@ -112,8 +94,7 @@ def load_sector_flow_outlook_strategy_class() -> str:
     return load_scalar_pref(
         _PREF_NAMESPACE,
         _SECTOR_FLOW_PREF_KEY,
-        load_legacy=_load_sector_flow_outlook_from_qsettings,
-        migrate_key=_SECTOR_FLOW_OUTLOOK_SETTINGS_KEY,
+        load_default=load_outlook_strategy_class,
     )
 
 

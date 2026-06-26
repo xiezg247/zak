@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from vnpy_ashare.quotes.core.cache_ttl import TtlCache
 
 if TYPE_CHECKING:
-    from vnpy_ashare.quotes.radar.radar_loaders import RadarCardData
+    from vnpy_ashare.quotes.radar.loaders import RadarCardData
 
 _INTRADAY_TTL_SEC = 60.0
 _OFF_SESSION_TTL_SEC = 86400.0

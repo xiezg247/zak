@@ -10,21 +10,10 @@ from vnpy_ashare.storage.repositories.watchlist_repair import (
 )
 
 
-def test_resolve_name_prefers_legacy() -> None:
-    resolved = _resolve_name(
-        "601138",
-        Exchange.SSE,
-        legacy_names={("601138", "SSE"): "工业富联"},
-        universe_names={("601138", Exchange.SSE): "错误名称"},
-    )
-    assert resolved == ("工业富联", "legacy")
-
-
-def test_resolve_name_falls_back_to_universe() -> None:
+def test_resolve_name_from_universe() -> None:
     resolved = _resolve_name(
         "600497",
         Exchange.SSE,
-        legacy_names={},
         universe_names={("600497", Exchange.SSE): "驰宏锌锗"},
     )
     assert resolved == ("驰宏锌锗", "universe")

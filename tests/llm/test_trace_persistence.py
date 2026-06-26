@@ -10,11 +10,11 @@ from vnpy_ashare.storage.connection import init_app_db
 from vnpy_common.ai.protocol import AiChartBar, AiChartSpec
 from vnpy_common.auth.context import clear_current_user, set_current_user
 from vnpy_common.storage.config import force_database_url, reset_storage_config
-from vnpy_llm.trace.persistence import TracePersistence
+from vnpy_llm.trace.persistence import TraceRepository
 from vnpy_llm.trace.trace import TraceStore
 
 
-class TracePersistenceTest(unittest.TestCase):
+class TraceRepositoryTest(unittest.TestCase):
     def setUp(self) -> None:
         url = os.environ.get("DATABASE_URL", "").strip()
         if not url:
@@ -23,7 +23,7 @@ class TracePersistenceTest(unittest.TestCase):
         force_database_url(url)
         init_app_db()
         set_current_user(get_or_create_default_user_id())
-        self.persistence = TracePersistence()
+        self.persistence = TraceRepository()
         self.store = TraceStore(self.persistence)
 
     def tearDown(self) -> None:

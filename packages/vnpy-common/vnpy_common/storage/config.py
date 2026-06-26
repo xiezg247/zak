@@ -3,10 +3,7 @@
 from __future__ import annotations
 
 import os
-from typing import Literal
 from urllib.parse import quote_plus
-
-DatabaseDriver = Literal["postgresql"]
 
 _forced_url: str | None = None
 _dotenv_loaded = False
@@ -90,16 +87,6 @@ def require_database_url() -> str:
     if not url:
         raise RuntimeError(_PG_REQUIRED_MSG)
     return url
-
-
-def database_driver() -> DatabaseDriver:
-    require_database_url()
-    return "postgresql"
-
-
-def is_postgresql() -> bool:
-    """业务库恒为 PostgreSQL（保留 API 兼容）。"""
-    return True
 
 
 APP_SEARCH_PATH = "app, chat, auth, cache, system, public"

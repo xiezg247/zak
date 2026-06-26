@@ -2,35 +2,28 @@
 
 from __future__ import annotations
 
-import tempfile
 import unittest
-from pathlib import Path
 from unittest.mock import patch
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.storage.connection import init_app_db
+from tests.ashare.pg_unittest import PgStorageTestCase
 from vnpy_ashare.storage.repositories import trading_plans as plans_repo
 from vnpy_ashare.trading.plan.plan_check import check_buy_against_plan
 
 
-class TradingPlanCheckTests(unittest.TestCase):
+class TradingPlanCheckTests(PgStorageTestCase):
     def setUp(self) -> None:
-        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self.db_path = Path(self._tmp.name)
-        self._patcher = patch("vnpy_ashare.storage.connection._db_path", return_value=self.db_path)
-        self._patcher.start()
+        super().setUp()
         self._emotion_patcher = patch(
             "vnpy_ashare.trading.plan.plan_check.load_emotion_cycle_snapshot",
             return_value=None,
         )
         self._emotion_patcher.start()
-        init_app_db()
 
     def tearDown(self) -> None:
         self._emotion_patcher.stop()
-        self._patcher.stop()
-        self.db_path.unlink(missing_ok=True)
+        super().tearDown()
 
     def test_off_plan_when_not_in_active_plan(self) -> None:
         plan_id = plans_repo.create_trading_plan(

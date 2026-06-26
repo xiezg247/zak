@@ -6,27 +6,18 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.config.preferences._settings import (
     coerce_settings_bool,
-    read_migrated_value,
+    read_setting_value,
     write_setting_value,
 )
-from vnpy_common.paths import QSETTINGS_ORG
 from vnpy_common.ui.theme.manager import theme_manager
-
-_LEGACY_SCREENER_UI = "screener_ui"
 
 
 def _settings_key(section_id: str) -> str:
     return f"screener/config_section_{section_id}_expanded"
 
 
-def _legacy_settings_key(section_id: str) -> str:
-    return f"config_section_{section_id}_expanded"
-
-
 def load_config_section_expanded(section_id: str, default: bool) -> bool:
-    key = _settings_key(section_id)
-    legacy = ((QSETTINGS_ORG, _LEGACY_SCREENER_UI, _legacy_settings_key(section_id)),)
-    raw = read_migrated_value(key, legacy, default)
+    raw = read_setting_value(_settings_key(section_id), default)
     return coerce_settings_bool(raw, default=default)
 
 

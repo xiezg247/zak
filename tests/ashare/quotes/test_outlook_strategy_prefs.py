@@ -19,10 +19,10 @@ from vnpy_ashare.quotes.radar.outlook_strategy_prefs import (
 def outlook_pref_store(monkeypatch):
     store: dict[tuple[str, str], object] = {}
 
-    def _load(namespace: str, key: str, *, load_legacy, migrate_key: str = ""):
+    def _load(namespace: str, key: str, *, load_default):
         if (namespace, key) in store:
             return store[(namespace, key)]
-        return load_legacy()
+        return load_default()
 
     def _save(namespace: str, key: str, value: object) -> None:
         store[(namespace, key)] = value

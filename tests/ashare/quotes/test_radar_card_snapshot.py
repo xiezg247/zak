@@ -10,7 +10,7 @@ from vnpy_ashare.quotes.radar.radar_card_snapshot_cache import (
     put_radar_card_snapshot,
     radar_card_variant_key,
 )
-from vnpy_ashare.quotes.radar.radar_loaders import RadarCardData, RadarRow
+from vnpy_ashare.quotes.radar.loaders import RadarCardData, RadarRow
 
 
 def _sample_card(card_id: str = "market_emotion") -> RadarCardData:

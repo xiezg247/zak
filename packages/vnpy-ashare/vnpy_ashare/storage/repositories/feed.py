@@ -476,11 +476,6 @@ class FeedRepository(AppUserScopedRepository):
 _repo = FeedRepository()
 
 
-def _ensure_schema() -> None:
-    """兼容旧测试：仅 init app DB（表由 Alembic 管理）。"""
-    _repo.prepare()
-
-
 def count_subscriptions() -> int:
     return _repo.count_subscriptions()
 

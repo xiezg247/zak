@@ -12,7 +12,7 @@ from vnpy_ashare.ai.ui.floating_actions import scene_label_from_context
 from vnpy_ashare.app.events import AskAiRequest
 from vnpy_ashare.config.preferences._settings import (
     coerce_settings_bool,
-    read_migrated_value,
+    read_setting_value,
     write_setting_value,
 )
 from vnpy_common.ai.protocol import QuickAction
@@ -412,9 +412,7 @@ class FloatingAiController(QtCore.QObject):
 
     @staticmethod
     def _load_orb_user_hidden() -> bool:
-        key = "floating_ai/orb_user_hidden"
-        legacy = ((QSETTINGS_ORG, "floating_ai", "orb_user_hidden"),)
-        raw = read_migrated_value(key, legacy, False)
+        raw = read_setting_value("floating_ai/orb_user_hidden", False)
         return coerce_settings_bool(raw, default=False)
 
     def _save_orb_user_hidden(self) -> None:

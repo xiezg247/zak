@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore
 
-from vnpy_ashare.quotes.radar.radar_loaders import load_radar_card
+from vnpy_ashare.quotes.radar.loaders import load_radar_card
 
 
 class MarketDiscoveryLoadWorker(QtCore.QThread):

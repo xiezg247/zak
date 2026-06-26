@@ -4,17 +4,12 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from vnpy_ashare.config.preferences._settings import coerce_settings_bool, get_settings
 from vnpy_ashare.config.preferences._user_pref import load_model_pref, save_model_pref
 from vnpy_ashare.notifications.core.events import DEFAULT_EVENT_SUBSCRIPTIONS
 from vnpy_common.domain.base import FrozenModel
 
-_EVENT_PREFIX = "notify/events/"
-_INTERACTIVE_KEY = "notify/use_interactive_card"
 _PREF_NAMESPACE = "notify"
 _PREF_KEY = "prefs"
-
-_MIGRATE_KEYS = tuple(f"{_EVENT_PREFIX}{event_id}" for event_id in DEFAULT_EVENT_SUBSCRIPTIONS) + (_INTERACTIVE_KEY,)
 
 
 class NotifyPrefs(FrozenModel):
@@ -22,14 +17,11 @@ class NotifyPrefs(FrozenModel):
     use_interactive_card: bool = Field(default=True, description="是否优先发送交互卡片")
 
 
-def _load_notify_from_qsettings() -> NotifyPrefs:
-    settings = get_settings()
-    subscriptions: dict[str, bool] = {}
-    for event_id, default in DEFAULT_EVENT_SUBSCRIPTIONS.items():
-        key = f"{_EVENT_PREFIX}{event_id}"
-        subscriptions[event_id] = coerce_settings_bool(settings.value(key), default=default)
-    use_interactive = coerce_settings_bool(settings.value(_INTERACTIVE_KEY), default=True)
-    return NotifyPrefs(event_subscriptions=subscriptions, use_interactive_card=use_interactive)
+def default_notify_prefs() -> NotifyPrefs:
+    return NotifyPrefs(
+        event_subscriptions=dict(DEFAULT_EVENT_SUBSCRIPTIONS),
+        use_interactive_card=True,
+    )
 
 
 def load_notify_prefs() -> NotifyPrefs:
@@ -37,8 +29,7 @@ def load_notify_prefs() -> NotifyPrefs:
         _PREF_NAMESPACE,
         _PREF_KEY,
         NotifyPrefs,
-        load_legacy=_load_notify_from_qsettings,
-        migrate_keys=_MIGRATE_KEYS,
+        load_default=default_notify_prefs,
     )
 
 

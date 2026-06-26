@@ -2,28 +2,14 @@
 
 from __future__ import annotations
 
-import tempfile
 import unittest
-from pathlib import Path
-from unittest import mock
 
+from tests.ashare.pg_unittest import PgAppStorageTestCase
 from vnpy_ashare.domain.market.sector_flow import SectorFlowRow
 from vnpy_ashare.storage.repositories.sector_flow_history import load_sector_flow_history, upsert_sector_flow_day
 
 
-class SectorFlowHistoryRepositoryTests(unittest.TestCase):
-    def setUp(self) -> None:
-        self._tmpdir = tempfile.TemporaryDirectory()
-        self._db_path = Path(self._tmpdir.name) / "test.db"
-        self._patch = mock.patch(
-            "vnpy_ashare.storage.connection._db_path",
-            return_value=self._db_path,
-        )
-        self._patch.start()
-
-    def tearDown(self) -> None:
-        self._patch.stop()
-        self._tmpdir.cleanup()
+class SectorFlowHistoryRepositoryTests(PgAppStorageTestCase):
 
     def test_upsert_and_load_history(self) -> None:
         row = SectorFlowRow(

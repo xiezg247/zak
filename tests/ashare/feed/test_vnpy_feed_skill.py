@@ -23,7 +23,7 @@ class VnpyFeedSkillTests(unittest.TestCase):
             self.skipTest("需要 DATABASE_URL")
         reset_storage_config()
         force_database_url(url)
-        feed_repo._ensure_schema()
+        feed_repo.FeedRepository().prepare()
 
         engine = Mock()
         engine.main_engine = None

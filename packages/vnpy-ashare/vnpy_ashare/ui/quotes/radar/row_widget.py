@@ -5,7 +5,7 @@ from __future__ import annotations
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.quotes.radar.radar_leader import leader_tier_label
-from vnpy_ashare.quotes.radar.radar_loaders import RadarRow
+from vnpy_ashare.quotes.radar.loaders import RadarRow
 from vnpy_ashare.quotes.radar.radar_market_emotion import is_stat_row
 from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.market_colors import pct_change_color

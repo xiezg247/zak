@@ -24,7 +24,7 @@ class _FakeClient(BilibiliClient):
 @pytest.fixture()
 def feed_db(pg_storage):
     _ = pg_storage
-    feed_repo._ensure_schema()
+    feed_repo.FeedRepository().prepare()
     yield
 
 

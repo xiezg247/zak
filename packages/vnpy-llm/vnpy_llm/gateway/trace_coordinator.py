@@ -9,7 +9,7 @@ from vnpy_common.ai.protocol import AiChartSpec
 from vnpy_common.domain.serialize import dump_json
 from vnpy_llm.graph.supervisor import build_supervisor_decision
 from vnpy_llm.tools.labels import tool_display_name
-from vnpy_llm.trace.persistence import TracePersistence
+from vnpy_llm.trace.persistence import TraceRepository
 from vnpy_llm.trace.trace import TraceStep, TraceStore, TurnTrace, preview_text
 
 TraceChanged = Callable[[], None]
@@ -24,7 +24,7 @@ class TraceCoordinator:
         store: TraceStore | None = None,
         on_changed: TraceChanged | None = None,
     ) -> None:
-        self._store = store or TraceStore(TracePersistence())
+        self._store = store or TraceStore(TraceRepository())
         self._on_changed = on_changed
         self._reply_step_id: str | None = None
 

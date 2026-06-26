@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import tempfile
 import unittest
 from datetime import datetime
-from pathlib import Path
 from unittest import mock
 
+from tests.ashare.pg_unittest import PgAppStorageTestCase
 from vnpy_ashare.domain.market.sector_flow import SectorFlowRow, SectorFlowSnapshot
 from vnpy_ashare.domain.time.market_hours import (
     AFTERNOON_CLOSE_MIN,
@@ -83,19 +82,7 @@ class IntradayBucketTimeTests(unittest.TestCase):
         self.assertEqual(minutes, AFTERNOON_CLOSE_MIN)
 
 
-class BuildOverviewSnapshotTests(unittest.TestCase):
-    def setUp(self) -> None:
-        self._tmpdir = tempfile.TemporaryDirectory()
-        self._db_path = Path(self._tmpdir.name) / "test.db"
-        self._patch = mock.patch(
-            "vnpy_ashare.storage.connection._db_path",
-            return_value=self._db_path,
-        )
-        self._patch.start()
-
-    def tearDown(self) -> None:
-        self._patch.stop()
-        self._tmpdir.cleanup()
+class BuildOverviewSnapshotTests(PgAppStorageTestCase):
 
     def test_empty_snapshot_returns_hint(self) -> None:
         snapshot = _snapshot([])
@@ -142,19 +129,7 @@ class BuildOverviewSnapshotTests(unittest.TestCase):
         self.assertAlmostEqual(overview.inflow_series[0].latest_yi, 12.0)
 
 
-class RecordIntradayOverviewSampleTests(unittest.TestCase):
-    def setUp(self) -> None:
-        self._tmpdir = tempfile.TemporaryDirectory()
-        self._db_path = Path(self._tmpdir.name) / "test.db"
-        self._patch = mock.patch(
-            "vnpy_ashare.storage.connection._db_path",
-            return_value=self._db_path,
-        )
-        self._patch.start()
-
-    def tearDown(self) -> None:
-        self._patch.stop()
-        self._tmpdir.cleanup()
+class RecordIntradayOverviewSampleTests(PgAppStorageTestCase):
 
     @mock.patch("vnpy_ashare.services.sector_flow_overview.is_ashare_trading_session", return_value=True)
     def test_records_top_rows_during_intraday(self, _session: mock.Mock) -> None:

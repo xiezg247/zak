@@ -46,20 +46,15 @@ def test_local_ui_pref_roundtrip(monkeypatch: pytest.MonkeyPatch) -> None:
     get_settings().remove(key)
 
 
-def test_local_ui_pref_migrates_uid_prefixed_key(monkeypatch: pytest.MonkeyPatch) -> None:
-    import vnpy_ashare.config.preferences._local_ui_pref as mod
-
-    rel_key = "watchlist/active_group_id_test_migrate"
+def test_local_ui_pref_uses_flat_key_only(monkeypatch: pytest.MonkeyPatch) -> None:
+    rel_key = "watchlist/active_group_id_test_flat"
     flat_key = user_ui_settings_key(rel_key)
-    uid_key = f"ui/migrate-user/{flat_key}"
+    legacy_uid_key = f"ui/legacy-user/{flat_key}"
     get_settings().remove(flat_key)
-    get_settings().setValue(uid_key, "group-legacy")
-
-    monkeypatch.setattr(mod, "get_user_id", lambda: "migrate-user")
-    clear_local_ui_pref_cache()
+    get_settings().setValue(legacy_uid_key, "group-legacy")
 
     value = load_scalar_local_ui(rel_key, load_default=lambda: "default")
-    assert value == "group-legacy"
+    assert value == "default"
 
-    get_settings().remove(uid_key)
+    get_settings().remove(legacy_uid_key)
     get_settings().remove(flat_key)

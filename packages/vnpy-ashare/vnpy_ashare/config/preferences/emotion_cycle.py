@@ -4,16 +4,9 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from vnpy_ashare.config.preferences._settings import (
-    coerce_settings_bool,
-    coerce_settings_float,
-    coerce_settings_int,
-    get_settings,
-)
 from vnpy_ashare.config.preferences._user_pref import load_model_pref, save_model_pref
 from vnpy_common.domain.base import FrozenModel
 
-EMOTION_THRESHOLD_PREFIX = "trading/emotion"
 _PREF_NAMESPACE = "emotion"
 _PREF_KEY = "thresholds"
 
@@ -52,83 +45,12 @@ class EmotionCycleThresholds(FrozenModel):
 DEFAULT_EMOTION_CYCLE_THRESHOLDS = EmotionCycleThresholds()
 
 
-def _threshold_key(field: str) -> str:
-    return f"{EMOTION_THRESHOLD_PREFIX}/{field}"
-
-
-_MIGRATE_KEYS = tuple(_threshold_key(field) for field in EmotionCycleThresholds.model_fields)
-
-
-def _load_emotion_from_qsettings() -> EmotionCycleThresholds:
-    defaults = DEFAULT_EMOTION_CYCLE_THRESHOLDS
-    settings = get_settings()
-    return EmotionCycleThresholds(
-        recession_limit_down=coerce_settings_int(
-            settings.value(_threshold_key("recession_limit_down")),
-            default=defaults.recession_limit_down,
-        ),
-        ice_max_boards=coerce_settings_int(
-            settings.value(_threshold_key("ice_max_boards")),
-            default=defaults.ice_max_boards,
-        ),
-        ice_limit_down=coerce_settings_int(
-            settings.value(_threshold_key("ice_limit_down")),
-            default=defaults.ice_limit_down,
-        ),
-        ice_up_ratio_max=coerce_settings_float(
-            settings.value(_threshold_key("ice_up_ratio_max")),
-            default=defaults.ice_up_ratio_max,
-        ),
-        climax_ladder_depth=coerce_settings_int(
-            settings.value(_threshold_key("climax_ladder_depth")),
-            default=defaults.climax_ladder_depth,
-        ),
-        climax_limit_up=coerce_settings_int(
-            settings.value(_threshold_key("climax_limit_up")),
-            default=defaults.climax_limit_up,
-        ),
-        divergence_limit_up_min=coerce_settings_int(
-            settings.value(_threshold_key("divergence_limit_up_min")),
-            default=defaults.divergence_limit_up_min,
-        ),
-        divergence_limit_spread=coerce_settings_int(
-            settings.value(_threshold_key("divergence_limit_spread")),
-            default=defaults.divergence_limit_spread,
-        ),
-        startup_max_boards=coerce_settings_int(
-            settings.value(_threshold_key("startup_max_boards")),
-            default=defaults.startup_max_boards,
-        ),
-        startup_limit_up=coerce_settings_int(
-            settings.value(_threshold_key("startup_limit_up")),
-            default=defaults.startup_limit_up,
-        ),
-        amount_floor_yuan=coerce_settings_float(
-            settings.value(_threshold_key("amount_floor_yuan")),
-            default=defaults.amount_floor_yuan,
-        ),
-        fear_greed_overheat=coerce_settings_float(
-            settings.value(_threshold_key("fear_greed_overheat")),
-            default=defaults.fear_greed_overheat,
-        ),
-        recession_break_rate=coerce_settings_float(
-            settings.value(_threshold_key("recession_break_rate")),
-            default=defaults.recession_break_rate,
-        ),
-        hysteresis_enabled=coerce_settings_bool(
-            settings.value(_threshold_key("hysteresis_enabled")),
-            default=defaults.hysteresis_enabled,
-        ),
-    )
-
-
 def load_emotion_cycle_thresholds() -> EmotionCycleThresholds:
     return load_model_pref(
         _PREF_NAMESPACE,
         _PREF_KEY,
         EmotionCycleThresholds,
-        load_legacy=_load_emotion_from_qsettings,
-        migrate_keys=_MIGRATE_KEYS,
+        load_default=lambda: DEFAULT_EMOTION_CYCLE_THRESHOLDS,
     )
 
 

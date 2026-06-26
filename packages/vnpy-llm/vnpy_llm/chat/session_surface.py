@@ -6,21 +6,14 @@ from typing import Literal
 
 from vnpy.trader.ui import QtCore
 
-from vnpy_ashare.config.preferences._settings import read_migrated_value, write_setting_value
-from vnpy_common.paths import QSETTINGS_ORG
+from vnpy_ashare.config.preferences._settings import read_setting_value, write_setting_value
 
 Surface = Literal["floating", "assistant"]
 SURFACES: tuple[Surface, ...] = ("floating", "assistant")
 
-_LEGACY_SESSION_APP = "llm_sessions"
-
 
 def _session_key(surface: Surface) -> str:
     return f"llm/session/{surface}_session_id"
-
-
-def _legacy_session_key(surface: Surface) -> str:
-    return f"{surface}_session_id"
 
 
 class SessionSurfaceStore:
@@ -34,13 +27,11 @@ class SessionSurfaceStore:
         if surface in self._memory:
             return self._memory[surface]
         if self._settings is not None:
-            key = _legacy_session_key(surface)
-            value = self._settings.value(key)
+            value = self._settings.value(_session_key(surface))
             if isinstance(value, str) and value:
                 self._memory[surface] = value
                 return value
-        legacy = ((QSETTINGS_ORG, _LEGACY_SESSION_APP, _legacy_session_key(surface)),)
-        value = read_migrated_value(_session_key(surface), legacy, None)
+        value = read_setting_value(_session_key(surface), None)
         if isinstance(value, str) and value:
             self._memory[surface] = value
             return value
@@ -49,7 +40,7 @@ class SessionSurfaceStore:
     def set(self, surface: Surface, session_id: str) -> None:
         self._memory[surface] = session_id
         if self._settings is not None:
-            self._settings.setValue(_legacy_session_key(surface), session_id)
+            self._settings.setValue(_session_key(surface), session_id)
         else:
             write_setting_value(_session_key(surface), session_id)
 

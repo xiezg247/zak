@@ -25,14 +25,14 @@ vnpy_llm/
 │   └── types.py            # AgentEvent、SendRequest
 ├── app/           # LlmApp 插件、LlmEngine（Qt 桥接）
 ├── config/        # LlmConfig、load_llm_config
-├── chat/          # OpenAI 客户端、ChatStore、SessionSurface
+├── chat/          # OpenAI 客户端、ChatRepository、SessionSurface
 ├── routing/       # 意图识别、路由、Prompt（base_prompt 与 agents 共用）
 ├── graph/         # LangGraph 编排（Supervisor + Specialist + handoff）
 │   ├── agents/    # 各域 system prompt 切片
 │   ├── supervisor.py
 │   └── handoff.py
 ├── tools/         # 工具审计、labels、result enrich、状态
-├── trace/         # TurnTrace 内存态与 SQLite 持久化
+├── trace/         # TurnTrace 内存态与 PostgreSQL 持久化
 └── ui/
     ├── panel/     # 主对话面板、Worker、Markdown 渲染
     ├── floating/  # 悬浮球与精简面板
@@ -49,7 +49,7 @@ vnpy_llm/
 |------|------|
 | `gateway/agent_gateway.py` | **AgentGateway**：会话、上下文、工具、流式回复、事件订阅 |
 | `app/engine.py` | **LlmEngine**：委托 Gateway，`AgentEvent` → Qt 信号 |
-| `chat/store.py` | 对话 SQLite（`llm_chat.db`） |
+| `chat/store.py` | 对话 PostgreSQL（`chat` schema） |
 | `routing/router.py` | 意图分类与 tool 子集（由 `RoutingPlane` 调用） |
 | `graph/runner.py` | LangGraph 流式 tool loop（由 `AgentRuntime` 调用） |
 | `ui/panel/chat.py` | AiChatPanel（Dock / 全屏） |

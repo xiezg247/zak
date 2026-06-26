@@ -108,11 +108,11 @@ class UniverseSyncWorker(QtCore.QThread):
             if self._cancel_requested:
                 self.failed.emit("已取消")
                 return
-            path = sync_universe(force=True)
+            count = sync_universe(force=True)
             if self._cancel_requested:
                 self.failed.emit("已取消")
                 return
-            self.finished.emit(str(path))
+            self.finished.emit(str(count))
         except Exception as ex:
             logger.exception("A 股列表同步失败")
             self.failed.emit(str(ex))

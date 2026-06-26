@@ -2,20 +2,17 @@
 
 from __future__ import annotations
 
-import tempfile
 import unittest
-from pathlib import Path
-from unittest.mock import patch
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.quotes.radar.radar_loaders import RadarCardData, RadarRow
+from tests.ashare.pg_unittest import PgStorageTestCase
+from vnpy_ashare.quotes.radar.loaders import RadarCardData, RadarRow
 from vnpy_ashare.services.watchlist_short_term import (
     add_rows_to_watchlist_pool,
     add_screener_rows_to_watchlist_pool,
     collect_dragon_1_rows,
 )
-from vnpy_ashare.storage.connection import init_app_db
 from vnpy_ashare.storage.repositories import watchlist as watchlist_repo
 
 
@@ -49,18 +46,10 @@ class _WatchlistServiceStub:
         return watchlist_repo.watchlist_add_failure_reason(symbol, exchange)
 
 
-class TestShortTermWatchlist(unittest.TestCase):
+class TestShortTermWatchlist(PgStorageTestCase):
     def setUp(self) -> None:
-        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self.db_path = Path(self._tmp.name)
-        self._patcher = patch("vnpy_ashare.storage.connection._db_path", return_value=self.db_path)
-        self._patcher.start()
-        init_app_db()
+        super().setUp()
         self.service = _WatchlistServiceStub()
-
-    def tearDown(self) -> None:
-        self._patcher.stop()
-        self.db_path.unlink(missing_ok=True)
 
     def test_add_rows_to_watchlist_pool(self) -> None:
         rows = (_row("600519.SSE"), _row("000001.SZSE"))

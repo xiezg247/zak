@@ -5,35 +5,11 @@ from __future__ import annotations
 from pydantic import Field
 
 from vnpy_ashare.config.constants.recipe import DEFAULT_MIN_AMOUNT_YUAN, DEFAULT_MIN_TOTAL_MV_WAN
-from vnpy_ashare.config.preferences._settings import get_settings
 from vnpy_ashare.config.preferences._user_pref import load_model_pref, save_model_pref
 from vnpy_common.domain.base import FrozenModel
 
-_SETTINGS = get_settings()
 _PREF_NAMESPACE = "screener"
 _PREF_KEY = "hard_filter"
-_KEY_EXCLUDE_ST = "screener/hard_filter/exclude_st"
-_KEY_EXCLUDE_SUSPENDED = "screener/hard_filter/exclude_suspended"
-_KEY_MIN_AMOUNT_WAN = "screener/hard_filter/min_amount_wan"
-_KEY_MIN_TOTAL_MV_YI = "screener/hard_filter/min_total_mv_yi"
-_KEY_EXCLUDE_NEW_LISTING = "screener/hard_filter/exclude_new_listing"
-_KEY_MIN_LISTING_DAYS = "screener/hard_filter/min_listing_days"
-_KEY_EXCLUDE_LIMIT_BOARD = "screener/hard_filter/exclude_limit_board"
-_KEY_EXCLUDE_ONE_WORD = "screener/hard_filter/exclude_one_word"
-_KEY_ALLOWED_INDUSTRIES = "screener/hard_filter/allowed_industries"
-_KEY_ALLOWED_MARKET_BOARDS = "screener/hard_filter/allowed_market_boards"
-_MIGRATE_KEYS = (
-    _KEY_EXCLUDE_ST,
-    _KEY_EXCLUDE_SUSPENDED,
-    _KEY_MIN_AMOUNT_WAN,
-    _KEY_MIN_TOTAL_MV_YI,
-    _KEY_EXCLUDE_NEW_LISTING,
-    _KEY_MIN_LISTING_DAYS,
-    _KEY_EXCLUDE_LIMIT_BOARD,
-    _KEY_EXCLUDE_ONE_WORD,
-    _KEY_ALLOWED_INDUSTRIES,
-    _KEY_ALLOWED_MARKET_BOARDS,
-)
 
 MARKET_BOARD_FILTER_OPTIONS = ("沪深主板", "创业板", "科创板", "北交所")
 
@@ -118,66 +94,12 @@ def load_hard_filter_prefs() -> HardFilterPrefs:
         _PREF_NAMESPACE,
         _PREF_KEY,
         HardFilterPrefs,
-        load_legacy=_load_hard_filter_from_qsettings,
-        migrate_keys=_MIGRATE_KEYS,
+        load_default=default_hard_filter_prefs,
     )
 
 
 def save_hard_filter_prefs(prefs: HardFilterPrefs) -> None:
     save_model_pref(_PREF_NAMESPACE, _PREF_KEY, prefs)
-
-
-def _load_hard_filter_from_qsettings() -> HardFilterPrefs:
-    defaults = default_hard_filter_prefs()
-    exclude_st = _SETTINGS.value(_KEY_EXCLUDE_ST)
-    if exclude_st is None:
-        exclude = defaults.exclude_st
-    else:
-        exclude = str(exclude_st).strip().lower() not in ("0", "false", "no")
-
-    exclude_suspended = _SETTINGS.value(_KEY_EXCLUDE_SUSPENDED)
-    if exclude_suspended is None:
-        exclude_suspend = defaults.exclude_suspended
-    else:
-        exclude_suspend = str(exclude_suspended).strip().lower() not in ("0", "false", "no")
-
-    exclude_new = _SETTINGS.value(_KEY_EXCLUDE_NEW_LISTING)
-    if exclude_new is None:
-        exclude_new_listing = defaults.exclude_new_listing
-    else:
-        exclude_new_listing = str(exclude_new).strip().lower() not in ("0", "false", "no")
-
-    exclude_limit = _SETTINGS.value(_KEY_EXCLUDE_LIMIT_BOARD)
-    if exclude_limit is None:
-        exclude_limit_board = defaults.exclude_limit_board
-    else:
-        exclude_limit_board = str(exclude_limit).strip().lower() not in ("0", "false", "no")
-
-    exclude_one_word_raw = _SETTINGS.value(_KEY_EXCLUDE_ONE_WORD)
-    if exclude_one_word_raw is None:
-        exclude_one_word = defaults.exclude_one_word
-    else:
-        exclude_one_word = str(exclude_one_word_raw).strip().lower() not in ("0", "false", "no")
-
-    amount_wan = _read_float(_SETTINGS.value(_KEY_MIN_AMOUNT_WAN), defaults.min_amount_wan)
-    mv_yi = _read_float(_SETTINGS.value(_KEY_MIN_TOTAL_MV_YI), defaults.min_total_mv_yi)
-    listing_days = _read_int(_SETTINGS.value(_KEY_MIN_LISTING_DAYS), defaults.min_listing_days)
-    allowed_raw = _SETTINGS.value(_KEY_ALLOWED_INDUSTRIES)
-    allowed_industries = normalize_allowed_industries_text(str(allowed_raw or defaults.allowed_industries))
-    boards_raw = _SETTINGS.value(_KEY_ALLOWED_MARKET_BOARDS)
-    allowed_market_boards = normalize_allowed_market_boards_text(str(boards_raw or defaults.allowed_market_boards))
-    return HardFilterPrefs(
-        exclude_st=exclude,
-        exclude_suspended=exclude_suspend,
-        min_amount_wan=max(0.0, amount_wan),
-        min_total_mv_yi=max(0.0, mv_yi),
-        exclude_new_listing=exclude_new_listing,
-        min_listing_days=max(0, listing_days),
-        exclude_limit_board=exclude_limit_board,
-        exclude_one_word=exclude_one_word,
-        allowed_industries=allowed_industries,
-        allowed_market_boards=allowed_market_boards,
-    )
 
 
 def normalize_allowed_industries_text(raw: str) -> str:
@@ -225,21 +147,3 @@ def hard_filter_preset_for_strategy_profile(profile_id: str) -> str:
 def sync_hard_filter_for_strategy_profile(profile_id: str) -> HardFilterPrefs:
     """策略 Profile 切换时同步硬过滤模板（保守 / 均衡 / 激进）。"""
     return apply_hard_filter_preset(hard_filter_preset_for_strategy_profile(profile_id))
-
-
-def _read_float(raw, default: float) -> float:
-    if raw is None:
-        return default
-    try:
-        return float(raw)
-    except (TypeError, ValueError):
-        return default
-
-
-def _read_int(raw, default: int) -> int:
-    if raw is None:
-        return default
-    try:
-        return int(float(raw))
-    except (TypeError, ValueError):
-        return default

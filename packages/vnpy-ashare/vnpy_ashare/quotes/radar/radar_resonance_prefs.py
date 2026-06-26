@@ -1,13 +1,10 @@
-"""雷达共振卡片权重（可覆盖内置默认）。"""
+"""雷达共振卡片权重（可覆盖内置默认；纯 UI，本机 QSettings）。"""
 
 from __future__ import annotations
 
-from vnpy_ashare.config.preferences._settings import get_settings
-from vnpy_ashare.config.preferences._user_pref import load_json_pref, save_json_pref
+from vnpy_ashare.config.preferences._local_ui_pref import load_json_local_ui, save_json_local_ui
 
-_KEY_PREFIX = "quotes/radar/resonance_weight/"
-_PREF_NAMESPACE = "radar"
-_PREF_KEY = "resonance_weights"
+_LOCAL_UI_KEY = "radar/resonance_weights"
 
 DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS: dict[str, float] = {
     "discovery_volume_surge": 2.0,
@@ -50,30 +47,12 @@ _WEIGHT_LABELS: dict[str, str] = {
     "outlook_predict": "未来·预测",
 }
 
-_MIGRATE_KEYS = tuple(f"{_KEY_PREFIX}{card_id}" for card_id in DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS)
-
 
 def list_radar_resonance_weight_items() -> tuple[tuple[str, str, float], ...]:
     """(card_id, 展示名, 默认权重)。"""
     return tuple(
         (card_id, _WEIGHT_LABELS.get(card_id, card_id), DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS[card_id]) for card_id in DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS
     )
-
-
-def _load_resonance_from_qsettings() -> dict[str, float]:
-    settings = get_settings()
-    weights = dict(DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS)
-    for card_id in DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS:
-        raw = settings.value(f"{_KEY_PREFIX}{card_id}")
-        if raw is None:
-            continue
-        try:
-            value = float(raw)
-        except (TypeError, ValueError):
-            continue
-        if value > 0:
-            weights[card_id] = round(value, 2)
-    return weights
 
 
 def _merge_resonance_weights(stored: object) -> dict[str, float]:
@@ -92,11 +71,9 @@ def _merge_resonance_weights(stored: object) -> dict[str, float]:
 
 
 def load_radar_resonance_weights() -> dict[str, float]:
-    stored = load_json_pref(
-        _PREF_NAMESPACE,
-        _PREF_KEY,
-        load_legacy=_load_resonance_from_qsettings,
-        migrate_keys=_MIGRATE_KEYS,
+    stored = load_json_local_ui(
+        _LOCAL_UI_KEY,
+        load_default=lambda: dict(DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS),
     )
     return _merge_resonance_weights(stored)
 
@@ -106,7 +83,7 @@ def save_radar_resonance_weights(weights: dict[str, float]) -> None:
     for card_id, default in DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS.items():
         value = float(weights.get(card_id, default))
         payload[card_id] = round(max(0.1, min(value, 5.0)), 2)
-    save_json_pref(_PREF_NAMESPACE, _PREF_KEY, payload)
+    save_json_local_ui(_LOCAL_UI_KEY, payload)
 
 
 SHORT_TERM_RADAR_RESONANCE_WEIGHTS: dict[str, float] = {

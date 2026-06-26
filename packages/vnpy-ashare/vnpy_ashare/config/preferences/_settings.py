@@ -13,24 +13,9 @@ def get_settings() -> QtCore.QSettings:
     return QtCore.QSettings(QSETTINGS_ORG, SETTINGS_APP)
 
 
-def _legacy_settings(org: str, app: str) -> QtCore.QSettings:
-    return QtCore.QSettings(org, app)
-
-
-def read_migrated_value(
-    new_key: str,
-    legacy_profiles: tuple[tuple[str, str, str], ...],
-    default: Any = None,
-) -> Any:
-    """读取设置：当前 profile 优先，再按 legacy (org, app, key) 回退。"""
-    val = get_settings().value(new_key)
-    if val is not None:
-        return val
-    for org, app, legacy_key in legacy_profiles:
-        legacy_val = _legacy_settings(org, app).value(legacy_key)
-        if legacy_val is not None:
-            return legacy_val
-    return default
+def read_setting_value(key: str, default: Any = None) -> Any:
+    val = get_settings().value(key)
+    return default if val is None else val
 
 
 def write_setting_value(key: str, value: Any) -> None:

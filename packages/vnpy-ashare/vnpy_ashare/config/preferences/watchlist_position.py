@@ -6,7 +6,6 @@ from pydantic import Field
 
 from strategies.signals import list_supported_signal_strategies
 from vnpy_ashare.config.preferences._local_ui_pref import load_json_local_ui, save_json_local_ui
-from vnpy_ashare.config.preferences._settings import coerce_settings_bool, coerce_settings_int, get_settings
 from vnpy_ashare.config.preferences._user_pref import load_model_pref, save_model_pref
 from vnpy_ashare.config.preferences.watchlist_signal import (
     DEFAULT_CLASS,
@@ -29,12 +28,10 @@ _PREF_NAMESPACE = "watchlist"
 _PREF_KEY_CONFIG = "position_config"
 _LOCAL_UI_PANEL = "watchlist/position_panel"
 
-_MIGRATE_CONFIG_KEYS = (
-    POSITION_FOLLOW_SIGNAL_KEY,
-    POSITION_STRATEGY_KEY,
-    POSITION_FAST_KEY,
-    POSITION_SLOW_KEY,
-)
+_DEFAULT_PANEL_STATE: dict[str, bool] = {
+    "enabled": True,
+    "expanded": True,
+}
 
 
 class WatchlistPositionConfig(FrozenModel):
@@ -68,18 +65,10 @@ class WatchlistPositionConfig(FrozenModel):
         ).normalized()
 
 
-def _load_panel_from_qsettings() -> dict[str, bool]:
-    settings = get_settings()
-    return {
-        "enabled": coerce_settings_bool(settings.value(POSITION_PANEL_ENABLED_KEY), default=True),
-        "expanded": coerce_settings_bool(settings.value(POSITION_PANEL_EXPANDED_KEY), default=True),
-    }
-
-
 def _load_panel_state() -> dict[str, bool]:
     return load_json_local_ui(
         _LOCAL_UI_PANEL,
-        load_default=_load_panel_from_qsettings,
+        load_default=lambda: dict(_DEFAULT_PANEL_STATE),
     )
 
 
@@ -117,29 +106,12 @@ def save_position_panel_expanded(expanded: bool) -> None:
     _save_panel_state(state)
 
 
-def _load_position_config_from_qsettings() -> WatchlistPositionConfig:
-    settings = get_settings()
-    follow = coerce_settings_bool(settings.value(POSITION_FOLLOW_SIGNAL_KEY), default=True)
-    raw_class = settings.value(POSITION_STRATEGY_KEY, DEFAULT_CLASS)
-    raw_fast = settings.value(POSITION_FAST_KEY, DEFAULT_FAST)
-    raw_slow = settings.value(POSITION_SLOW_KEY, DEFAULT_SLOW)
-    fast = coerce_settings_int(raw_fast, default=DEFAULT_FAST)
-    slow = coerce_settings_int(raw_slow, default=DEFAULT_SLOW)
-    return WatchlistPositionConfig(
-        follow_signal=follow,
-        class_name=str(raw_class or DEFAULT_CLASS),
-        fast_window=fast,
-        slow_window=slow,
-    ).normalized()
-
-
 def load_watchlist_position_config() -> WatchlistPositionConfig:
     item = load_model_pref(
         _PREF_NAMESPACE,
         _PREF_KEY_CONFIG,
         WatchlistPositionConfig,
-        load_legacy=_load_position_config_from_qsettings,
-        migrate_keys=_MIGRATE_CONFIG_KEYS,
+        load_default=lambda: WatchlistPositionConfig().normalized(),
     )
     return item.normalized()
 

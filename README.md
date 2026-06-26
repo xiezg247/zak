@@ -39,7 +39,7 @@ uv run python cli.py data list-bars
 
 ### 多人共用 PostgreSQL
 
-内网小团队可共用一套 PostgreSQL，PyQt 客户端直连数据库。配置 `DATABASE_URL` 后执行 `cli.py db upgrade`；从本地 SQLite 迁移见 `cli.py db import-legacy`。详见 [docs/multi-user-pg.md](docs/multi-user-pg.md)。
+内网小团队可共用一套 PostgreSQL，PyQt 客户端直连数据库。配置 `DATABASE_URL` 后执行 `cli.py db upgrade`。详见 [docs/multi-user-pg.md](docs/multi-user-pg.md)。
 
 ## 回测默认参数
 
@@ -79,7 +79,7 @@ class MyStrategy(AShareTemplate):
 | `database.db` 或 PG `public` | K 线（VeighNa） |
 | QSettings | 纯 UI 偏好（本机） |
 
-首次配置：`cli.py db upgrade`；自 SQLite 迁移见 `cli.py db import-legacy`。详见 [docs/multi-user-pg.md](docs/multi-user-pg.md)。
+首次配置：`cli.py db upgrade`。详见 [docs/multi-user-pg.md](docs/multi-user-pg.md)。
 
 ### 切换为 PostgreSQL
 

@@ -3,7 +3,7 @@
 import pytest
 
 from vnpy_ashare.quotes.radar.radar_catalog import RADAR_CARD_BY_ID
-from vnpy_ashare.quotes.radar.radar_loaders import (
+from vnpy_ashare.quotes.radar.loaders import (
     RadarCardData,
     RadarRow,
     build_radar_resonance_list,

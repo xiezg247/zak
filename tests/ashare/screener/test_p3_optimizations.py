@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from vnpy_ashare.quotes.radar.radar_loaders import (
+from vnpy_ashare.quotes.radar.loaders import (
     RadarCardData,
     RadarRow,
     build_radar_resonance_list,

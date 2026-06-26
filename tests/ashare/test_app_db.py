@@ -2,30 +2,16 @@
 
 from __future__ import annotations
 
-import tempfile
 import unittest
-from pathlib import Path
-from unittest.mock import patch
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.storage.connection import init_app_db
+from tests.ashare.pg_unittest import PgAppStorageTestCase, PgStorageTestCase
 from vnpy_ashare.storage.repositories import universe as universe_repo
 from vnpy_ashare.storage.repositories import watchlist as watchlist_repo
 
 
-class TestWatchlistDb(unittest.TestCase):
-    def setUp(self) -> None:
-        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self.db_path = Path(self._tmp.name)
-        self._patcher = patch("vnpy_ashare.storage.connection._db_path", return_value=self.db_path)
-        self._patcher.start()
-        init_app_db()
-
-    def tearDown(self) -> None:
-        self._patcher.stop()
-        self.db_path.unlink(missing_ok=True)
-
+class TestWatchlistDb(PgStorageTestCase):
     def test_add_and_remove_watchlist(self) -> None:
         self.assertTrue(watchlist_repo.add_watchlist_item("600519", Exchange.SSE, "贵州茅台"))
         self.assertFalse(watchlist_repo.add_watchlist_item("600519", Exchange.SSE, "贵州茅台"))
@@ -67,18 +53,7 @@ class TestWatchlistDb(unittest.TestCase):
         self.assertEqual(watchlist_repo.watchlist_add_failure_reason("600000", Exchange.SSE), "duplicate")
 
 
-class TestWatchlistGroupsDb(unittest.TestCase):
-    def setUp(self) -> None:
-        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self.db_path = Path(self._tmp.name)
-        self._patcher = patch("vnpy_ashare.storage.connection._db_path", return_value=self.db_path)
-        self._patcher.start()
-        init_app_db()
-
-    def tearDown(self) -> None:
-        self._patcher.stop()
-        self.db_path.unlink(missing_ok=True)
-
+class TestWatchlistGroupsDb(PgStorageTestCase):
     def test_group_membership_multi_assign(self) -> None:
         from vnpy_ashare.storage.repositories import watchlist_groups as groups_repo
 
@@ -111,6 +86,8 @@ class TestWatchlistGroupsDb(unittest.TestCase):
         self.assertTrue(watchlist_repo.remove_watchlist_item("600519", Exchange.SSE))
         self.assertEqual(groups_repo.load_watchlist_group_member_keys(group_id), set())
 
+
+class TestUniverseRepository(PgAppStorageTestCase):
     def test_load_universe_page(self) -> None:
         universe_repo.save_universe_rows(
             [
@@ -125,13 +102,9 @@ class TestWatchlistGroupsDb(unittest.TestCase):
         self.assertEqual(rows[0][0], "600000")
 
 
-class TestSearchUniverse(unittest.TestCase):
+class TestSearchUniverse(PgAppStorageTestCase):
     def setUp(self) -> None:
-        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self.db_path = Path(self._tmp.name)
-        self._patcher = patch("vnpy_ashare.storage.connection._db_path", return_value=self.db_path)
-        self._patcher.start()
-        init_app_db()
+        super().setUp()
         universe_repo.save_universe_rows(
             [
                 ("600519", Exchange.SSE, "贵州茅台"),
@@ -139,10 +112,6 @@ class TestSearchUniverse(unittest.TestCase):
                 ("300750", Exchange.SZSE, "宁德时代"),
             ]
         )
-
-    def tearDown(self) -> None:
-        self._patcher.stop()
-        self.db_path.unlink(missing_ok=True)
 
     def test_search_by_symbol_and_name(self) -> None:
         rows, total = universe_repo.search_universe("600519")

@@ -4,32 +4,14 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from vnpy_ashare.config.preferences._settings import get_settings
 from vnpy_ashare.config.preferences._user_pref import load_model_pref, save_model_pref
 from vnpy_common.domain.base import FrozenModel
 
-PREFIX = "trading/risk"
 _PREF_NAMESPACE = "trading"
 _PREF_KEY = "risk"
 
 DEFAULT_STOP_LOSS_PCT = 0.05
 DEFAULT_CAUTION_FLOAT_PCT = -5.0
-
-_MIGRATE_KEYS = (
-    f"{PREFIX}/total_capital",
-    f"{PREFIX}/stop_loss_pct",
-    f"{PREFIX}/caution_float_pct",
-    f"{PREFIX}/realized_pnl_today",
-)
-
-
-def _coerce_float(value: object, *, default: float | None = None) -> float | None:
-    if value is None or str(value).strip() == "":
-        return default
-    try:
-        return float(str(value))
-    except (TypeError, ValueError):
-        return default
 
 
 class TradingRiskPrefs(FrozenModel):
@@ -56,21 +38,12 @@ class TradingRiskPrefs(FrozenModel):
         )
 
 
-def _load_trading_risk_from_qsettings() -> TradingRiskPrefs:
-    settings = get_settings()
+def default_trading_risk_prefs() -> TradingRiskPrefs:
     return TradingRiskPrefs(
-        total_capital=_coerce_float(settings.value(f"{PREFIX}/total_capital")),
-        stop_loss_pct=_coerce_float(
-            settings.value(f"{PREFIX}/stop_loss_pct"),
-            default=DEFAULT_STOP_LOSS_PCT,
-        )
-        or DEFAULT_STOP_LOSS_PCT,
-        caution_float_pct=_coerce_float(
-            settings.value(f"{PREFIX}/caution_float_pct"),
-            default=DEFAULT_CAUTION_FLOAT_PCT,
-        )
-        or DEFAULT_CAUTION_FLOAT_PCT,
-        realized_pnl_today=_coerce_float(settings.value(f"{PREFIX}/realized_pnl_today")),
+        total_capital=None,
+        stop_loss_pct=DEFAULT_STOP_LOSS_PCT,
+        caution_float_pct=DEFAULT_CAUTION_FLOAT_PCT,
+        realized_pnl_today=None,
     ).normalized()
 
 
@@ -79,8 +52,7 @@ def load_trading_risk_prefs() -> TradingRiskPrefs:
         _PREF_NAMESPACE,
         _PREF_KEY,
         TradingRiskPrefs,
-        load_legacy=_load_trading_risk_from_qsettings,
-        migrate_keys=_MIGRATE_KEYS,
+        load_default=default_trading_risk_prefs,
     )
     return item.normalized()
 

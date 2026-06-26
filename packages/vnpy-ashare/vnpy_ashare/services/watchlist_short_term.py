@@ -11,7 +11,7 @@ from vnpy_ashare.config.preferences.watchlist_groups import load_active_watchlis
 from vnpy_ashare.config.preferences.watchlist_signal import load_signal_panel_symbols
 from vnpy_ashare.domain.radar.card import RadarResonanceEntry
 from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
-from vnpy_ashare.quotes.radar.radar_loaders import RadarCardData, RadarRow
+from vnpy_ashare.quotes.radar.loaders import RadarCardData, RadarRow
 from vnpy_ashare.quotes.radar.radar_resonance_store import (
     get_radar_resonance_entries,
     radar_resonance_updated_at,

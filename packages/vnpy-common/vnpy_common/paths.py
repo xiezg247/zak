@@ -12,9 +12,6 @@ APP_ID = "zak"
 QSETTINGS_ORG = APP_ID
 SETTINGS_APP = "ZakTerminal"
 
-DEFAULT_LEGACY_APP_DB = f"{APP_ID}.db"
-DEFAULT_LEGACY_CHAT_DB = "llm_chat.db"
-
 _settings_loader: Callable[[], dict] | None = None
 
 
@@ -41,28 +38,3 @@ PROJECT_ROOT = resolve_project_root()
 DATA_DIR = PROJECT_ROOT / "data"
 BACKUP_DIR = DATA_DIR / "backup"
 ENV_FILE = PROJECT_ROOT / ".env"
-
-
-def legacy_app_db_path() -> Path:
-    """import-legacy 默认源：~/.vntrader/zak.db。"""
-    return VNTRADER_DIR / DEFAULT_LEGACY_APP_DB
-
-
-def legacy_chat_db_path() -> Path:
-    """import-legacy 默认源：~/.vntrader/llm_chat.db。"""
-    return VNTRADER_DIR / DEFAULT_LEGACY_CHAT_DB
-
-
-def get_app_db_path(settings: dict | None = None) -> Path:
-    """兼容旧调用：返回 legacy SQLite 路径（仅 import-legacy 使用）。"""
-    _ = settings
-    return legacy_app_db_path()
-
-
-def get_chat_db_path(settings: dict | None = None) -> Path:
-    """兼容旧调用：返回 legacy SQLite 路径（仅 import-legacy 使用）。"""
-    _ = settings
-    return legacy_chat_db_path()
-
-
-APP_DB_PATH = legacy_app_db_path()

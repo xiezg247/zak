@@ -9,7 +9,7 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 from vnpy_ashare.app.engine_access import get_screening_service
 from vnpy_ashare.config.preferences._settings import (
     coerce_settings_bool,
-    read_migrated_value,
+    read_setting_value,
     write_setting_value,
 )
 from vnpy_ashare.screener.data.screening_status import resolve_run_trigger_kind
@@ -43,15 +43,9 @@ _TRIGGER_TAGS = {
     "scheduled_post_close": "[盘后]",
 }
 
-_LEGACY_SCREENER_UI = "screener_ui"
-
 
 def _sidebar_expanded_key(mode: SidebarMode) -> str:
     return f"screener/{mode}_sidebar_expanded"
-
-
-def _legacy_sidebar_expanded_key(mode: SidebarMode) -> str:
-    return f"{mode}_sidebar_expanded"
 
 
 # 侧栏数据访问：优先 ScreeningService Facade；无 Engine 时 fallback run_store（测试/headless）
@@ -771,8 +765,7 @@ class ScreenerRunSidebar(QtWidgets.QWidget):
 
     def _load_expanded_preference(self) -> bool:
         key = _sidebar_expanded_key(self._mode)
-        legacy = ((QSETTINGS_ORG, _LEGACY_SCREENER_UI, _legacy_sidebar_expanded_key(self._mode)),)
-        raw = read_migrated_value(key, legacy, False)
+        raw = read_setting_value(key, False)
         return coerce_settings_bool(raw, default=False)
 
     def _save_expanded_preference(self) -> None:

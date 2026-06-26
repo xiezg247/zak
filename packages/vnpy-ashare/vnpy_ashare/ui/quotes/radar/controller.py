@@ -34,7 +34,7 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
 )
 from vnpy_ashare.quotes.radar.radar_full_refresh_prefs import save_radar_full_refresh_every
 from vnpy_ashare.quotes.radar.radar_horizon import OUTLOOK_FORCE_RECOMPUTE_CARD_IDS
-from vnpy_ashare.quotes.radar.radar_loaders import (
+from vnpy_ashare.quotes.radar.loaders import (
     RadarCardData,
     build_eod_leader_prompt,
     build_radar_ai_prompt,

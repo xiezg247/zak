@@ -26,7 +26,7 @@ def _now_iso() -> str:
 
 
 def ensure_users_schema(conn) -> None:
-    """Alembic 已建表；保留空实现供 import-legacy 等调用。"""
+    """Alembic 已建表；保留空实现供启动流程等调用。"""
     _ = conn
 
 

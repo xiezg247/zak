@@ -6,10 +6,8 @@ from typing import Literal
 
 from pydantic import Field
 
-from vnpy_ashare.config.preferences._settings import get_settings
 from vnpy_ashare.config.preferences._user_pref import save_scalar_pref
 from vnpy_ashare.config.preferences.watchlist_signal import (
-    SIGNAL_STRATEGY_KEY,
     WatchlistSignalConfig,
     load_watchlist_signal_config,
     save_watchlist_signal_config,
@@ -20,7 +18,6 @@ from vnpy_common.domain.base import FrozenModel
 
 StrategyProfileId = Literal["ultra_short", "short_swing", "medium_watch", "trend"]
 
-STRATEGY_PROFILE_KEY = "trading/strategy_profile"
 DEFAULT_STRATEGY_PROFILE: StrategyProfileId = "short_swing"
 _PREF_NAMESPACE = "trading"
 _PREF_KEY = "strategy_profile"
@@ -92,8 +89,7 @@ def load_strategy_profile_id() -> StrategyProfileId:
     stored = load_scalar_pref(
         _PREF_NAMESPACE,
         _PREF_KEY,
-        load_legacy=_load_profile_from_qsettings,
-        migrate_key=STRATEGY_PROFILE_KEY,
+        load_default=lambda: DEFAULT_STRATEGY_PROFILE,
     )
     return _resolve_profile_id(str(stored))
 
@@ -128,22 +124,15 @@ def match_strategy_profile(config: WatchlistSignalConfig | None = None) -> Strat
     return load_strategy_profile_id()
 
 
-def _load_profile_from_qsettings() -> StrategyProfileId:
-    settings = get_settings()
-    raw = str(settings.value(STRATEGY_PROFILE_KEY, DEFAULT_STRATEGY_PROFILE) or DEFAULT_STRATEGY_PROFILE)
-    return _resolve_profile_id(raw)
-
-
 def bootstrap_strategy_profile() -> WatchlistSignalConfig:
-    """启动时保证 Profile / 信号区 / 硬过滤一致。一次批量查询 + QSettings 合并。"""
+    """启动时保证 Profile / 信号区 / 硬过滤一致。"""
     prefs = batch_get_prefs([(_PREF_NAMESPACE, _PREF_KEY), ("watchlist", "signal_config")])
 
-    has_profile = (_PREF_NAMESPACE, _PREF_KEY) in prefs or bool(get_settings().contains(STRATEGY_PROFILE_KEY))
-    has_signal = ("watchlist", "signal_config") in prefs or bool(get_settings().contains(SIGNAL_STRATEGY_KEY))
+    has_profile = (_PREF_NAMESPACE, _PREF_KEY) in prefs
+    has_signal = ("watchlist", "signal_config") in prefs
 
-    # 从预拉取值解析 profile_id
     stored_profile = prefs.get((_PREF_NAMESPACE, _PREF_KEY))
-    profile_id = _resolve_profile_id(str(stored_profile)) if stored_profile is not None else _load_profile_from_qsettings()
+    profile_id = _resolve_profile_id(str(stored_profile)) if stored_profile is not None else DEFAULT_STRATEGY_PROFILE
 
     # 解析信号配置
     stored_signal = prefs.get(("watchlist", "signal_config"))

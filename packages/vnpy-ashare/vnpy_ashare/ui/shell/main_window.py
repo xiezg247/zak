@@ -20,7 +20,7 @@ from vnpy_ashare.app.events import (
     EVENT_ORB_ATTENTION,
 )
 from vnpy_ashare.config.preferences._settings import (
-    read_migrated_value,
+    read_setting_value,
     write_setting_value,
 )
 from vnpy_ashare.ui.shell.floating_controller import FloatingAiController
@@ -68,7 +68,7 @@ from vnpy_ashare.ui.shell.main_window_pages import (
     open_notes_center_dialog,
     open_scheduler_dialog,
     show_page_by_key,
-    try_open_legacy_widget,
+    try_open_vnpy_widget,
 )
 from vnpy_ashare.ui.shell.main_window_scheduler import (
     bind_scheduler_notifications,
@@ -348,10 +348,9 @@ class AshareMainWindow(MainWindow):
         search.selectAll()
 
     _NAV_WIDTH_KEY = "shell/nav_width"
-    _NAV_WIDTH_LEGACY = ((QSETTINGS_ORG, "ashare_ui", "nav_width"),)
 
     def _load_nav_width(self) -> int:
-        value = read_migrated_value(self._NAV_WIDTH_KEY, self._NAV_WIDTH_LEGACY, SidebarNav.DEFAULT_WIDTH)
+        value = read_setting_value(self._NAV_WIDTH_KEY, SidebarNav.DEFAULT_WIDTH)
         if isinstance(value, bool):
             width = SidebarNav.DEFAULT_WIDTH
         elif isinstance(value, (int, float)):
@@ -538,14 +537,13 @@ class AshareMainWindow(MainWindow):
         handle_scheduler_job(self, job_id)
 
     def open_widget(self, widget_class: type[QtWidgets.QWidget], name: str) -> None:
-        if try_open_legacy_widget(self, widget_class, name):
+        if try_open_vnpy_widget(self, widget_class, name):
             return
         super().open_widget(widget_class, name)
 
     def load_window_setting(self, name: str) -> None:
         key = f"shell/geometry/{name}"
-        legacy = ((self.window_title, name, "geometry"),)
-        geometry = read_migrated_value(key, legacy, None)
+        geometry = read_setting_value(key, None)
         restore_geometry_on_screen(self, geometry)
 
     def save_window_setting(self, name: str) -> None:

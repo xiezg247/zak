@@ -29,7 +29,7 @@ class TraceStep(MutableModel):
     duration_ms: int | None = None
 
     def persist_dict(self) -> dict[str, Any]:
-        """SQLite 持久化 dict（不含运行时 started_at）。"""
+        """持久化 dict（不含运行时 started_at）。"""
         return dump_json(self, exclude={"started_at"})
 
 
@@ -46,7 +46,7 @@ class TurnTrace(MutableModel):
     created_at: str = ""
 
     def persist_dict(self) -> dict[str, Any]:
-        """SQLite 持久化 dict（不含运行时 started_at）。"""
+        """持久化 dict（不含运行时 started_at）。"""
         return {
             "turn_id": self.turn_id,
             "session_id": self.session_id,

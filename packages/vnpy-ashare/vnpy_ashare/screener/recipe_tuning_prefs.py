@@ -1,16 +1,13 @@
-"""配方评分 / 动量 / 恐贪调制参数（QSettings）；环境变量仍可覆盖。"""
+"""配方评分 / 动量 / 恐贪调制参数；环境变量仍可覆盖。"""
 
 from __future__ import annotations
 
 from pydantic import Field
 
 from vnpy_ashare.config.constants.recipe import DEFAULT_METRIC_SCORE_BLEND
-from vnpy_ashare.config.preferences._settings import get_settings
 from vnpy_ashare.storage.auth.preferences import get_pref, set_pref
 from vnpy_common.domain.base import FrozenModel
 
-_SETTINGS = get_settings()
-_KEY_PREFIX = "screener/recipe_tuning/"
 _PREF_NAMESPACE = "screener"
 _PREF_KEY = "recipe_tuning"
 
@@ -55,159 +52,8 @@ def load_recipe_tuning_prefs() -> RecipeTuningPrefs:
     stored = get_pref(_PREF_NAMESPACE, _PREF_KEY, None)
     if stored is not None:
         return RecipeTuningPrefs.model_validate(stored)
-    legacy = _load_recipe_tuning_from_qsettings()
-    if _qsettings_has_recipe_tuning():
-        set_pref(_PREF_NAMESPACE, _PREF_KEY, legacy.model_dump())
-    return legacy
+    return default_recipe_tuning_prefs()
 
 
 def save_recipe_tuning_prefs(prefs: RecipeTuningPrefs) -> None:
     set_pref(_PREF_NAMESPACE, _PREF_KEY, prefs.model_dump())
-
-
-def _qsettings_has_recipe_tuning() -> bool:
-    return any(_SETTINGS.value(f"{_KEY_PREFIX}{suffix}") is not None for suffix in _RECIPE_TUNING_QSETTINGS_SUFFIXES)
-
-
-_RECIPE_TUNING_QSETTINGS_SUFFIXES = (
-    "metric_blend",
-    "momentum_min",
-    "momentum_max",
-    "momentum_fear_max",
-    "sentiment_enabled",
-    "sf_momentum",
-    "sf_sector",
-    "sf_breakout",
-    "fear_momentum",
-    "sg_turnover",
-    "sg_volume",
-    "g_turnover",
-    "breakout_lookback",
-    "volume_dedup",
-)
-
-
-def _load_recipe_tuning_from_qsettings() -> RecipeTuningPrefs:
-    defaults = default_recipe_tuning_prefs()
-    return RecipeTuningPrefs(
-        metric_score_blend=_read_float(
-            _SETTINGS.value(f"{_KEY_PREFIX}metric_blend"),
-            defaults.metric_score_blend,
-            0.0,
-            1.0,
-        ),
-        momentum_min_change_pct=_read_float(
-            _SETTINGS.value(f"{_KEY_PREFIX}momentum_min"),
-            defaults.momentum_min_change_pct,
-            0.0,
-            20.0,
-        ),
-        momentum_max_change_pct=_read_float(
-            _SETTINGS.value(f"{_KEY_PREFIX}momentum_max"),
-            defaults.momentum_max_change_pct,
-            0.5,
-            30.0,
-        ),
-        momentum_fear_max_change_pct=_read_float(
-            _SETTINGS.value(f"{_KEY_PREFIX}momentum_fear_max"),
-            defaults.momentum_fear_max_change_pct,
-            0.5,
-            30.0,
-        ),
-        sentiment_gate_enabled=_read_bool(
-            _SETTINGS.value(f"{_KEY_PREFIX}sentiment_enabled"),
-            defaults.sentiment_gate_enabled,
-        ),
-        extreme_fear_momentum=_read_float(
-            _SETTINGS.value(f"{_KEY_PREFIX}sf_momentum"),
-            defaults.extreme_fear_momentum,
-            0.0,
-            0.5,
-        ),
-        extreme_fear_sector=_read_float(
-            _SETTINGS.value(f"{_KEY_PREFIX}sf_sector"),
-            defaults.extreme_fear_sector,
-            0.0,
-            0.5,
-        ),
-        extreme_fear_breakout=_read_float(
-            _SETTINGS.value(f"{_KEY_PREFIX}sf_breakout"),
-            defaults.extreme_fear_breakout,
-            0.0,
-            0.5,
-        ),
-        fear_momentum=_read_float(
-            _SETTINGS.value(f"{_KEY_PREFIX}fear_momentum"),
-            defaults.fear_momentum,
-            0.0,
-            0.5,
-        ),
-        extreme_greed_turnover=_read_float(
-            _SETTINGS.value(f"{_KEY_PREFIX}sg_turnover"),
-            defaults.extreme_greed_turnover,
-            0.0,
-            0.5,
-        ),
-        extreme_greed_volume_surge=_read_float(
-            _SETTINGS.value(f"{_KEY_PREFIX}sg_volume"),
-            defaults.extreme_greed_volume_surge,
-            0.0,
-            0.5,
-        ),
-        greed_turnover=_read_float(
-            _SETTINGS.value(f"{_KEY_PREFIX}g_turnover"),
-            defaults.greed_turnover,
-            0.0,
-            0.5,
-        ),
-        breakout_lookback_days=_read_int(
-            _SETTINGS.value(f"{_KEY_PREFIX}breakout_lookback"),
-            defaults.breakout_lookback_days,
-            0,
-            60,
-        ),
-        volume_liquidity_dedup_factor=_read_float(
-            _SETTINGS.value(f"{_KEY_PREFIX}volume_dedup"),
-            defaults.volume_liquidity_dedup_factor,
-            0.0,
-            1.0,
-        ),
-    )
-
-
-def _read_bool(raw: object, default: bool) -> bool:
-    if raw is None:
-        return default
-    if isinstance(raw, bool):
-        return raw
-    return str(raw).strip().lower() not in ("0", "false", "no")
-
-
-def _read_float(raw: object, default: float, min_value: float, max_value: float) -> float:
-    if raw is None:
-        value = default
-    elif isinstance(raw, (int, float)) and not isinstance(raw, bool):
-        value = float(raw)
-    elif isinstance(raw, str):
-        try:
-            value = float(raw)
-        except ValueError:
-            value = default
-    else:
-        value = default
-    return max(min_value, min(max_value, value))
-
-
-def _read_int(raw: object, default: int, min_value: int, max_value: int) -> int:
-    if raw is None:
-        value = default
-    elif isinstance(raw, int) and not isinstance(raw, bool):
-        value = raw
-    elif isinstance(raw, (float, str)):
-        try:
-            value = int(float(raw))
-        except (TypeError, ValueError):
-            value = default
-    else:
-        value = default
-    return max(min_value, min(max_value, value))

@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from vnpy_ashare.domain.market.quote_row import QuoteRow
-from vnpy_ashare.quotes.radar.radar_loaders import RadarRow
+from vnpy_ashare.quotes.radar.loaders import RadarRow
 from vnpy_ashare.quotes.radar.radar_models import enrich_radar_rows, merge_row_quotes, quotes_for_vt_symbols
 
 

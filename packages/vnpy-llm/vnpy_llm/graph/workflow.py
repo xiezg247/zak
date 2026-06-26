@@ -25,7 +25,3 @@ def build_agent_graph(
     llm = create_chat_model(config)
     tools = openai_tools_to_langchain(openai_tools, tool_executor)
     return create_agent(llm, tools)
-
-
-# 兼容旧名
-build_react_agent = build_agent_graph

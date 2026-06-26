@@ -2,16 +2,13 @@
 
 from __future__ import annotations
 
-import sqlite3
 from dataclasses import dataclass, field
-from pathlib import Path
 
 from sqlalchemy import select, update
 from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.storage.repositories.universe import load_universe_names_for_keys
 from vnpy_ashare.storage.repositories.watchlist import WatchlistRepository
-from vnpy_common.paths import get_app_db_path
 from vnpy_common.storage.query import user_scope
 from vnpy_common.storage.tables import watchlist as wl
 
@@ -47,32 +44,12 @@ class WatchlistRepairReport:
         return lines
 
 
-def _load_legacy_watchlist_names(path: Path) -> dict[tuple[str, str], str]:
-    if not path.is_file():
-        return {}
-    conn = sqlite3.connect(path)
-    try:
-        rows = conn.execute("SELECT symbol, exchange, name FROM watchlist").fetchall()
-    finally:
-        conn.close()
-    mapping: dict[tuple[str, str], str] = {}
-    for symbol, exchange, name in rows:
-        text = str(name or "").strip()
-        if text:
-            mapping[(str(symbol), str(exchange))] = text
-    return mapping
-
-
 def _resolve_name(
     symbol: str,
     exchange: Exchange,
     *,
-    legacy_names: dict[tuple[str, str], str],
     universe_names: dict[tuple[str, Exchange], str],
 ) -> tuple[str, str] | None:
-    legacy = legacy_names.get((symbol, exchange.name), "")
-    if legacy:
-        return legacy, "legacy"
     universe = universe_names.get((symbol, exchange), "")
     if universe:
         return universe, "universe"
@@ -83,11 +60,9 @@ def repair_watchlist_names_for_user(
     user_id: str,
     username: str,
     *,
-    legacy_names: dict[tuple[str, str], str] | None = None,
     dry_run: bool = False,
 ) -> list[WatchlistNamePatch]:
     """仅补全 name 为空的自选行；已有名称不覆盖。"""
-    legacy_names = legacy_names or {}
     patches: list[WatchlistNamePatch] = []
     repo = WatchlistRepository()
 
@@ -106,7 +81,7 @@ def repair_watchlist_names_for_user(
     universe_names = load_universe_names_for_keys([(symbol, exchange) for symbol, exchange, _ in missing])
 
     for symbol, exchange, old_name in missing:
-        resolved = _resolve_name(symbol, exchange, legacy_names=legacy_names, universe_names=universe_names)
+        resolved = _resolve_name(symbol, exchange, universe_names=universe_names)
         if resolved is None:
             continue
         new_name, source = resolved
@@ -144,17 +119,12 @@ def repair_watchlist_names_for_user(
     return patches
 
 
-def repair_all_watchlist_names(
-    *,
-    legacy_db: Path | None = None,
-    dry_run: bool = False,
-) -> WatchlistRepairReport:
+def repair_all_watchlist_names(*, dry_run: bool = False) -> WatchlistRepairReport:
     """修复所有用户的自选名称（仅补空名）。"""
     from vnpy_ashare.storage.auth.users import list_users
     from vnpy_ashare.storage.connection import connect, init_app_db
 
     init_app_db()
-    legacy_names = _load_legacy_watchlist_names(legacy_db or get_app_db_path())
     report = WatchlistRepairReport(dry_run=dry_run)
 
     with connect() as conn:
@@ -164,7 +134,7 @@ def repair_all_watchlist_names(
         from vnpy_ashare.storage.auth.scope import get_user_id
 
         uid = get_user_id()
-        patches = repair_watchlist_names_for_user(uid, "default", legacy_names=legacy_names, dry_run=dry_run)
+        patches = repair_watchlist_names_for_user(uid, "default", dry_run=dry_run)
         report.patches.extend(patches)
         return report
 
@@ -172,7 +142,6 @@ def repair_all_watchlist_names(
         patches = repair_watchlist_names_for_user(
             user.id,
             user.username,
-            legacy_names=legacy_names,
             dry_run=dry_run,
         )
         report.patches.extend(patches)

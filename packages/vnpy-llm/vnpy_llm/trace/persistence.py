@@ -107,7 +107,3 @@ class TraceRepository(ChatUserScopedRepository):
         overflow = count - MAX_TURNS_PER_SESSION
         subq = select(ltt.c.turn_id).where(scope).order_by(ltt.c.turn_index.asc(), ltt.c.created_at.asc()).limit(overflow)
         conn.execute_stmt(delete(ltt).where(ltt.c.turn_id.in_(subq)))
-
-
-class TracePersistence(TraceRepository):
-    """按 session 读写 TurnTrace（对外兼容名）。"""

@@ -18,7 +18,7 @@ GUI → Service → Repository → PostgreSQL（业务）
 K 线 → VeighNa → database.db 或 PG public
 ```
 
-入口：`storage/connection.py`、`vnpy_common/storage/session.py`；迁移 `cli.py db upgrade`；一次性 SQLite 导入 `cli.py db import-legacy`。
+入口：`storage/connection.py`、`vnpy_common/storage/session.py`；迁移 `cli.py db upgrade`。
 
 ---
 
@@ -45,7 +45,7 @@ K 线 → VeighNa → database.db 或 PG public
 | `zak:rank:change_pct` | 涨幅 ZSET |
 | `zak:meta:*` | 更新时间等 |
 
-QSettings（纯 UI）：窗口几何、列宽、雷达 Tab 等；业务偏好已迁 PG `auth.user_preferences`（`trading` / `screener` / `radar` / `notify` / `watchlist` / `llm` 等 namespace）。`.env` 密钥与 `RECIPE_*`。见 [配置热加载](./config-hot-reload.md)、[多人 PG](./multi-user-pg.md)。
+QSettings（纯 UI）：窗口几何、列宽、雷达 Tab、共振权重、预测模式等；业务偏好存 PG `auth.user_preferences`（`trading` / `screener` / `radar`（展望策略）/ `notify` / `watchlist` / `emotion` 等 namespace）。`.env` 密钥与 `RECIPE_*`。见 [配置热加载](./config-hot-reload.md)、[多人 PG](./multi-user-pg.md)。
 
 领域模型：`StockItem`、`QuoteSnapshot`、`ScreenerResultRow` 等（`domain/`、`vnpy_common/ai/protocol.py`）。
 

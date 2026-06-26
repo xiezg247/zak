@@ -7,9 +7,8 @@ from typing import cast
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.config.preferences._settings import read_migrated_value, write_setting_value
+from vnpy_ashare.config.preferences._settings import read_setting_value, write_setting_value
 from vnpy_common.ai.protocol import AiContextData
-from vnpy_common.paths import QSETTINGS_ORG
 from vnpy_common.ui.feedback import PageToastHost
 from vnpy_common.ui.qt_helpers import (
     clamp_point_in_parent,
@@ -25,19 +24,13 @@ from vnpy_llm.ui.floating.context_labels import orb_tooltip_text
 from vnpy_llm.ui.panel.chat import AiChatPanel
 from vnpy_llm.ui.themed_styles import bind_ai_floating_style
 
-_LEGACY_FLOATING_AI = ((QSETTINGS_ORG, "floating_ai"),)
-
 
 def _floating_pref_key(name: str) -> str:
     return f"floating_ai/{name}"
 
 
 def _read_floating_pref(name: str, default: object = None) -> object:
-    return read_migrated_value(
-        _floating_pref_key(name),
-        tuple((org, app, name) for org, app in _LEGACY_FLOATING_AI),
-        default,
-    )
+    return read_setting_value(_floating_pref_key(name), default)
 
 
 def _save_floating_pref(name: str, value: object) -> None:

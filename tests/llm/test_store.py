@@ -13,7 +13,7 @@ from vnpy_common.auth.context import clear_current_user, set_current_user
 from vnpy_common.storage.config import force_database_url, reset_storage_config
 
 
-class TestChatStore(unittest.TestCase):
+class TestChatRepository(unittest.TestCase):
     def setUp(self) -> None:
         url = os.environ.get("DATABASE_URL", "").strip()
         if not url:
@@ -22,7 +22,7 @@ class TestChatStore(unittest.TestCase):
         force_database_url(url)
         init_app_db()
         set_current_user(get_or_create_default_user_id())
-        self.chat_store = store.ChatStore()
+        self.chat_store = store.ChatRepository()
 
     def tearDown(self) -> None:
         clear_current_user()

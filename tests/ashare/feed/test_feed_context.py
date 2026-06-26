@@ -21,7 +21,7 @@ class FeedContextTests(unittest.TestCase):
             self.skipTest("需要 DATABASE_URL")
         reset_storage_config()
         force_database_url(url)
-        feed_repo._ensure_schema()
+        feed_repo.FeedRepository().prepare()
         engine = Mock(notification_service=Mock())
         self.feed_service = FeedService(engine)
         sub = feed_repo.insert_subscription(

@@ -244,7 +244,7 @@ def open_notes_center_dialog(win: AshareMainWindow) -> None:
     )
 
 
-def try_open_legacy_widget(win: AshareMainWindow, widget_class: type[QtWidgets.QWidget], name: str) -> bool:
+def try_open_vnpy_widget(win: AshareMainWindow, widget_class: type[QtWidgets.QWidget], name: str) -> bool:
     if name == "DataManager":
         open_data_manager_dialog(win)
         return True
