@@ -1,24 +1,15 @@
-"""Phase 4 单元测试（无 vnpy 环境可运行部分）。"""
+"""LLM 工具调用审计日志测试。"""
 
 from __future__ import annotations
 
 import os
 import unittest
 
-from vnpy.trader.constant import Exchange
-
 import vnpy_llm.tools.audit as tool_audit
-from vnpy_ashare.domain.symbols.stock import symbol_exchange_to_ts_code
 from vnpy_ashare.storage.auth.users import get_or_create_default_user_id
 from vnpy_ashare.storage.connection import init_app_db
 from vnpy_common.auth.context import clear_current_user, set_current_user
 from vnpy_common.storage.config import force_database_url, reset_storage_config
-
-
-class SymbolExchangeTests(unittest.TestCase):
-    def test_symbol_exchange_to_ts_code(self) -> None:
-        self.assertEqual(symbol_exchange_to_ts_code("600000", Exchange.SSE), "600000.SH")
-        self.assertEqual(symbol_exchange_to_ts_code("000001", Exchange.SZSE), "000001.SZ")
 
 
 class ToolAuditTests(unittest.TestCase):

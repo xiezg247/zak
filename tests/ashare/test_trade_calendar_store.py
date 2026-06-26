@@ -8,15 +8,19 @@ from unittest.mock import patch
 
 from vnpy_ashare.domain.time.calendar import is_trading_day, last_trading_day
 from vnpy_ashare.storage.connection import get_meta, set_meta
+from vnpy_ashare.storage.repositories import trade_calendar as trade_calendar_repo
 from vnpy_ashare.storage.repositories.trade_calendar import (
     TRADE_CAL_SYNCED_AT_KEY,
-    _upsert_rows,
     clear_trade_calendar_cache,
     ensure_calendar_covers,
     load_open_trading_days,
     lookup_trading_day,
     sync_trade_calendar,
 )
+
+
+def _seed_calendar_rows(rows: list[tuple[str, int]]) -> None:
+    trade_calendar_repo._repo.upsert_rows(rows)
 
 
 class TradeCalendarStoreTests(unittest.TestCase):
@@ -27,7 +31,7 @@ class TradeCalendarStoreTests(unittest.TestCase):
         clear_trade_calendar_cache()
 
     def test_lookup_uses_cached_holiday(self) -> None:
-        _upsert_rows(
+        _seed_calendar_rows(
             [
                 ("2026-01-28", 1),
                 ("2026-01-29", 0),
@@ -41,7 +45,7 @@ class TradeCalendarStoreTests(unittest.TestCase):
         self.assertIsNone(lookup_trading_day(date(2026, 2, 1)))
 
     def test_is_trading_day_prefers_cache_over_weekend_fallback(self) -> None:
-        _upsert_rows([("2026-01-31", 1)])  # 2026-01-31 is Saturday
+        _seed_calendar_rows([("2026-01-31", 1)])  # 2026-01-31 is Saturday
         set_meta(TRADE_CAL_SYNCED_AT_KEY, datetime.now().isoformat())
 
         self.assertTrue(is_trading_day(date(2026, 1, 31)))
@@ -61,7 +65,7 @@ class TradeCalendarStoreTests(unittest.TestCase):
 
     @patch("vnpy_ashare.storage.repositories.trade_calendar.sync_trade_calendar")
     def test_ensure_calendar_covers_skips_when_fresh(self, sync_mock) -> None:
-        _upsert_rows([("2026-06-05", 1)])
+        _seed_calendar_rows([("2026-06-05", 1)])
         set_meta(TRADE_CAL_SYNCED_AT_KEY, datetime.now().isoformat())
         set_meta("trade_calendar_range_start", "2026-01-01")
         set_meta("trade_calendar_range_end", "2026-12-31")
@@ -86,7 +90,7 @@ class TradeCalendarStoreTests(unittest.TestCase):
         self.assertEqual(last_trading_day(on_or_before=date(2026, 2, 20)), date(2026, 2, 13))
 
     def test_load_open_trading_days_bulk(self) -> None:
-        _upsert_rows(
+        _seed_calendar_rows(
             [
                 ("2026-06-01", 1),
                 ("2026-06-02", 1),

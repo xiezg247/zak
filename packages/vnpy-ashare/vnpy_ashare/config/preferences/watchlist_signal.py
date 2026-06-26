@@ -178,9 +178,9 @@ def save_signal_panel_columns(keys: list[str]) -> None:
 
 
 def load_center_splitter_sizes() -> list[int]:
-    stored = load_json_local_ui(
+    stored: list[object] = load_json_local_ui(
         _LOCAL_UI_SPLITTER,
-        load_default=list,
+        load_default=lambda: [],
     )
     if isinstance(stored, list):
         return [max(0, int(value)) for value in stored if isinstance(value, (int, float, str))]

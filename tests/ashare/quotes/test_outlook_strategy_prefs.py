@@ -74,3 +74,23 @@ def test_load_outlook_signal_config_uses_strategy_defaults(monkeypatch) -> None:
 def test_outlook_strategy_label() -> None:
     label = outlook_strategy_label("AshareDoubleMaStrategy")
     assert "双均线" in label
+
+
+def test_sector_flow_outlook_fallback_to_radar(monkeypatch, outlook_pref_store) -> None:
+    monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar.outlook_strategy_prefs.load_outlook_strategy_class",
+        lambda: "AshareTrendMaStrategy",
+    )
+    from vnpy_ashare.quotes.radar.outlook_strategy_prefs import load_sector_flow_outlook_strategy_class
+
+    assert load_sector_flow_outlook_strategy_class() == "AshareTrendMaStrategy"
+
+
+def test_save_and_load_sector_flow_outlook_strategy(outlook_pref_store) -> None:
+    from vnpy_ashare.quotes.radar.outlook_strategy_prefs import (
+        load_sector_flow_outlook_strategy_class,
+        save_sector_flow_outlook_strategy_class,
+    )
+
+    save_sector_flow_outlook_strategy_class("AshareDoubleMaStrategy")
+    assert load_sector_flow_outlook_strategy_class() == "AshareDoubleMaStrategy"
