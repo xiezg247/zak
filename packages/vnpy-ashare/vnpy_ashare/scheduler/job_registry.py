@@ -16,6 +16,8 @@ from vnpy_ashare.jobs.catalog import (
     BILIBILI_SYNC_INTERVAL_SECONDS,
     COLLECT_QUOTES_INTERVAL_SECONDS,
     COLLECT_QUOTES_JOB_ID,
+    ENRICH_MARKET_QUOTES_INTERVAL_SECONDS,
+    ENRICH_MARKET_QUOTES_JOB_ID,
     JOBS_BY_ID,
 )
 from vnpy_ashare.jobs.core.result import JobResult
@@ -26,6 +28,7 @@ from vnpy_ashare.jobs.prefetch.concept import prefetch_concept_board
 from vnpy_ashare.jobs.prefetch.moneyflow import prefetch_moneyflow
 from vnpy_ashare.jobs.prefetch.sector_flow import sync_sector_flow_daily_job
 from vnpy_ashare.jobs.quotes.collect import collect_market_quotes
+from vnpy_ashare.jobs.quotes.enrich import enrich_market_quotes
 from vnpy_ashare.jobs.radar.card_snapshot_warmup import warm_radar_card_snapshots_job
 from vnpy_ashare.jobs.screen.auto_screen import run_scheduled_auto_screen
 from vnpy_ashare.jobs.screen.horizon_scan import run_horizon_outlook_scan_job
@@ -102,6 +105,20 @@ def build_scheduler_jobs(runners: SchedulerJobRunners) -> dict[str, SchedulerJob
                 seconds=max(cfg.interval_seconds, COLLECT_QUOTES_INTERVAL_SECONDS),
             ),
             schedule_text_builder=lambda cfg: f"交易时段内每 {max(cfg.interval_seconds, COLLECT_QUOTES_INTERVAL_SECONDS)} 秒；非交易时段自动休眠",
+        ),
+        ENRICH_MARKET_QUOTES_JOB_ID: SchedulerJobMeta(
+            job_id=ENRICH_MARKET_QUOTES_JOB_ID,
+            name=specs[ENRICH_MARKET_QUOTES_JOB_ID].name,
+            description=specs[ENRICH_MARKET_QUOTES_JOB_ID].description,
+            runner=enrich_market_quotes,
+            config_attr=specs[ENRICH_MARKET_QUOTES_JOB_ID].config_attr,
+            schedule_builder=lambda cfg: IntervalTrigger(
+                seconds=max(cfg.interval_seconds, ENRICH_MARKET_QUOTES_INTERVAL_SECONDS),
+            ),
+            schedule_text_builder=lambda cfg: (
+                f"交易时段内每 {max(cfg.interval_seconds, ENRICH_MARKET_QUOTES_INTERVAL_SECONDS)} 秒 enrich 因子"
+                "（需 ZAK_COLLECT_DEFER_ENRICH=1）"
+            ),
         ),
         "sync_universe": SchedulerJobMeta(
             job_id="sync_universe",

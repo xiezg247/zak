@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from collections import OrderedDict
 from datetime import timedelta
 
 from vnpy.trader.constant import Exchange
@@ -15,6 +16,29 @@ from vnpy_ashare.domain.symbols.stock import StockItem
 PATTERN_MIN_BARS = 60
 PATTERN_LOOKBACK_BARS = 120
 DEFAULT_PATTERN_LOAD_MAX_WORKERS = 4
+
+_BARS_LRU: OrderedDict[tuple[str, Exchange, int], list[BarData]] = OrderedDict()
+_BARS_LRU_MAX = max(64, int(os.getenv("ZAK_BARS_TAIL_LRU_SIZE", "512")))
+
+
+def _bars_lru_get(key: tuple[str, Exchange, int]) -> list[BarData] | None:
+    bars = _BARS_LRU.get(key)
+    if bars is None:
+        return None
+    _BARS_LRU.move_to_end(key)
+    return bars
+
+
+def _bars_lru_put(key: tuple[str, Exchange, int], bars: list[BarData]) -> None:
+    _BARS_LRU[key] = bars
+    _BARS_LRU.move_to_end(key)
+    while len(_BARS_LRU) > _BARS_LRU_MAX:
+        _BARS_LRU.popitem(last=False)
+
+
+def clear_daily_bars_lru_cache() -> None:
+    """测试 / 日切后清空进程内 tail LRU。"""
+    _BARS_LRU.clear()
 
 
 def pattern_load_max_workers(*, item_count: int) -> int:
@@ -65,7 +89,13 @@ def _dedupe_items(items: list[StockItem]) -> list[StockItem]:
 
 def _load_daily_bars_entry(item: StockItem, *, lookback_bars: int) -> tuple[tuple[str, Exchange], list[BarData]]:
     key = (item.symbol, item.exchange)
-    return key, load_daily_bars_tail(item.symbol, item.exchange, lookback_bars=lookback_bars)
+    cache_key = (item.symbol, item.exchange, lookback_bars)
+    cached = _bars_lru_get(cache_key)
+    if cached is not None:
+        return key, cached
+    bars = load_daily_bars_tail(item.symbol, item.exchange, lookback_bars=lookback_bars)
+    _bars_lru_put(cache_key, bars)
+    return key, bars
 
 
 def load_daily_bars_batch(

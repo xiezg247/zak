@@ -427,6 +427,8 @@ class QuotesPageShell:
             page.market_table.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
         page.market_table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
         page.market_table.verticalHeader().setVisible(False)
+        if page.config.use_market_rank:
+            page.market_table.setUniformRowHeights(True)
         page.market_table.setAlternatingRowColors(page.page_name != WATCHLIST_PAGE)
         page.market_table.setSortingEnabled(False)
         page.market_table.selectionModel().selectionChanged.connect(page._table.on_selection_changed)

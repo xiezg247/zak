@@ -8,10 +8,13 @@ from vnpy_ashare.jobs.feed.sync_bilibili import BILIBILI_SYNC_INTERVAL_SECONDS
 
 COLLECT_QUOTES_JOB_ID = "collect_quotes"
 COLLECT_QUOTES_INTERVAL_SECONDS = 5
+ENRICH_MARKET_QUOTES_JOB_ID = "enrich_market_quotes"
+ENRICH_MARKET_QUOTES_INTERVAL_SECONDS = 60
 
 MANUAL_FORCE_JOB_IDS = frozenset(
     {
         COLLECT_QUOTES_JOB_ID,
+        ENRICH_MARKET_QUOTES_JOB_ID,
         "screen_intraday",
         "screen_post_close",
         "scan_horizon_outlook",
@@ -44,6 +47,13 @@ JOB_SPECS: tuple[JobSpec, ...] = (
         description="TickFlow 全市场快照写入 Redis（开发调试用，生产建议独立进程）",
         cli_description="TickFlow 全市场快照写入 Redis",
         config_attr="collect_quotes",
+    ),
+    JobSpec(
+        job_id=ENRICH_MARKET_QUOTES_JOB_ID,
+        name="行情因子 enrich",
+        description="异步合并 Tushare 量比/主力/连板等因子到 Redis（需 ZAK_COLLECT_DEFER_ENRICH=1）",
+        cli_description="异步 enrich 全市场行情 Tushare 因子",
+        config_attr="enrich_market_quotes",
     ),
     JobSpec(
         job_id="sync_universe",
@@ -199,6 +209,8 @@ __all__ = [
     "BILIBILI_SYNC_INTERVAL_SECONDS",
     "COLLECT_QUOTES_INTERVAL_SECONDS",
     "COLLECT_QUOTES_JOB_ID",
+    "ENRICH_MARKET_QUOTES_INTERVAL_SECONDS",
+    "ENRICH_MARKET_QUOTES_JOB_ID",
     "JOB_CATALOG",
     "JOBS_BY_ID",
     "JOB_SPECS",

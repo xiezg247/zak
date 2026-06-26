@@ -1,7 +1,8 @@
-"""Redis 行情 HASH 紧凑 field key（``ZAK_REDIS_QUOTE_COMPACT=1``）。"""
+"""Redis 行情 HASH 紧凑 field key（``ZAK_REDIS_QUOTE_COMPACT=1``）与 JSON blob（``ZAK_REDIS_QUOTE_BLOB=1``）。"""
 
 from __future__ import annotations
 
+import json
 import os
 
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
@@ -37,6 +38,31 @@ def quote_compact_enabled() -> bool:
     return os.getenv("ZAK_REDIS_QUOTE_COMPACT", "").strip().lower() in _TRUTHY
 
 
+def quote_blob_enabled() -> bool:
+    return os.getenv("ZAK_REDIS_QUOTE_BLOB", "").strip().lower() in _TRUTHY
+
+
+def _json_dumps(data: dict[str, str]) -> str:
+    try:
+        import orjson
+
+        return orjson.dumps(data).decode("utf-8")
+    except ImportError:
+        return json.dumps(data, separators=(",", ":"), ensure_ascii=False)
+
+
+def _json_loads(raw: str) -> dict[str, str]:
+    try:
+        import orjson
+
+        loaded = orjson.loads(raw)
+    except ImportError:
+        loaded = json.loads(raw)
+    if not isinstance(loaded, dict):
+        return {}
+    return {str(key): str(value) for key, value in loaded.items()}
+
+
 def normalize_redis_hash(data: dict[str, str]) -> dict[str, str]:
     """短 key → 长 key，供 ``QuoteSnapshot.from_redis_hash`` 使用。"""
     if not data:
@@ -58,3 +84,39 @@ def encode_quote_hash(quote: QuoteSnapshot) -> dict[str, str]:
     if not quote_compact_enabled():
         return raw
     return {QUOTE_FIELD_TO_SHORT.get(key, key): value for key, value in raw.items()}
+
+
+_ENRICH_FIELD_NAMES: tuple[str, ...] = (
+    "turnover_rate",
+    "volume_ratio",
+    "net_mf_amount",
+    "change_speed_5m",
+    "limit_times",
+)
+
+
+def encode_enrich_hash(quote: QuoteSnapshot) -> dict[str, str]:
+    """异步 enrich Job 仅 PATCH Tushare / 榜相关字段。"""
+    raw = quote.to_redis_hash()
+    mapping = {key: raw[key] for key in _ENRICH_FIELD_NAMES if key in raw}
+    if not quote_compact_enabled():
+        return mapping
+    return {QUOTE_FIELD_TO_SHORT.get(key, key): value for key, value in mapping.items()}
+
+
+def encode_quote_blob(quote: QuoteSnapshot) -> str:
+    """单次 SET 的 JSON blob（与 HASH 字段集一致，可配合 MGET 批量读）。"""
+    return _json_dumps(encode_quote_hash(quote))
+
+
+def decode_quote_blob(raw: str | bytes | None) -> QuoteSnapshot | None:
+    if not raw:
+        return None
+    text = raw.decode("utf-8") if isinstance(raw, bytes) else str(raw)
+    if not text.strip():
+        return None
+    try:
+        data = normalize_redis_hash(_json_loads(text))
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return None
+    return QuoteSnapshot.from_redis_hash(data)

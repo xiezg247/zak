@@ -68,6 +68,24 @@ class QuoteL1CacheTests(unittest.TestCase):
         os.environ["ZAK_COLLECT_DEFER_ENRICH"] = "1"
         self.assertTrue(l1.collect_defer_enrich_enabled())
 
+    def test_seq_matches_remote(self) -> None:
+        os.environ["ZAK_QUOTE_L1_CACHE"] = "1"
+        l1.swap_quotes({"000001.SZ": _sample_quote()}, seq=3, complete=True)
+        self.assertTrue(l1.seq_matches(3))
+        self.assertFalse(l1.seq_matches(4))
+        self.assertFalse(l1.seq_matches(None))
+
+    def test_merge_quotes_preserves_price(self) -> None:
+        os.environ["ZAK_QUOTE_L1_CACHE"] = "1"
+        base = _sample_quote()
+        l1.swap_quotes({"000001.SZ": base}, complete=True)
+        enriched = base.model_copy(update={"volume_ratio": 2.5, "net_mf_amount": 100.0})
+        l1.merge_quotes({"000001.SZ": enriched})
+        hit = l1.try_get_quotes(["000001.SZ"])
+        assert hit is not None
+        self.assertEqual(hit["000001.SZ"].last_price, base.last_price)
+        self.assertEqual(hit["000001.SZ"].volume_ratio, 2.5)
+
 
 if __name__ == "__main__":
     unittest.main()

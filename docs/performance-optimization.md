@@ -272,6 +272,7 @@ TickFlow → collect_quotes → Redis (~5k HASH + 10× ZSET 全量重建)
 | span 前缀 | 模块 |
 |-----------|------|
 | `collect.*` | `jobs/quotes/collect.py` |
+| `enrich.*` | `jobs/quotes/enrich.py` |
 | `load_market_quote_rows` / `quotes.*` | `screener/data/quotes_loader.py` |
 | `run_recipe.*` / `recipe.*` | `screener/recipe/recipe_runner.py` |
 | `radar.load_cards[*]` | `quotes/radar/loaders/load.py` |
@@ -314,6 +315,13 @@ TickFlow → collect_quotes → Redis (~5k HASH + 10× ZSET 全量重建)
 - [x] 行情 Worker 合并（`_pending_quote_refresh`）  
 - [x] `purge_stale_cache` 清理 cache schema 过期行  
 - [x] Redis 读路径瘦身：紧凑 HASH field key（`ZAK_REDIS_QUOTE_COMPACT=1`）  
+- [x] L1 一致性 `meta:seq` + 异步 enrich Job（`enrich_market_quotes`）  
+- [x] K 线 tail 进程内 LRU（`ZAK_BARS_TAIL_LRU_SIZE`）  
+- [x] 全市场涨幅序 Redis LIST（`ZAK_RANK_ORDERED_LIST=1`）  
+- [x] Tab deactivate 取消行情 Worker（`QuotesRefreshWorker.request_cancel`）  
+- [x] Redis JSON blob + MGET 批量读（`ZAK_REDIS_QUOTE_BLOB=1`）  
+- [x] 行情 REST 刷新去抖（`QUOTE_REFRESH_DEBOUNCE_MS=200`）  
+- [x] 市场表固定行高（`setUniformRowHeights`）  
 
 **预期**：整体体感 ~2×；collect 与市场刷新明显改善。
 
@@ -332,9 +340,9 @@ TickFlow → collect_quotes → Redis (~5k HASH + 10× ZSET 全量重建)
 ### Phase 3 — 极致路径（可选，4+ 周）
 
 - [ ] Rust 扩展：`hard_filter`、`rank_topn`、`double_ma_signal`  
-- [ ] Redis Streams 推送替代部分轮询  
+- [x] Redis Pub/Sub 行情推送（`ZAK_QUOTE_REDIS_NOTIFY=1` → `zak:notify:quotes`）  
 - [ ] PG 读副本 + PgBouncer 生产化  
-- [ ] quote-ingest 独立进程（TickFlow 与 GUI 隔离）  
+- [x] quote-ingest 独立进程（`zak job run collect_quotes`；见 `bench/README.md`）  
 
 ---
 
@@ -358,6 +366,9 @@ ZAK_PERF_TRACE=0
 ZAK_QUOTE_L1_CACHE=0
 ZAK_COLLECT_DEFER_ENRICH=0
 ZAK_REDIS_QUOTE_COMPACT=0
+ZAK_REDIS_QUOTE_BLOB=0
+ZAK_QUOTE_REDIS_NOTIFY=1
+ZAK_RANK_ORDERED_LIST=1
 
 # 性能（Phase 2）
 ZAK_RANK_PRECOMPUTE=1

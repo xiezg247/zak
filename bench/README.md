@@ -26,7 +26,31 @@ ZAK_PERF_TRACE=1 uv run python bench/run_hotpaths.py --integration redis
 ZAK_PERF_TRACE=1 uv run python bench/run_hotpaths.py --integration recipe --recipe intraday_multi
 ```
 
-Phase 1 Leader 推荐 `.env`：`ZAK_QUOTE_L1_CACHE=1`、`ZAK_COLLECT_DEFER_ENRICH=1`。
+Phase 1 Leader 推荐 `.env`：
+
+```env
+ZAK_QUOTE_L1_CACHE=1
+ZAK_COLLECT_DEFER_ENRICH=1
+ZAK_QUOTE_REDIS_NOTIFY=1
+ZAK_RANK_PRECOMPUTE=1
+ZAK_RANK_ORDERED_LIST=1
+ZAK_REDIS_QUOTE_COMPACT=1
+ZAK_REDIS_QUOTE_BLOB=1
+```
+
+### 独立采集进程（与 GUI 隔离）
+
+Leader 机器上循环采集（不启动 PyQt）：
+
+```bash
+# 单次
+uv run zak job run collect_quotes --force
+
+# 交易时段内每 30s（示例）
+while true; do uv run zak job run collect_quotes; sleep 30; done
+```
+
+GUI 客户端开启 `ZAK_QUOTE_REDIS_NOTIFY=1` 后，收到 Pub/Sub 推送即刷新，可拉长 `_quote_timer` 间隔。
 
 ## 运行时 tracing
 

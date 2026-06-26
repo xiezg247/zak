@@ -12,6 +12,7 @@ from vnpy_ashare.quotes.core.enrich import backfill_rank_scores_from_zset, fill_
 from vnpy_ashare.quotes.core.quote_l1_cache import (
     get_updated_at as l1_get_updated_at,
     quote_l1_enabled,
+    seq_matches,
     try_get_all_quotes,
     try_list_rank_symbols,
 )
@@ -37,6 +38,8 @@ def _rows_from_quote_map(quotes: dict[str, QuoteSnapshot]) -> list[QuoteRow]:
 
 def _load_from_l1(*, enrich_factors: bool) -> MarketQuotesSnapshot | None:
     if not quote_l1_enabled():
+        return None
+    if not seq_matches(get_redis_quote_store().get_quote_seq()):
         return None
     with tracer.trace("quotes.l1_hit"):
         tf_symbols = try_list_rank_symbols()
@@ -76,8 +79,8 @@ def load_market_quote_rows(*, enrich_factors: bool = True) -> MarketQuotesSnapsh
         except redis.RedisError as exc:
             raise MarketQuotesLoadError(f"Redis 行情读取失败：{exc}") from exc
 
-            with tracer.trace("quotes.build_rows"):
-                rows = _rows_from_quote_map({tf: quotes[tf] for tf in tf_symbols if tf in quotes})
+        with tracer.trace("quotes.build_rows"):
+            rows = _rows_from_quote_map({tf: quotes[tf] for tf in tf_symbols if tf in quotes})
 
         if not rows:
             raise MarketQuotesLoadError("Redis 中无有效行情快照，请先运行行情采集。")

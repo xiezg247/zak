@@ -13,6 +13,7 @@ from vnpy_ashare.ui.quotes.controllers.batch_backtest import WatchlistBatchBackt
 from vnpy_ashare.ui.quotes.controllers.data_loader import DataLoaderController
 from vnpy_ashare.ui.quotes.controllers.local_data import LocalDataController
 from vnpy_ashare.ui.quotes.controllers.pagination import MarketPaginationController
+from vnpy_ashare.ui.quotes.controllers.quote_redis_notify import QuoteRedisNotifyController
 from vnpy_ashare.ui.quotes.controllers.quote_stream import QuoteStreamController
 from vnpy_ashare.ui.quotes.controllers.table import TableController
 from vnpy_ashare.ui.quotes.controllers.watchlist import WatchlistController
@@ -176,6 +177,7 @@ def init_controllers(page: QuotesPage, page_name: str) -> None:
     page._watchlist = WatchlistController(page)
     page._pagination = MarketPaginationController(page)
     page._stream = QuoteStreamController(page)
+    page._redis_notify = QuoteRedisNotifyController(page)
     page._local = LocalDataController(page)
     page._table = TableController(page)
     page._actions = ActionsController(page)

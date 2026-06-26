@@ -83,7 +83,6 @@ class PostgresBackend:
         # 通过底层 psycopg.Connection 直接操作。
         raw_conn = self._conn.connection  # psycopg.Connection
         with raw_conn.cursor() as cur:  # type: ignore[attr-defined]
-            cur.execute(f"SET search_path TO {self._search_path}")
             cur.executemany(pg_sql, params_seq)
             self.last_rowcount = int(cur.rowcount)
 

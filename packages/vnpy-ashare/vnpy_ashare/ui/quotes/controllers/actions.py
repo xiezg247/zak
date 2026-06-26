@@ -29,7 +29,7 @@ from vnpy_ashare.services.bar import list_status
 from vnpy_ashare.services.signals.stock_continuation import format_signal_panel_context_extra
 from vnpy_ashare.ui.features.stock_analysis.open import show_stock_analysis_from_quotes_page
 from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
-from vnpy_ashare.ui.quotes.page.config import AI_CONTEXT_DEBOUNCE_MS
+from vnpy_ashare.ui.quotes.page.config import AI_CONTEXT_DEBOUNCE_MS, QUOTE_REFRESH_DEBOUNCE_MS
 from vnpy_ashare.ui.quotes.page.quote_refresh import quote_refresh_stock_items
 from vnpy_ashare.ui.quotes.page.roles import WATCHLIST_PAGE
 from vnpy_ashare.ui.quotes.watchlist.quote_status import begin_watchlist_quotes_fetch, end_watchlist_quotes_fetch
@@ -52,6 +52,10 @@ class ActionsController:
         self._ai_context_timer.setSingleShot(True)
         self._ai_context_timer.setInterval(AI_CONTEXT_DEBOUNCE_MS)
         self._ai_context_timer.timeout.connect(self._publish_ai_context)
+        self._quote_rest_timer = QtCore.QTimer(page)
+        self._quote_rest_timer.setSingleShot(True)
+        self._quote_rest_timer.setInterval(QUOTE_REFRESH_DEBOUNCE_MS)
+        self._quote_rest_timer.timeout.connect(self._do_refresh_quotes_rest)
 
     @property
     def _p(self) -> QuotesPage:
@@ -348,10 +352,16 @@ class ActionsController:
         if page.config.market_scroll_paging and page._market_quote_refresh_paused():
             page._toast.info("列表加载中，请稍候再刷新")
             return
-        self.refresh_quotes_rest()
+        self._quote_rest_timer.stop()
+        self._do_refresh_quotes_rest()
 
     def refresh_quotes_rest(self) -> None:
+        self._quote_rest_timer.start()
+
+    def _do_refresh_quotes_rest(self) -> None:
         page = self._p
+        if not page._active or not page.config.quote_source:
+            return
         refresh_items = quote_refresh_stock_items(page)
         if not refresh_items:
             return

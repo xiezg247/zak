@@ -98,6 +98,10 @@ class SchedulerConfig(MutableModel):
         default_factory=lambda: JobConfig(enabled=False, interval_seconds=30),
         description="行情采集任务配置",
     )
+    enrich_market_quotes: JobConfig = Field(
+        default_factory=lambda: JobConfig(enabled=False, interval_seconds=60),
+        description="行情 Tushare 因子异步 enrich 配置",
+    )
     sync_universe: JobConfig = Field(
         default_factory=lambda: _job_config_from_cron(
             *_WEEKLY_CRON["sync_universe"],
@@ -246,6 +250,7 @@ class SchedulerConfig(MutableModel):
 
         return {
             "collect_quotes": dump_job(self.collect_quotes),
+            "enrich_market_quotes": dump_job(self.enrich_market_quotes),
             "sync_universe": dump_job(self.sync_universe),
             "sync_stock_industry": dump_job(self.sync_stock_industry),
             "sync_trade_calendar": dump_job(self.sync_trade_calendar),
@@ -297,6 +302,7 @@ class SchedulerConfig(MutableModel):
         defaults = cls()
         return cls(
             collect_quotes=load_job("collect_quotes", defaults.collect_quotes),
+            enrich_market_quotes=load_job("enrich_market_quotes", defaults.enrich_market_quotes),
             sync_universe=load_job("sync_universe", defaults.sync_universe),
             sync_stock_industry=load_job("sync_stock_industry", defaults.sync_stock_industry),
             sync_trade_calendar=load_job("sync_trade_calendar", defaults.sync_trade_calendar),

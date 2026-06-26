@@ -164,6 +164,8 @@ def activate_quotes_page(page: Any) -> None:
             page.chart_panel.set_active(True)
         if page.config.use_quote_stream:
             page._stream.resume()
+        if page.config.quote_source:
+            page._redis_notify.start()
         if page.config.column_configurable and page._table.sync_tail_columns_with_config():
             QtCore.QTimer.singleShot(0, page._table.rebuild_table)
         if page._watchlist_bootstrap is not None:
@@ -178,6 +180,8 @@ def activate_quotes_page(page: Any) -> None:
         return
 
     if page.page_name == STRATEGY_MONITOR_PAGE:
+        if page.config.quote_source:
+            page._redis_notify.start()
         QtCore.QTimer.singleShot(0, lambda: _deferred_strategy_monitor_activate(page))
         return
 
@@ -187,6 +191,8 @@ def activate_quotes_page(page: Any) -> None:
         page.chart_panel.set_active(True)
     if page.config.use_quote_stream:
         page._stream.start()
+    if page.config.quote_source:
+        page._redis_notify.start()
     if page.config.show_add_watchlist_button:
         page._watchlist.refresh_keys()
     if page._watchlist_groups is not None:
@@ -227,6 +233,7 @@ def deactivate_quotes_page(page: Any) -> None:
         controller = getattr(page, "_radar_controller", None)
         if controller is not None:
             controller.deactivate()
+        page._redis_notify.stop()
         page._active = False
         return
     schedule_save_layout(page)
@@ -242,6 +249,10 @@ def deactivate_quotes_page(page: Any) -> None:
     else:
         page._stream.stop()
     page._quote_timer.stop()
+    page._redis_notify.stop()
+    actions = getattr(page, "_actions", None)
+    if actions is not None:
+        actions._quote_rest_timer.stop()
     page._strategy_refresh.stop()
     batch = getattr(page, "_strategy_batch", None)
     if batch is not None:

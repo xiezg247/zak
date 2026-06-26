@@ -94,6 +94,7 @@ class RedisQuoteStoreBatchReadTests(unittest.TestCase):
             l1.swap_quotes({"000001.SZ": quote}, complete=True)
             client = MagicMock()
             store = RedisQuoteStore(client=client)
+            client.get = MagicMock(return_value=None)
             result = store.get_quotes(["000001.SZ"], enrich_factors=False)
             self.assertEqual(result["000001.SZ"].name, "平安")
             client.pipeline.assert_not_called()
@@ -132,8 +133,11 @@ class RedisRankIncrementalTests(unittest.TestCase):
             def set(self, key: str, value: str) -> None:
                 self.ops.append(("set", key))
 
-            def execute(self) -> None:
-                return None
+            def incr(self, key: str) -> None:
+                self.ops.append(("incr", key))
+
+            def execute(self) -> list:
+                return [1]
 
         class _FakeClient:
             def pipeline(self, transaction: bool = False):
@@ -182,6 +186,31 @@ class RedisRankIncrementalTests(unittest.TestCase):
         self.assertEqual(len(zadd_ops), 1)
         zrem_volume = [op for op in pipe.ops if op[0] == "zrem" and op[1] == rs.rank_key("volume_ratio")]
         self.assertGreaterEqual(len(zrem_volume), 1)
+
+    def test_list_all_rank_symbols_uses_ordered_list(self) -> None:
+        from vnpy_ashare.quotes.core import redis_store as rs
+
+        client = MagicMock()
+        client.llen.return_value = 2
+        client.zcard.return_value = 2
+        client.lrange.return_value = ["600000.SH", "000001.SZ"]
+        store = RedisQuoteStore(client=client)
+        store.get_quote_seq = MagicMock(return_value=None)  # type: ignore[method-assign]
+
+        prev = __import__("os").environ.get("ZAK_RANK_ORDERED_LIST")
+        __import__("os").environ["ZAK_RANK_ORDERED_LIST"] = "1"
+        try:
+            with patch.object(rs, "quote_l1_enabled", return_value=False):
+                symbols = store.list_all_rank_symbols(field="change_pct", ascending=False)
+        finally:
+            if prev is None:
+                __import__("os").environ.pop("ZAK_RANK_ORDERED_LIST", None)
+            else:
+                __import__("os").environ["ZAK_RANK_ORDERED_LIST"] = prev
+
+        self.assertEqual(symbols, ["600000.SH", "000001.SZ"])
+        client.lrange.assert_called_once()
+        client.zrevrange.assert_not_called()
 
 
 if __name__ == "__main__":

@@ -16,6 +16,7 @@ _CANCEL_WORKER_ATTRS = (
     "_download_worker",
     "_batch_fill_worker",
     "_batch_gap_fill_worker",
+    "_quotes_worker",
 )
 
 _RELEASE_WORKER_ATTRS = (
