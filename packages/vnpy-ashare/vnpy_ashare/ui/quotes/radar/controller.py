@@ -41,7 +41,9 @@ from vnpy_ashare.quotes.radar.radar_loaders import (
     build_radar_resonance_list,
     collect_radar_risk_vt_symbols,
     compute_radar_resonance,
+    incremental_refresh_radar_card_quotes,
 )
+from vnpy_ashare.quotes.radar.radar_market_emotion import is_stat_row
 from vnpy_ashare.quotes.radar.radar_resonance_prefs import DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS
 from vnpy_ashare.quotes.radar.radar_resonance_store import set_radar_resonance_entries
 from vnpy_ashare.quotes.radar.radar_snapshot import (
@@ -282,7 +284,26 @@ class RadarController(QtCore.QObject):
         self._board.sync_mode_badges()
         for card_id in auto_refresh_card_ids():
             self._apply_card_auto_refresh(card_id)
+        self._refresh_live_quotes_for_current_group()
         self._page._update_refresh_hint_label()
+
+    def _refresh_live_quotes_for_current_group(self) -> None:
+        """盘中同步刷新当前分组各卡行的现价/涨幅（不走 worker）。"""
+        if not is_ashare_trading_session():
+            return
+        mode = self._board.current_mode()
+        group_key = self._board.current_group(mode)
+        for spec in list_radar_cards_for_group(mode, group_key):
+            if not self._card_is_visible(spec.id):
+                continue
+            data = self._last_payload.get(spec.id)
+            if data is None or not data.rows:
+                continue
+            if all(is_stat_row(row.vt_symbol) for row in data.rows):
+                continue
+            refreshed = incremental_refresh_radar_card_quotes(data)
+            self._last_payload[spec.id] = refreshed
+            self._board.apply_quote_update(spec.id, refreshed.rows)
 
     def _stop_auto_refresh(self) -> None:
         for timer in self._auto_refresh_timers.values():
@@ -649,6 +670,10 @@ class RadarController(QtCore.QObject):
                 cached = peek_radar_card_snapshot(card_id, variant_key=self._variant_key_for_card(card_id))
             if cached is None:
                 continue
+            if is_ashare_trading_session() and cached.rows and not all(
+                is_stat_row(row.vt_symbol) for row in cached.rows
+            ):
+                cached = incremental_refresh_radar_card_quotes(cached)
             if not cached.rows and not cached.empty_message:
                 continue
             self._board.apply_card(card_id, cached, resonance_counts=self._cached_resonance)

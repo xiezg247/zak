@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtWidgets
 
@@ -13,30 +13,40 @@ from vnpy_ashare.ui.shell.main_window_lookup import find_ashare_main_window
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
-    from vnpy_ashare.ui.shell.main_window import AshareMainWindow
-
-
-def _strategy_monitor_page_widget(win: AshareMainWindow):
-    from vnpy_ashare.ui.shell.main_window_pages import get_or_create_page
-
-    return get_or_create_page(win, STRATEGY_MONITOR_NAV_KEY)
 
 
 def navigate_to_strategy_monitor(start: QtWidgets.QWidget) -> QuotesPage | None:
+    from vnpy_ashare.ui.shell.main_window_pages import (
+        _switch_page_deferred,
+        get_or_create_page,
+        nav_index_for_key,
+        show_page_by_key,
+    )
+
     win = find_ashare_main_window(start)
     if win is None:
         return None
-    main = cast(AshareMainWindow, win)
-    from vnpy_ashare.ui.shell.main_window_pages import nav_index_for_key, show_page_by_key
 
-    nav_index = nav_index_for_key(main, STRATEGY_MONITOR_NAV_KEY)
-    show_page_by_key(main, STRATEGY_MONITOR_NAV_KEY, nav_index=nav_index)
-    widget = _strategy_monitor_page_widget(main)
-    if widget is not None and hasattr(widget, "page"):
-        page = cast(QuotesPage, widget.page)
-        if hasattr(page, "activate"):
-            page.activate()
-        return page
+    nav_index = nav_index_for_key(win, STRATEGY_MONITOR_NAV_KEY)
+    widget = win._page_widgets.get(STRATEGY_MONITOR_NAV_KEY)
+    if widget is None:
+        if nav_index is not None:
+            win.sidebar.set_active_index(nav_index)
+        widget = get_or_create_page(win, STRATEGY_MONITOR_NAV_KEY)
+        if widget is None:
+            return None
+        _switch_page_deferred(
+            win,
+            widget,
+            key=STRATEGY_MONITOR_NAV_KEY,
+            old_key=win._current_key,
+            nav_index=nav_index,
+        )
+    else:
+        show_page_by_key(win, STRATEGY_MONITOR_NAV_KEY, nav_index=nav_index)
+
+    if hasattr(widget, "page"):
+        return widget.page
     return None
 
 
@@ -53,13 +63,12 @@ def add_items_to_strategy_monitor(start: QtWidgets.QWidget, items: list[StockIte
 
 
 def focus_watchlist_symbol_from_page(page: QuotesPage, vt_symbol: str) -> None:
+    from vnpy_ashare.ui.shell.main_window_navigation import focus_watchlist_symbol
+
     item = page.find_stock_item(vt_symbol)
     if item is None:
         return
     win = find_ashare_main_window(as_qwidget(page))
     if win is None:
         return
-    main = cast(AshareMainWindow, win)
-    from vnpy_ashare.ui.shell.main_window_navigation import focus_watchlist_symbol
-
-    focus_watchlist_symbol(main, item.symbol, item.exchange.name)
+    focus_watchlist_symbol(win, item.symbol, item.exchange.name)

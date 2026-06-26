@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 
 from vnpy_ashare.data.download_concurrency import run_parallel_map
+from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.quotes.radar.loaders.discovery import load_discovery_moneyflow_intraday, load_discovery_volume_surge
 from vnpy_ashare.quotes.radar.radar_catalog import (
     DEFAULT_LEADER_PICK_VARIANT,
@@ -87,10 +88,10 @@ def incremental_refresh_radar_card_quotes(data: RadarCardData) -> RadarCardData:
     """仅刷新卡片行的现价与涨幅，不重算发现 / 板块等指标。"""
     if not data.rows:
         return data
-    with screening_context_scope() as ctx:
-        preload_screening_context_quotes(ctx)
-        enriched = enrich_radar_rows(data.rows)
-    return data.model_copy(update={"rows": enriched})
+    from vnpy_ashare.quotes.radar.radar_models import refresh_radar_rows_live_quotes
+
+    refreshed = refresh_radar_rows_live_quotes(data.rows)
+    return data.model_copy(update={"rows": refreshed})
 
 
 def load_radar_card_uncached(
@@ -180,6 +181,8 @@ def _load_radar_card_item(
     if not force_recompute and card_id in RADAR_SNAPSHOT_CARD_IDS:
         cached = peek_radar_card_snapshot(card_id, variant_key=variant_key)
         if cached is not None:
+            if is_ashare_trading_session() and cached.rows:
+                cached = incremental_refresh_radar_card_quotes(cached)
             return card_id, cached, None
     try:
         data = load_radar_card_uncached(
