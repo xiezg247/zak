@@ -182,6 +182,13 @@ JOB_SPECS: tuple[JobSpec, ...] = (
         cli_description="拉取已订阅 UP 主视频与动态写入信息流",
         config_attr="sync_bilibili_feed",
     ),
+    JobSpec(
+        job_id="purge_stale_cache",
+        name="清理过期缓存",
+        description="删除 cache schema 中过期 LLM/雷达 hint 与过旧自选策略磁盘缓存",
+        cli_description="清理 cache schema 过期行（可重建缓存）",
+        config_attr="purge_stale_cache",
+    ),
 )
 
 JOBS_BY_ID: dict[str, JobSpec] = {spec.job_id: spec for spec in JOB_SPECS}

@@ -6,6 +6,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 import tests._bootstrap  # noqa: F401
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore, _iter_symbol_batches
 
 
@@ -66,6 +67,42 @@ class RedisQuoteStoreBatchReadTests(unittest.TestCase):
         scores_map = store.get_rank_scores("volume_ratio", symbols)
         self.assertEqual(scores_map, {})
         self.assertEqual(client.pipeline.call_count, 1)
+
+
+    def test_get_quotes_uses_l1_when_enabled(self) -> None:
+        import os
+
+        from vnpy_ashare.quotes.core import quote_l1_cache as l1
+
+        l1.clear_quote_l1_cache()
+        prev = os.environ.get("ZAK_QUOTE_L1_CACHE")
+        os.environ["ZAK_QUOTE_L1_CACHE"] = "1"
+        try:
+            quote = QuoteSnapshot(
+                symbol="000001",
+                name="平安",
+                last_price=10.0,
+                prev_close=9.9,
+                open_price=9.9,
+                high_price=10.1,
+                low_price=9.8,
+                change_amount=0.1,
+                change_pct=1.0,
+                turnover_rate=1.0,
+                volume=1000.0,
+            )
+            l1.swap_quotes({"000001.SZ": quote}, complete=True)
+            client = MagicMock()
+            store = RedisQuoteStore(client=client)
+            result = store.get_quotes(["000001.SZ"], enrich_factors=False)
+            self.assertEqual(result["000001.SZ"].name, "平安")
+            client.pipeline.assert_not_called()
+        finally:
+            l1.clear_quote_l1_cache()
+            if prev is None:
+                os.environ.pop("ZAK_QUOTE_L1_CACHE", None)
+            else:
+                os.environ["ZAK_QUOTE_L1_CACHE"] = prev
 
 
 if __name__ == "__main__":

@@ -10,6 +10,7 @@ from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session, next
 from vnpy_ashare.jobs.bars.batch_fill import batch_fill_downloaded_stale_job
 from vnpy_ashare.jobs.bars.download import batch_download_universe_daily_bars
 from vnpy_ashare.jobs.bars.focus_pool_minute import batch_fill_focus_pool_minute_job
+from vnpy_ashare.jobs.cache.purge_stale import purge_stale_cache_job
 from vnpy_ashare.jobs.catalog import COLLECT_QUOTES_INTERVAL_SECONDS, COLLECT_QUOTES_JOB_ID, JOB_CATALOG
 from vnpy_ashare.jobs.core.result import JobResult
 from vnpy_ashare.jobs.feed.sync_bilibili import is_bilibili_sync_window, sync_bilibili_feed_job
@@ -50,6 +51,7 @@ _SIMPLE_JOB_RUNNERS: dict[str, Callable[[], JobResult]] = {
     "fill_focus_pool_minute": batch_fill_focus_pool_minute_job,
     "warm_market_summary": lambda: warm_market_summary(enrich_factors=True),
     "sync_bilibili_feed": lambda: sync_bilibili_feed_job(force=True),
+    "purge_stale_cache": purge_stale_cache_job,
 }
 
 

@@ -94,6 +94,7 @@ class QuotesPageStateAttrs:
     _batch_gap_fill_worker: BatchGapFillWorker | None
     _gap_worker: BarGapCheckWorker | None
     _quotes_worker: QuotesRefreshWorker | None
+    _pending_quote_refresh: bool
     _depth_worker: DepthRefreshWorker | None
     _diagnose_worker: DiagnoseWorker | None
     _invalid_bar_cleanup_worker: InvalidBarCleanupWorker | None

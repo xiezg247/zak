@@ -44,6 +44,7 @@ from vnpy_ashare.screener.data.screening_sentiment_prefilter import (
     apply_recipe_prefilter_to_context,
     apply_sentiment_prefilter_to_context,
 )
+from vnpy_common.perf_trace import tracer
 
 RADAR_FULL_CONTEXT_CARD_IDS = frozenset(
     {
@@ -253,51 +254,53 @@ def load_radar_cards_batch(
     scenario_variant: str = DEFAULT_SCENARIO_VARIANT,
 ) -> tuple[dict[str, RadarCardData], dict[str, str]]:
     """批量加载雷达卡片：按上下文类型分组，组内共享快照并并行计算。"""
-    variants = _radar_load_variants(
-        screen_task_variant=screen_task_variant,
-        sector_variant=sector_variant,
-        sector_flow_hot_variant=sector_flow_hot_variant,
-        leader_pick_variant=leader_pick_variant,
-        limit_ladder_variant=limit_ladder_variant,
-        scenario_variant=scenario_variant,
-    )
-    buckets: dict[str, list[tuple[str, dict[str, object]]]] = {"full": [], "quote": [], "none": []}
-    for item in items:
-        card_id, _kwargs = item
-        if card_id in RADAR_FULL_CONTEXT_CARD_IDS:
-            buckets["full"].append(item)
-        elif card_id in RADAR_QUOTE_CONTEXT_CARD_IDS:
-            buckets["quote"].append(item)
-        else:
-            buckets["none"].append(item)
+    card_ids = ",".join(card_id for card_id, _ in items)
+    with tracer.trace(f"radar.load_cards[{card_ids}]"):
+        variants = _radar_load_variants(
+            screen_task_variant=screen_task_variant,
+            sector_variant=sector_variant,
+            sector_flow_hot_variant=sector_flow_hot_variant,
+            leader_pick_variant=leader_pick_variant,
+            limit_ladder_variant=limit_ladder_variant,
+            scenario_variant=scenario_variant,
+        )
+        buckets: dict[str, list[tuple[str, dict[str, object]]]] = {"full": [], "quote": [], "none": []}
+        for item in items:
+            card_id, _kwargs = item
+            if card_id in RADAR_FULL_CONTEXT_CARD_IDS:
+                buckets["full"].append(item)
+            elif card_id in RADAR_QUOTE_CONTEXT_CARD_IDS:
+                buckets["quote"].append(item)
+            else:
+                buckets["none"].append(item)
 
-    loaded: dict[str, RadarCardData] = {}
-    errors: dict[str, str] = {}
-    bucket_modes = [(mode, buckets[mode]) for mode in ("full", "quote", "none") if buckets[mode]]
-    if len(bucket_modes) <= 1:
-        for mode, batch_items in bucket_modes:
-            batch_loaded, batch_errors = _load_radar_cards_in_context(
-                batch_items,
-                context_mode=mode,
-                variants=variants,
-            )
-            loaded.update(batch_loaded)
-            errors.update(batch_errors)
-    else:
-        with ThreadPoolExecutor(max_workers=len(bucket_modes)) as pool:
-            future_map = {
-                pool.submit(
-                    _load_radar_cards_in_context,
+        loaded: dict[str, RadarCardData] = {}
+        errors: dict[str, str] = {}
+        bucket_modes = [(mode, buckets[mode]) for mode in ("full", "quote", "none") if buckets[mode]]
+        if len(bucket_modes) <= 1:
+            for mode, batch_items in bucket_modes:
+                batch_loaded, batch_errors = _load_radar_cards_in_context(
                     batch_items,
                     context_mode=mode,
                     variants=variants,
-                ): mode
-                for mode, batch_items in bucket_modes
-            }
-            for future in as_completed(future_map):
-                batch_loaded, batch_errors = future.result()
+                )
                 loaded.update(batch_loaded)
                 errors.update(batch_errors)
+        else:
+            with ThreadPoolExecutor(max_workers=len(bucket_modes)) as pool:
+                future_map = {
+                    pool.submit(
+                        _load_radar_cards_in_context,
+                        batch_items,
+                        context_mode=mode,
+                        variants=variants,
+                    ): mode
+                    for mode, batch_items in bucket_modes
+                }
+                for future in as_completed(future_map):
+                    batch_loaded, batch_errors = future.result()
+                    loaded.update(batch_loaded)
+                    errors.update(batch_errors)
     return loaded, errors
 
 

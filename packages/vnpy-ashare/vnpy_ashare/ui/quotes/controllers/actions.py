@@ -57,6 +57,17 @@ class ActionsController:
     def _p(self) -> QuotesPage:
         return self._page
 
+    def _flush_pending_quote_refresh(self) -> None:
+        """合并定时刷新：Worker 进行中时记 pending，结束后补跑一轮。"""
+        page = self._page
+        if not page._pending_quote_refresh:
+            return
+        if not page._active:
+            page._pending_quote_refresh = False
+            return
+        page._pending_quote_refresh = False
+        QtCore.QTimer.singleShot(0, self.refresh_quotes_rest)
+
     def update_action_buttons(self) -> None:
         page = self._p
         item = page.current_item
@@ -345,7 +356,9 @@ class ActionsController:
         if not refresh_items:
             return
         if page._thread_active(page._quotes_worker):
+            page._pending_quote_refresh = True
             return
+        page._pending_quote_refresh = False
         if page.config.market_scroll_paging and page._market_quote_refresh_paused():
             return
 
@@ -392,6 +405,7 @@ class ActionsController:
                 page._defer_when_market_idle(_apply_quotes)
             finally:
                 page._release_worker(worker)
+                self._flush_pending_quote_refresh()
 
         def on_failed(_msg: str) -> None:
             if page._quotes_worker is worker:
@@ -403,6 +417,7 @@ class ActionsController:
                     end_watchlist_quotes_fetch(page)
             finally:
                 page._release_worker(worker)
+                self._flush_pending_quote_refresh()
 
         worker.finished.connect(on_finished)
         worker.failed.connect(on_failed)

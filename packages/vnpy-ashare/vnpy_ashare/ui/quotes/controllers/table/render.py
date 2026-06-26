@@ -23,6 +23,15 @@ from vnpy_common.ui.theme.tokens import ThemeTokens
 
 
 class TableRenderMixin(TableControllerBase):
+    def _can_incremental_render(self, model, display_stocks: list[StockItem]) -> bool:
+        if model.row_count() != len(display_stocks):
+            return False
+        for row, item in enumerate(display_stocks):
+            row_item = model.stock_at_row(row)
+            if row_item is None or row_item.tickflow_symbol != item.tickflow_symbol:
+                return False
+        return True
+
     def render_table(self, *, preserve_selection: bool = True) -> None:
         page = self._p
         self.invalidate_symbol_row_index()
@@ -36,7 +45,16 @@ class TableRenderMixin(TableControllerBase):
         view.setSortingEnabled(False)
         try:
             row_cells = [self._build_row_cells(row, item, page.quote_map.get(item.tickflow_symbol)) for row, item in enumerate(page.display_stocks)]
-            model.set_rows(row_cells)
+            incremental = self._can_incremental_render(model, page.display_stocks)
+            if incremental:
+                for row, cells in enumerate(row_cells):
+                    model.apply_row(
+                        row,
+                        cells,
+                        sortable=page.config.table_header_sortable,
+                    )
+            else:
+                model.set_rows(row_cells)
 
             if selected_key:
                 self.select_stock_key(selected_key)

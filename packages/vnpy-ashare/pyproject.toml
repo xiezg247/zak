@@ -30,6 +30,8 @@ dependencies = [
 llm = ["vnpy-llm"]
 full = ["vnpy-llm"]
 events = ["akshare>=1.18.0"]
+polars = ["polars>=1.0,<2"]
+perf = ["polars>=1.0,<2"]
 
 [project.scripts]
 zak = "vnpy_ashare.cli:main"

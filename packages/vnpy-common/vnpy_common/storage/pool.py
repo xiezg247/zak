@@ -3,10 +3,12 @@
 设计：
 - 全局单例 Engine，自带 QueuePool 管理连接复用/回收/健康检查
 - 只暴露 get_connection，不引入 ORM Session
+- 池大小可通过环境变量调整（需重启进程生效）
 """
 
 from __future__ import annotations
 
+import os
 import threading
 from typing import TYPE_CHECKING
 
@@ -14,15 +16,31 @@ if TYPE_CHECKING:
     from sqlalchemy import Engine
     from sqlalchemy.engine import Connection
 
-
 _ENGINE_LOCK = threading.Lock()
 
-_POOL_SIZE = 5
-_POOL_MAX_OVERFLOW = 10
+_DEFAULT_POOL_SIZE = 5
+_DEFAULT_MAX_OVERFLOW = 10
 _POOL_RECYCLE_SEC = 3600
 _CONNECT_TIMEOUT = 10
 
 _engine: Engine | None = None
+
+
+def _env_int(key: str, default: int, *, minimum: int = 1, maximum: int = 64) -> int:
+    raw = os.getenv(key, str(default)).strip()
+    try:
+        value = int(raw)
+    except ValueError:
+        value = default
+    return max(minimum, min(value, maximum))
+
+
+def pool_size() -> int:
+    return _env_int("POSTGRES_POOL_SIZE", _DEFAULT_POOL_SIZE, maximum=32)
+
+
+def pool_max_overflow() -> int:
+    return _env_int("POSTGRES_MAX_OVERFLOW", _DEFAULT_MAX_OVERFLOW, maximum=64)
 
 
 def _create_engine(url: str) -> Engine:
@@ -32,8 +50,8 @@ def _create_engine(url: str) -> Engine:
     return create_engine(
         url,
         poolclass=QueuePool,
-        pool_size=_POOL_SIZE,
-        max_overflow=_POOL_MAX_OVERFLOW,
+        pool_size=pool_size(),
+        max_overflow=pool_max_overflow(),
         pool_recycle=_POOL_RECYCLE_SEC,
         pool_pre_ping=True,
         connect_args={

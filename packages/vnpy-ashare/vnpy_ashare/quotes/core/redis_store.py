@@ -12,6 +12,13 @@ from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.domain.time.quote_time import normalize_datetime_text
 from vnpy_ashare.quotes.core.enrich import backfill_rank_scores_from_zset, fill_missing_tushare_factors
+from vnpy_ashare.quotes.core.quote_l1_cache import (
+    clear_quote_l1_cache,
+    quote_l1_enabled,
+    swap_quotes,
+    try_get_quotes,
+    try_list_rank_symbols,
+)
 from vnpy_ashare.quotes.misc.speed_baseline import apply_change_speed_5m
 from vnpy_ashare.quotes.rank.rank_engine import compute_intraday_change_pct
 from vnpy_common.paths import ENV_FILE
@@ -117,11 +124,21 @@ class RedisQuoteStore:
         pipe.set(META_UPDATED_AT_KEY, datetime.now().isoformat(timespec="seconds"))
         pipe.set(META_QUOTE_COUNT_KEY, str(len(quotes)))
         pipe.execute()
+        if quote_l1_enabled():
+            swap_quotes(quotes, updated_at=self.get_updated_at(), complete=True)
         return len(quotes)
 
     def get_quotes(self, tf_symbols: list[str], *, enrich_factors: bool = True) -> dict[str, QuoteSnapshot]:
         if not tf_symbols:
             return {}
+
+        if quote_l1_enabled():
+            cached = try_get_quotes(tf_symbols)
+            if cached is not None:
+                if enrich_factors and cached:
+                    fill_missing_tushare_factors(cached)
+                    backfill_rank_scores_from_zset(self, cached)
+                return cached
 
         rows: list[dict] = []
         for batch in _iter_symbol_batches(tf_symbols, QUOTE_READ_BATCH_SIZE):
@@ -187,6 +204,10 @@ class RedisQuoteStore:
         field: str = "change_pct",
         ascending: bool = False,
     ) -> list[str]:
+        if field == "change_pct" and not ascending and quote_l1_enabled():
+            cached = try_list_rank_symbols()
+            if cached:
+                return cached
         key = rank_key(field)
         if ascending:
             return list(self._client.zrange(key, 0, -1))
@@ -211,3 +232,4 @@ def get_redis_quote_store() -> RedisQuoteStore:
 def reset_redis_quote_store() -> None:
     global _shared_redis_store
     _shared_redis_store = None
+    clear_quote_l1_cache()

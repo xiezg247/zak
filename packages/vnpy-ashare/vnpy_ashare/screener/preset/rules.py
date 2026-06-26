@@ -53,6 +53,24 @@ def apply_quote_preset(
     top_n = max(1, min(int(top_n or 20), 200))
     quotes = apply_recipe_filters(quotes)
 
+    from vnpy_ashare.screener.engine.config import polars_available, polars_engine_enabled
+
+    if (
+        polars_engine_enabled()
+        and polars_available()
+    ):
+        from vnpy_ashare.screener.engine.presets import sort_quote_rows_polars
+
+        sorted_quotes = sort_quote_rows_polars(
+            quotes,
+            preset=preset,
+            top_n=top_n,
+            min_change_pct=min_change_pct,
+            max_change_pct=max_change_pct,
+            min_turnover=min_turnover,
+        )
+        return [_quote_row(q) for q in sorted_quotes]
+
     if preset == SCREENER_CUSTOM:
         result = quotes
         if min_change_pct is not None:

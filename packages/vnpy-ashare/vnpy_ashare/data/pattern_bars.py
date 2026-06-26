@@ -8,7 +8,7 @@ from datetime import timedelta
 from vnpy.trader.constant import Exchange
 from vnpy.trader.object import BarData
 
-from vnpy_ashare.data.bar_store import get_scope_overview, load_scope_bars
+from vnpy_ashare.data.bar_store import get_scope_overview, load_scope_bars, warm_bar_overview_cache
 from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.domain.symbols.stock import StockItem
 
@@ -79,6 +79,7 @@ def load_daily_bars_batch(
     if not unique:
         return {}
 
+    warm_bar_overview_cache()
     workers = max_workers if max_workers is not None else pattern_load_max_workers(item_count=len(unique))
     if workers <= 1 or len(unique) <= 1:
         return {key: bars for key, bars in (_load_daily_bars_entry(item, lookback_bars=lookback_bars) for item in unique)}
