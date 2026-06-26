@@ -11,7 +11,6 @@ from vnpy_ashare.storage.repositories.financial import list_snapshots, upsert_re
 
 
 class FinancialDerivedTests(PgAppStorageTestCase):
-
     def test_compute_snapshots_yoy(self) -> None:
         ts_code = "600519.SH"
         upsert_report(

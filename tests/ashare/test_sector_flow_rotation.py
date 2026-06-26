@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest import mock
 
 from tests.ashare.pg_unittest import PgAppStorageTestCase
 from vnpy_ashare.domain.market.sector_flow import SectorFlowRow, SectorFlowSnapshot
@@ -114,7 +115,6 @@ class SectorFlowRotationLogicTests(unittest.TestCase):
 
 
 class SectorFlowRotationRepositoryTests(PgAppStorageTestCase):
-
     def test_build_rotation_snapshot_from_local_db(self) -> None:
         trade_dates = [f"202409{i:02d}" for i in range(11, 26)]
         for index, trade_date in enumerate(trade_dates):

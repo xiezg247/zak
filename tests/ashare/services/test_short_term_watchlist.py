@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import unittest
-
 from vnpy.trader.constant import Exchange
 
 from tests.ashare.pg_unittest import PgStorageTestCase

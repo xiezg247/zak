@@ -27,9 +27,7 @@ _CONTINUATION_COLUMN_KEYS: frozenset[str] = frozenset({"continuation_pattern", "
 
 _DEFAULT_HIDDEN_OPTIONAL_KEYS: frozenset[str] = _CONTINUATION_COLUMN_KEYS | frozenset({"change_pct"})
 
-DEFAULT_VISIBLE_OPTIONAL_KEYS: tuple[str, ...] = tuple(
-    key for key, _ in SIGNAL_PANEL_OPTIONAL_COLUMNS if key not in _DEFAULT_HIDDEN_OPTIONAL_KEYS
-)
+DEFAULT_VISIBLE_OPTIONAL_KEYS: tuple[str, ...] = tuple(key for key, _ in SIGNAL_PANEL_OPTIONAL_COLUMNS if key not in _DEFAULT_HIDDEN_OPTIONAL_KEYS)
 
 
 SIGNAL_PANEL_OPTIONAL_KEYS: frozenset[str] = frozenset(key for key, _ in SIGNAL_PANEL_OPTIONAL_COLUMNS)

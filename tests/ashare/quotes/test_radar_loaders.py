@@ -2,7 +2,6 @@
 
 import pytest
 
-from vnpy_ashare.quotes.radar.radar_catalog import RADAR_CARD_BY_ID
 from vnpy_ashare.quotes.radar.loaders import (
     RadarCardData,
     RadarRow,
@@ -14,6 +13,7 @@ from vnpy_ashare.quotes.radar.loaders import (
     load_radar_card,
     load_screen_task,
 )
+from vnpy_ashare.quotes.radar.radar_catalog import RADAR_CARD_BY_ID
 
 
 def _sample_row(vt_symbol: str, *, name: str = "测试") -> RadarRow:

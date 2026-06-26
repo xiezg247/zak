@@ -89,7 +89,6 @@ from vnpy_ashare.ui.shell.nav import (
     SidebarNav,
 )
 from vnpy_ashare.ui.shell.settings.dialog import show_settings_dialog
-from vnpy_common.paths import QSETTINGS_ORG
 from vnpy_common.startup_profile import profiler
 from vnpy_common.ui.feedback import PageToastHost, page_notify, show_info_dialog
 from vnpy_common.ui.qt_helpers import restore_geometry_on_screen

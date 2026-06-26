@@ -28,7 +28,6 @@ def _row(sector_id: str, name: str, net_flow_yi: float) -> SectorFlowRow:
 
 
 class SectorFlowIntradayRepositoryTests(PgAppStorageTestCase):
-
     def test_upsert_and_load(self) -> None:
         upsert_intraday_samples(
             "2024-06-20",

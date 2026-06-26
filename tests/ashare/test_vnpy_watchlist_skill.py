@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import unittest
 
 from vnpy.trader.constant import Exchange
 

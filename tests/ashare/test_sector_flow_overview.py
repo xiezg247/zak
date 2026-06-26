@@ -83,7 +83,6 @@ class IntradayBucketTimeTests(unittest.TestCase):
 
 
 class BuildOverviewSnapshotTests(PgAppStorageTestCase):
-
     def test_empty_snapshot_returns_hint(self) -> None:
         snapshot = _snapshot([])
         overview = build_overview_snapshot(snapshot)
@@ -130,7 +129,6 @@ class BuildOverviewSnapshotTests(PgAppStorageTestCase):
 
 
 class RecordIntradayOverviewSampleTests(PgAppStorageTestCase):
-
     @mock.patch("vnpy_ashare.services.sector_flow_overview.is_ashare_trading_session", return_value=True)
     def test_records_top_rows_during_intraday(self, _session: mock.Mock) -> None:
         rows = [_row(f"BK{i:03d}", f"板块{i}", float(i)) for i in range(1, 12)]

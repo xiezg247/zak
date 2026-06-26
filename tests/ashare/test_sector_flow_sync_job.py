@@ -11,7 +11,6 @@ from vnpy_ashare.storage.repositories.sector_flow_history import load_sector_flo
 
 
 class SectorFlowSyncJobTests(PgAppStorageTestCase):
-
     def test_sync_job_writes_history(self) -> None:
         def fake_dc(*, trade_date: str, content_type: str | None = None):
             if content_type == "行业" and trade_date == "20240927":

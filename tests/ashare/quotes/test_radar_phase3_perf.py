@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
+from vnpy_ashare.quotes.radar.loaders import load_discovery_volume_surge, load_radar_card
 from vnpy_ashare.quotes.radar.loaders.scheduled_intraday import volume_hits_from_intraday_run
 from vnpy_ashare.quotes.radar.radar_catalog import RADAR_CARD_BY_ID
 from vnpy_ashare.quotes.radar.radar_leader_pool_cache import (
@@ -12,7 +13,6 @@ from vnpy_ashare.quotes.radar.radar_leader_pool_cache import (
     peek_leader_candidate_pool,
     store_leader_candidate_pool,
 )
-from vnpy_ashare.quotes.radar.loaders import load_discovery_volume_surge, load_radar_card
 from vnpy_ashare.screener.run.run_store import ScreenerRunRecord
 
 

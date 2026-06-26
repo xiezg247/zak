@@ -87,8 +87,6 @@ def outlook_signal_recent_days(class_name: str | None = None) -> int:
     return int(STRATEGY_SIGNAL_RECENT_DAYS.get(resolved, STRATEGY_SIGNAL_RECENT_DAYS[DEFAULT_CLASS]))
 
 
-
-
 def load_sector_flow_outlook_strategy_class() -> str:
     """板块资金「策略 B」展望策略；未单独配置时回退雷达展望策略。"""
     return load_scalar_pref(

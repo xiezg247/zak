@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from tests.ashare.pg_unittest import PgStorageTestCase
 from vnpy_ashare.config.preferences.strategy_profile import (
     DEFAULT_STRATEGY_PROFILE,
     apply_strategy_profile,
@@ -18,7 +19,6 @@ from vnpy_ashare.config.preferences.watchlist_signal import (
     save_watchlist_signal_config,
 )
 from vnpy_ashare.storage.auth.preferences import delete_pref
-from tests.ashare.pg_unittest import PgStorageTestCase
 
 
 def test_default_profile_is_short_swing() -> None:

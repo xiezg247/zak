@@ -6,6 +6,7 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.domain.time.market_hours import ashare_market_phase, ashare_market_phase_label
 from vnpy_ashare.quotes.market.emotion_cycle_subtitle import append_emotion_cycle_to_subtitle
+from vnpy_ashare.quotes.radar.loaders import RadarCardData, RadarRow, compute_radar_resonance
 from vnpy_ashare.quotes.radar.outlook_strategy_prefs import (
     load_outlook_strategy_class,
     outlook_strategy_options,
@@ -27,7 +28,6 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
     variants_for_card,
 )
 from vnpy_ashare.quotes.radar.radar_full_refresh_prefs import load_radar_full_refresh_every
-from vnpy_ashare.quotes.radar.loaders import RadarCardData, RadarRow, compute_radar_resonance
 from vnpy_ashare.ui.quotes.page.config import load_radar_card_refresh_ms
 from vnpy_ashare.ui.quotes.radar.row_widget import RadarStockRowWidget
 from vnpy_ashare.ui.quotes.radar.section_prefs import (

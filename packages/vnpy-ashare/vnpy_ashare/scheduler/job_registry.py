@@ -209,9 +209,7 @@ def build_scheduler_jobs(runners: SchedulerJobRunners) -> dict[str, SchedulerJob
             runner=warm_radar_card_snapshots_job,
             config_attr=specs["warm_radar_card_snapshots"].config_attr,
             schedule_builder=lambda cfg: IntervalTrigger(seconds=max(cfg.interval_seconds, 300)),
-            schedule_text_builder=lambda cfg: (
-                f"交易日每 {max(cfg.interval_seconds, 300) // 60} 分钟（仅交易时段执行）"
-            ),
+            schedule_text_builder=lambda cfg: f"交易日每 {max(cfg.interval_seconds, 300) // 60} 分钟（仅交易时段执行）",
         ),
         "sync_watchlist_financials": SchedulerJobMeta(
             job_id="sync_watchlist_financials",

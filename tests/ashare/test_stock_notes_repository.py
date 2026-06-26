@@ -11,7 +11,6 @@ from vnpy_ashare.storage.repositories import stock_notes as repo
 
 
 class StockNotesRepositoryTests(PgStorageTestCase):
-
     def test_memo_upsert_and_load(self) -> None:
         repo.upsert_memo("600519", Exchange.SSE, "茅台逻辑")
         row = repo.load_memo("600519", Exchange.SSE)

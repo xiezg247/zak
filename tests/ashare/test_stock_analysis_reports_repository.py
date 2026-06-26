@@ -12,7 +12,6 @@ from vnpy_ashare.storage.repositories import stock_analysis_reports as repo
 
 
 class StockAnalysisReportsRepositoryTests(PgStorageTestCase):
-
     def test_create_list_and_delete_report(self) -> None:
         context = json.dumps({"scope": "overview", "summary": "PE 分位 20%"}, ensure_ascii=False)
         created = repo.create_report(

@@ -14,7 +14,6 @@ from vnpy_ashare.storage.repositories.valuation import upsert_valuation_rows
 
 
 class StockProfileServiceTests(PgAppStorageTestCase):
-
     def test_valuation_percentile(self) -> None:
         ts_code = "600519.SH"
         rows = [{"trade_date": f"2024010{i}", "pe_ttm": float(i), "pb": float(i) / 10} for i in range(1, 6)]

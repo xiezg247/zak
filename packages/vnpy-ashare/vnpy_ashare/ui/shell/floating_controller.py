@@ -16,7 +16,6 @@ from vnpy_ashare.config.preferences._settings import (
     write_setting_value,
 )
 from vnpy_common.ai.protocol import QuickAction
-from vnpy_common.paths import QSETTINGS_ORG
 from vnpy_common.ui.feedback import page_notify
 from vnpy_common.ui.qt_helpers import clamp_point_in_parent, default_child_bottom_right_in_anchor
 from vnpy_llm.app.engine import LlmEngine

@@ -11,6 +11,17 @@ from vnpy_ashare.app.engine_access import get_watchlist_service
 from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
 from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
+from vnpy_ashare.quotes.radar.loaders import (
+    RadarCardData,
+    build_eod_leader_prompt,
+    build_radar_ai_prompt,
+    build_radar_card_ai_prompt,
+    build_radar_resonance_ai_prompt,
+    build_radar_resonance_list,
+    collect_radar_risk_vt_symbols,
+    compute_radar_resonance,
+    incremental_refresh_radar_card_quotes,
+)
 from vnpy_ashare.quotes.radar.loaders.load import RADAR_SNAPSHOT_CARD_IDS
 from vnpy_ashare.quotes.radar.outlook_strategy_prefs import OUTLOOK_SIGNAL_CARD_IDS, save_outlook_strategy_class
 from vnpy_ashare.quotes.radar.predict.predict_prefs import load_predict_model_mode, save_predict_model_mode
@@ -34,17 +45,6 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
 )
 from vnpy_ashare.quotes.radar.radar_full_refresh_prefs import save_radar_full_refresh_every
 from vnpy_ashare.quotes.radar.radar_horizon import OUTLOOK_FORCE_RECOMPUTE_CARD_IDS
-from vnpy_ashare.quotes.radar.loaders import (
-    RadarCardData,
-    build_eod_leader_prompt,
-    build_radar_ai_prompt,
-    build_radar_card_ai_prompt,
-    build_radar_resonance_ai_prompt,
-    build_radar_resonance_list,
-    collect_radar_risk_vt_symbols,
-    compute_radar_resonance,
-    incremental_refresh_radar_card_quotes,
-)
 from vnpy_ashare.quotes.radar.radar_market_emotion import is_stat_row
 from vnpy_ashare.quotes.radar.radar_resonance_prefs import DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS
 from vnpy_ashare.quotes.radar.radar_resonance_store import set_radar_resonance_entries
@@ -672,9 +672,7 @@ class RadarController(QtCore.QObject):
                 cached = peek_radar_card_snapshot(card_id, variant_key=self._variant_key_for_card(card_id))
             if cached is None:
                 continue
-            if is_ashare_trading_session() and cached.rows and not all(
-                is_stat_row(row.vt_symbol) for row in cached.rows
-            ):
+            if is_ashare_trading_session() and cached.rows and not all(is_stat_row(row.vt_symbol) for row in cached.rows):
                 cached = incremental_refresh_radar_card_quotes(cached)
             if not cached.rows and not cached.empty_message:
                 continue
@@ -696,10 +694,7 @@ class RadarController(QtCore.QObject):
             self._deferred_group_items.clear()
             self._prefetch_siblings.clear()
             self._cancel_prefetch_worker()
-        if (
-            not skip_viewport_split
-            and len(items) >= _RADAR_GROUP_LOAD_MIN_CARDS
-        ):
+        if not skip_viewport_split and len(items) >= _RADAR_GROUP_LOAD_MIN_CARDS:
             visible_ids = set(self._board.visible_card_ids_for_current_group())
             priority = [(card_id, kwargs) for card_id, kwargs in items if card_id in visible_ids]
             deferred = [(card_id, kwargs) for card_id, kwargs in items if card_id not in visible_ids]
@@ -734,7 +729,7 @@ class RadarController(QtCore.QObject):
         visible_ids = set(self._board.visible_card_ids_for_current_group())
         self._pending_apply_queue = sorted(
             loaded.items(),
-            key=lambda item: (0 if item[0] in visible_ids else 1),
+            key=lambda item: 0 if item[0] in visible_ids else 1,
         )
         for card_id, message in errors.items():
             self._on_card_failed(card_id, message)
@@ -776,10 +771,7 @@ class RadarController(QtCore.QObject):
             self._prefetch_mode = None
             return
         group_key = self._prefetch_siblings.pop(0)
-        items: list[tuple[str, dict[str, object]]] = [
-            (spec.id, {})
-            for spec in list_radar_cards_for_group(self._prefetch_mode, cast(RadarGroupKey, group_key))
-        ]
+        items: list[tuple[str, dict[str, object]]] = [(spec.id, {}) for spec in list_radar_cards_for_group(self._prefetch_mode, cast(RadarGroupKey, group_key))]
         if len(items) < _RADAR_GROUP_LOAD_MIN_CARDS:
             QtCore.QTimer.singleShot(0, self._drain_prefetch_siblings)
             return

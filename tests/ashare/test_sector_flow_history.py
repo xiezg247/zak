@@ -10,7 +10,6 @@ from vnpy_ashare.storage.repositories.sector_flow_history import load_sector_flo
 
 
 class SectorFlowHistoryRepositoryTests(PgAppStorageTestCase):
-
     def test_upsert_and_load_history(self) -> None:
         row = SectorFlowRow(
             sector_id="BK001",

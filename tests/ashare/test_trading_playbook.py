@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from vnpy_ashare.config.playbook_templates.defaults import playbook_template_sections
 from vnpy_ashare.domain.trading.playbook import PLAYBOOK_SECTION_IDS, PlaybookSectionUpdate
-from vnpy_ashare.config.playbook_templates.defaults import playbook_template_sections
 from vnpy_ashare.services.trading_playbook import (
     apply_playbook_template_merge,
     build_home_playbook_status,
