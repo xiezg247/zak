@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from vnpy.trader.ui import QtWidgets
 
@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
 
 def navigate_to_strategy_monitor(start: QtWidgets.QWidget) -> QuotesPage | None:
+    from vnpy_ashare.ui.shell.main_window import AshareMainWindow
     from vnpy_ashare.ui.shell.main_window_pages import (
         _switch_page_deferred,
         get_or_create_page,
@@ -23,9 +24,10 @@ def navigate_to_strategy_monitor(start: QtWidgets.QWidget) -> QuotesPage | None:
         show_page_by_key,
     )
 
-    win = find_ashare_main_window(start)
-    if win is None:
+    raw_win = find_ashare_main_window(start)
+    if raw_win is None:
         return None
+    win = cast(AshareMainWindow, raw_win)
 
     nav_index = nav_index_for_key(win, STRATEGY_MONITOR_NAV_KEY)
     widget = win._page_widgets.get(STRATEGY_MONITOR_NAV_KEY)
@@ -46,7 +48,7 @@ def navigate_to_strategy_monitor(start: QtWidgets.QWidget) -> QuotesPage | None:
         show_page_by_key(win, STRATEGY_MONITOR_NAV_KEY, nav_index=nav_index)
 
     if hasattr(widget, "page"):
-        return widget.page
+        return cast(QuotesPage, widget.page)
     return None
 
 
@@ -63,12 +65,13 @@ def add_items_to_strategy_monitor(start: QtWidgets.QWidget, items: list[StockIte
 
 
 def focus_watchlist_symbol_from_page(page: QuotesPage, vt_symbol: str) -> None:
+    from vnpy_ashare.ui.shell.main_window import AshareMainWindow
     from vnpy_ashare.ui.shell.main_window_navigation import focus_watchlist_symbol
 
     item = page.find_stock_item(vt_symbol)
     if item is None:
         return
-    win = find_ashare_main_window(as_qwidget(page))
-    if win is None:
+    raw_win = find_ashare_main_window(as_qwidget(page))
+    if raw_win is None:
         return
-    focus_watchlist_symbol(win, item.symbol, item.exchange.name)
+    focus_watchlist_symbol(cast(AshareMainWindow, raw_win), item.symbol, item.exchange.name)

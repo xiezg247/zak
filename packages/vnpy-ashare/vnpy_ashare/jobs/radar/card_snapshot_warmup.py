@@ -14,7 +14,9 @@ def warm_radar_card_snapshots_job(*, force: bool = False) -> JobResult:
     if not force and not is_ashare_trading_session(now):
         return JobResult(success=True, skipped=True, message="非交易时段，已跳过")
 
-    items = [(card_id, {"force_recompute": force}) for card_id in sorted(RADAR_SNAPSHOT_CARD_IDS)]
+    items: list[tuple[str, dict[str, object]]] = [
+        (card_id, {"force_recompute": force}) for card_id in sorted(RADAR_SNAPSHOT_CARD_IDS)
+    ]
     loaded, errors = load_radar_cards_batch(items)
     if errors and not loaded:
         first_id = next(iter(errors))

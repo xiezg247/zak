@@ -7,6 +7,11 @@ import os
 from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.quotes.radar.loaders.discovery import load_discovery_moneyflow_intraday, load_discovery_volume_surge
+from vnpy_ashare.quotes.radar.radar_card_snapshot_cache import (
+    peek_radar_card_snapshot,
+    put_radar_card_snapshot,
+    radar_card_variant_key,
+)
 from vnpy_ashare.quotes.radar.radar_catalog import (
     DEFAULT_LEADER_PICK_VARIANT,
     DEFAULT_LIMIT_LADDER_VARIANT,
@@ -16,7 +21,6 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
     DEFAULT_SECTOR_VARIANT,
     RADAR_CARD_BY_ID,
     RADAR_CARD_SPECS,
-    RadarCardSpec,
 )
 from vnpy_ashare.quotes.radar.radar_first_board import load_first_board
 from vnpy_ashare.quotes.radar.radar_horizon import load_outlook_horizon
@@ -25,7 +29,7 @@ from vnpy_ashare.quotes.radar.radar_leader_pick import LeaderPickVariant, load_l
 from vnpy_ashare.quotes.radar.radar_limit_break import load_discovery_limit_break
 from vnpy_ashare.quotes.radar.radar_limit_ladder import LimitLadderVariant, load_limit_ladder
 from vnpy_ashare.quotes.radar.radar_market_emotion import load_market_emotion
-from vnpy_ashare.quotes.radar.radar_models import RadarCardData, enrich_radar_rows
+from vnpy_ashare.quotes.radar.radar_models import RadarCardData
 from vnpy_ashare.quotes.radar.radar_position_risk import load_position_risk
 from vnpy_ashare.quotes.radar.radar_sector import load_sector_theme
 from vnpy_ashare.quotes.radar.radar_sector_flow_hot import SectorFlowHotVariant, load_sector_flow_hot
@@ -35,11 +39,6 @@ from vnpy_ashare.screener.data.screening_context import (
     preload_screening_context,
     preload_screening_context_quotes,
     screening_context_scope,
-)
-from vnpy_ashare.quotes.radar.radar_card_snapshot_cache import (
-    peek_radar_card_snapshot,
-    put_radar_card_snapshot,
-    radar_card_variant_key,
 )
 from vnpy_ashare.screener.data.screening_sentiment_prefilter import (
     apply_recipe_prefilter_to_context,
@@ -322,7 +321,7 @@ def load_radar_board(
     sector_variant: str = DEFAULT_SECTOR_VARIANT,
 ) -> dict[str, RadarCardData]:
     """加载全部雷达卡片（共享 ScreeningContext + 并行加载）。"""
-    items = [(spec.id, {}) for spec in RADAR_CARD_SPECS]
+    items: list[tuple[str, dict[str, object]]] = [(spec.id, {}) for spec in RADAR_CARD_SPECS]
     loaded, errors = load_radar_cards_batch(
         items,
         screen_task_variant=screen_task_variant,

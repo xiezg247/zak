@@ -21,13 +21,13 @@ from vnpy_ashare.jobs.prefetch.moneyflow import prefetch_moneyflow
 from vnpy_ashare.jobs.prefetch.sector_flow import sync_sector_flow_daily_job
 from vnpy_ashare.jobs.prefetch.tushare import prefetch_tushare_factors
 from vnpy_ashare.jobs.quotes.collect import collect_market_quotes
+from vnpy_ashare.jobs.radar.card_snapshot_warmup import warm_radar_card_snapshots_job
 from vnpy_ashare.jobs.screen.auto_screen import run_scheduled_auto_screen
 from vnpy_ashare.jobs.screen.horizon_scan import run_horizon_outlook_scan_job
 from vnpy_ashare.jobs.sync.stock_industry import sync_stock_industry_job
 from vnpy_ashare.jobs.sync.suspend_sync import sync_suspend_daily_job
 from vnpy_ashare.jobs.sync.trade_calendar import sync_trade_calendar_job
 from vnpy_ashare.jobs.sync.universe import sync_universe_job
-from vnpy_ashare.jobs.radar.card_snapshot_warmup import warm_radar_card_snapshots_job
 from vnpy_ashare.jobs.watchlist.strategy_prewarm import warm_watchlist_strategy_cache_job
 from vnpy_ashare.scheduler.config import load_scheduler_config
 

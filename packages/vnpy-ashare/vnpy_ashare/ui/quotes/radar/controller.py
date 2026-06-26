@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from vnpy.event import Event
 from vnpy.trader.ui import QtCore, QtWidgets
@@ -11,9 +11,11 @@ from vnpy_ashare.app.engine_access import get_watchlist_service
 from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
 from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
+from vnpy_ashare.quotes.radar.loaders.load import RADAR_SNAPSHOT_CARD_IDS
 from vnpy_ashare.quotes.radar.outlook_strategy_prefs import OUTLOOK_SIGNAL_CARD_IDS, save_outlook_strategy_class
 from vnpy_ashare.quotes.radar.predict.predict_prefs import load_predict_model_mode, save_predict_model_mode
 from vnpy_ashare.quotes.radar.radar_board_store import set_radar_board_snapshot
+from vnpy_ashare.quotes.radar.radar_card_snapshot_cache import peek_radar_card_snapshot, radar_card_variant_key
 from vnpy_ashare.quotes.radar.radar_catalog import (
     DEFAULT_LEADER_PICK_VARIANT,
     DEFAULT_LIMIT_LADDER_VARIANT,
@@ -21,6 +23,7 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
     DEFAULT_SECTOR_FLOW_HOT_VARIANT,
     DEFAULT_SECTOR_VARIANT,
     RADAR_CARD_BY_ID,
+    RadarGroupKey,
     auto_refresh_card_ids,
     full_refresh_every_n_ticks,
     list_radar_cards,
@@ -29,8 +32,7 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
     list_radar_groups_for_mode,
     radar_card_group,
 )
-from vnpy_ashare.quotes.radar.loaders.load import RADAR_SNAPSHOT_CARD_IDS
-from vnpy_ashare.quotes.radar.radar_card_snapshot_cache import peek_radar_card_snapshot, radar_card_variant_key
+from vnpy_ashare.quotes.radar.radar_full_refresh_prefs import save_radar_full_refresh_every
 from vnpy_ashare.quotes.radar.radar_horizon import OUTLOOK_FORCE_RECOMPUTE_CARD_IDS
 from vnpy_ashare.quotes.radar.radar_loaders import (
     RadarCardData,
@@ -753,7 +755,7 @@ class RadarController(QtCore.QObject):
             return
         mode = self._board.current_mode()
         current = self._board.current_group(mode)
-        siblings = [group_key for group_key, _label in list_radar_groups_for_mode(mode) if group_key != current]
+        siblings: list[str] = [group_key for group_key, _label in list_radar_groups_for_mode(mode) if group_key != current]
         if not siblings:
             return
         self._prefetch_mode = mode
@@ -774,7 +776,10 @@ class RadarController(QtCore.QObject):
             self._prefetch_mode = None
             return
         group_key = self._prefetch_siblings.pop(0)
-        items = [(spec.id, {}) for spec in list_radar_cards_for_group(self._prefetch_mode, group_key)]  # type: ignore[arg-type]
+        items: list[tuple[str, dict[str, object]]] = [
+            (spec.id, {})
+            for spec in list_radar_cards_for_group(self._prefetch_mode, cast(RadarGroupKey, group_key))
+        ]
         if len(items) < _RADAR_GROUP_LOAD_MIN_CARDS:
             QtCore.QTimer.singleShot(0, self._drain_prefetch_siblings)
             return

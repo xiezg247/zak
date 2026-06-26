@@ -50,6 +50,7 @@ class RadarCardLoadWorker(QtCore.QThread):
         if self._cancelled:
             return
         try:
+            data: RadarCardData | None
             if self._quote_only and isinstance(self._existing_data, RadarCardData):
                 data = incremental_refresh_radar_card_quotes(self._existing_data)
             else:
@@ -71,7 +72,7 @@ class RadarCardLoadWorker(QtCore.QThread):
         except Exception as ex:
             self.failed.emit(self._card_id, str(ex))
             return
-        if self._cancelled:
+        if self._cancelled or data is None:
             return
         self.finished.emit(self._card_id, data, self._quote_only)
 

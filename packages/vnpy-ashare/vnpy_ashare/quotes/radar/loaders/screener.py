@@ -5,7 +5,7 @@ from __future__ import annotations
 from vnpy_ashare.quotes.radar.loaders.rows import rows_from_screener
 from vnpy_ashare.quotes.radar.radar_catalog import DEFAULT_SCREEN_TASK_VARIANT, RadarCardSpec
 from vnpy_ashare.quotes.radar.radar_models import RadarCardData, enrich_radar_rows
-from vnpy_ashare.screener.run.run_store import get_latest_run, is_auto_run, is_strategy_run, list_runs
+from vnpy_ashare.screener.run.run_store import ScreenerRunRecord, get_latest_run, is_auto_run, is_strategy_run, list_runs
 
 
 def detail_page_key_for_run(record) -> str:
@@ -52,7 +52,7 @@ def card_from_run(
     )
 
 
-def find_run_for_task_variant(variant: str):
+def find_run_for_task_variant(variant: str) -> ScreenerRunRecord | None:
     if variant == "strategy":
         for record in list_runs(limit=30):
             if is_strategy_run(record.config):
