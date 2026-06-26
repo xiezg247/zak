@@ -176,10 +176,10 @@ class WatchlistController:
                 page.depth_panel.clear()
 
     def _remove_targets(self, context_item: StockItem | None = None) -> list[StockItem]:
-        selected = self._page._table.selected_items()
+        selected = cast(list[StockItem], self._page._table.selected_items())
         if len(selected) > 1:
             return selected
-        if context_item is not None:
+        if isinstance(context_item, StockItem):
             return [context_item]
         if selected:
             return selected

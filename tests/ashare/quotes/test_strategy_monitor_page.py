@@ -9,7 +9,7 @@ from vnpy_ashare.ui.quotes.page.roles import STRATEGY_MONITOR_PAGE
 from vnpy_ashare.ui.quotes.watchlist.bootstrap import WatchlistBootstrapCoordinator
 
 
-def test_bootstrap_runs_signal_position_on_strategy_monitor_page() -> None:
+def test_bootstrap_runs_position_on_strategy_monitor_page() -> None:
     coord = WatchlistBootstrapCoordinator()
     page = MagicMock()
     page.page_name = STRATEGY_MONITOR_PAGE
@@ -28,7 +28,8 @@ def test_bootstrap_runs_signal_position_on_strategy_monitor_page() -> None:
     ):
         coord._run_downstream(page, reason="pool_ready")
 
-    page._signals.on_stock_list_loaded.assert_called()
+    page._signals.render_on_resume.assert_called_once()
+    page._signals.on_stock_list_loaded.assert_not_called()
     page._positions.on_stock_list_loaded.assert_called()
 
 

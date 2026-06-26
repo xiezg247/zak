@@ -5,10 +5,11 @@ from __future__ import annotations
 import json
 import uuid
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import delete, func, insert, literal, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.sql.elements import ColumnElement
 
 from vnpy_ashare.domain.feed.models import (
     FEED_RETENTION_DAYS,
@@ -282,7 +283,7 @@ class FeedRepository(AppUserScopedRepository):
             ).fetchall()
             return [_row_to_item(row) for row in rows]
 
-        return self.run(_write)
+        return cast(list[FeedItem], self.run(_write))
 
     def upsert_items(
         self,
@@ -358,7 +359,7 @@ class FeedRepository(AppUserScopedRepository):
             ).fetchall()
             return [_row_to_item(row) for row in rows]
 
-        return self.run(_write)
+        return cast(list[FeedItem], self.run(_write))
 
     def list_items(
         self,
@@ -382,7 +383,7 @@ class FeedRepository(AppUserScopedRepository):
 
     def count_unread(self, *, subscription_id: str | None = None) -> int:
         uid = self.current_user_id()
-        clauses = [fir.c.read_at.is_(None)]
+        clauses: list[ColumnElement[bool]] = [fir.c.read_at.is_(None)]
         if subscription_id:
             clauses.append(fi.c.subscription_id == subscription_id)
         stmt = (
@@ -460,11 +461,11 @@ class FeedRepository(AppUserScopedRepository):
             cursor = conn.execute_stmt(delete(fi).where(fi.c.published_at < cutoff))
             return int(cursor.rowcount)
 
-        return self.run(_write)
+        return cast(int, self.run(_write))
 
     def list_items_published_on(self, trade_date: str, *, subscription_id: str | None = None) -> list[FeedItem]:
         prefix = trade_date.strip()[:10]
-        clauses = [fi.c.published_at.like(f"{prefix}%")]
+        clauses: list[ColumnElement[bool]] = [fi.c.published_at.like(f"{prefix}%")]
         if subscription_id:
             clauses.append(fi.c.subscription_id == subscription_id)
         stmt = self._items_select().where(*clauses).order_by(fi.c.published_at.desc())

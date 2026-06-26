@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -25,7 +25,7 @@ class SchedulerConfigRepository(AppBaseRepository):
         if isinstance(raw, dict):
             return raw
         if isinstance(raw, str) and raw.strip():
-            return json.loads(raw)
+            return cast(dict[str, Any], json.loads(raw))
         return None
 
     def save_dict(self, data: dict[str, Any]) -> None:

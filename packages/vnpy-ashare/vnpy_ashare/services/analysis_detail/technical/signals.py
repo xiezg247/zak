@@ -210,9 +210,9 @@ class TechnicalSignalsMixin(_TechnicalAnalyzerBase):
         if (scope or "daily") == "daily":
             items = []
             for symbol in symbols:
-                item = parse_stock_symbol(symbol)
-                if item is not None:
-                    items.append(item)
+                parsed = parse_stock_symbol(symbol)
+                if parsed is not None:
+                    items.append(parsed)
             if items:
                 bar_workers = pattern_load_max_workers(item_count=len(items)) if max_workers is None else max(1, min(int(max_workers), len(items)))
                 bars_by_key = load_daily_bars_batch(
@@ -244,21 +244,21 @@ class TechnicalSignalsMixin(_TechnicalAnalyzerBase):
         if workers <= 1:
             results: dict[str, SignalSnapshot] = {}
             for symbol in symbols:
-                item = worker(symbol)
-                if item is None:
+                pair = worker(symbol)
+                if pair is None:
                     continue
-                vt_symbol, snapshot = item
+                vt_symbol, snapshot = pair
                 results[vt_symbol] = snapshot
             return results
 
         pairs = run_parallel_map(symbols, worker, max_workers=workers)
-        results = {}
-        for item in pairs:
-            if item is None:
+        parallel_results: dict[str, SignalSnapshot] = {}
+        for pair in pairs:
+            if pair is None:
                 continue
-            vt_symbol, snapshot = item
-            results[vt_symbol] = snapshot
-        return results
+            vt_symbol, snapshot = pair
+            parallel_results[vt_symbol] = snapshot
+        return parallel_results
 
     def _benchmark_return_pct(self, lookback: int = SIGNAL_BENCHMARK_LOOKBACK) -> float | None:
         if self._benchmark_return_cache_key == lookback:

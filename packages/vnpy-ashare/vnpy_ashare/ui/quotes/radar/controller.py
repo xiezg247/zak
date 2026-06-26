@@ -314,19 +314,19 @@ class RadarController(QtCore.QObject):
 
     def refresh(self) -> None:
         """错峰刷新全部卡片，避免多张卡同时完成时主线程拥堵。"""
-        items = [(spec.id, {}) for spec in list_radar_cards()]
+        items: list[tuple[str, dict[str, object]]] = [(spec.id, {}) for spec in list_radar_cards()]
         self._enqueue_refresh_many(items)
 
     def refresh_current_group(self) -> None:
         """刷新当前分区下子 Tab 内的全部卡片。"""
         mode = self._board.current_mode()
         group_key = self._board.current_group(mode)
-        items = [(spec.id, {}) for spec in list_radar_cards_for_group(mode, group_key)]
+        items: list[tuple[str, dict[str, object]]] = [(spec.id, {}) for spec in list_radar_cards_for_group(mode, group_key)]
         self._enqueue_refresh_many(items)
 
     def refresh_current_mode(self) -> None:
         """刷新当前分区内的全部卡片（含各子 Tab）。"""
-        items = [(spec.id, {}) for spec in list_radar_cards_for_mode(self._board.current_mode())]
+        items: list[tuple[str, dict[str, object]]] = [(spec.id, {}) for spec in list_radar_cards_for_mode(self._board.current_mode())]
         self._enqueue_refresh_many(items)
 
     def _enqueue_refresh(self, card_id: str, **kwargs: object) -> None:
@@ -347,7 +347,11 @@ class RadarController(QtCore.QObject):
         if not self._refresh_queue:
             return
         card_id, kwargs = self._refresh_queue.pop(0)
-        self.refresh_card(card_id, **kwargs)
+        self.refresh_card(
+            card_id,
+            force_recompute=bool(kwargs.get("force_recompute", False)),
+            quote_only=bool(kwargs.get("quote_only", False)),
+        )
         if self._refresh_queue:
             self._refresh_stagger_timer.start(_RADAR_CARD_REFRESH_STAGGER_MS)
 

@@ -23,8 +23,8 @@ def test_strategy_activate_defers_bootstrap_and_refresh() -> None:
         timers.append(callback)
 
     with patch(
-        "vnpy_ashare.ui.quotes.page.session_lifecycle._deferred_strategy_monitor_activate",
-    ) as deferred:
+        "vnpy_ashare.ui.quotes.page.session_lifecycle._deferred_strategy_monitor_activate_frame1",
+    ) as frame1:
         with patch("vnpy_ashare.ui.quotes.page.session_lifecycle.QtCore.QTimer.singleShot", side_effect=_capture_timer):
             activate_quotes_page(page)
 
@@ -34,4 +34,19 @@ def test_strategy_activate_defers_bootstrap_and_refresh() -> None:
         page._signals.on_page_activated.assert_not_called()
         assert len(timers) == 1
         timers[0]()
-        deferred.assert_called_once_with(page)
+        frame1.assert_called_once_with(page)
+
+
+def test_strategy_activate_frame1_ends_tab_loading() -> None:
+    from vnpy_ashare.ui.quotes.page.session_lifecycle import _deferred_strategy_monitor_activate_frame1
+
+    page = MagicMock()
+    page.page_name = "策略监控"
+    page._active = True
+    page._watchlist_bootstrap = MagicMock()
+
+    with patch("vnpy_ashare.ui.quotes.page.session_lifecycle.QtCore.QTimer.singleShot") as shot:
+        _deferred_strategy_monitor_activate_frame1(page)
+
+    page.end_tab_switch_loading.assert_called_once()
+    shot.assert_called_once()

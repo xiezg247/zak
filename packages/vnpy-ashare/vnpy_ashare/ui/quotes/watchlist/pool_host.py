@@ -49,6 +49,8 @@ class WatchlistPoolHost(Protocol):
     _watchlist_groups: WatchlistGroupController | None
     _watchlist_feature: Any
     _signals: WatchlistSignalController
+    _table: Any
+    _strategy_refresh: Any
 
     def _get_watchlist_service(self) -> WatchlistService | None: ...
 

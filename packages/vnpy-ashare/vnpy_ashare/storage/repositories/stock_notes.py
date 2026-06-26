@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import cast
 
 from sqlalchemy import insert, select, text, update
 from vnpy.trader.constant import Exchange
@@ -147,7 +148,7 @@ class StockNoteRepository(AppUserScopedRepository):
             )
             return {"memos": memo_count, "entries": entry_count}
 
-        return self.run(_write)
+        return cast(dict[str, int], self.run(_write))
 
     def list_symbols_with_notes(self) -> list[tuple[str, str]]:
         uid = self.current_user_id()

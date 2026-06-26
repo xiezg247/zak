@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from vnpy.trader.ui import QtWidgets
 
@@ -13,9 +13,10 @@ from vnpy_ashare.ui.shell.main_window_lookup import find_ashare_main_window
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
+    from vnpy_ashare.ui.shell.main_window import AshareMainWindow
 
 
-def _strategy_monitor_page_widget(win: QtWidgets.QWidget):
+def _strategy_monitor_page_widget(win: AshareMainWindow):
     from vnpy_ashare.ui.shell.main_window_pages import get_or_create_page
 
     return get_or_create_page(win, STRATEGY_MONITOR_NAV_KEY)
@@ -25,13 +26,14 @@ def navigate_to_strategy_monitor(start: QtWidgets.QWidget) -> QuotesPage | None:
     win = find_ashare_main_window(start)
     if win is None:
         return None
+    main = cast(AshareMainWindow, win)
     from vnpy_ashare.ui.shell.main_window_pages import nav_index_for_key, show_page_by_key
 
-    nav_index = nav_index_for_key(win, STRATEGY_MONITOR_NAV_KEY)
-    show_page_by_key(win, STRATEGY_MONITOR_NAV_KEY, nav_index=nav_index)
-    widget = _strategy_monitor_page_widget(win)
+    nav_index = nav_index_for_key(main, STRATEGY_MONITOR_NAV_KEY)
+    show_page_by_key(main, STRATEGY_MONITOR_NAV_KEY, nav_index=nav_index)
+    widget = _strategy_monitor_page_widget(main)
     if widget is not None and hasattr(widget, "page"):
-        page = widget.page
+        page = cast(QuotesPage, widget.page)
         if hasattr(page, "activate"):
             page.activate()
         return page
@@ -57,6 +59,7 @@ def focus_watchlist_symbol_from_page(page: QuotesPage, vt_symbol: str) -> None:
     win = find_ashare_main_window(as_qwidget(page))
     if win is None:
         return
+    main = cast(AshareMainWindow, win)
     from vnpy_ashare.ui.shell.main_window_navigation import focus_watchlist_symbol
 
-    focus_watchlist_symbol(win, item.symbol, item.exchange.name)
+    focus_watchlist_symbol(main, item.symbol, item.exchange.name)

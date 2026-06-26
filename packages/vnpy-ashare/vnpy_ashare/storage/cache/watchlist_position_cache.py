@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable
+from typing import cast
 
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
 from vnpy_ashare.storage.cache.position_cache_factory import create_position_cache_backend
@@ -20,10 +21,10 @@ class _L1PositionCacheWrapper:
         return time.monotonic() - cached_at <= self._ttl
 
     def get(self, vt_symbol: str, config_key: str, bar_as_of: str, position_key: str) -> SignalSnapshot | None:
-        return self._inner.get(vt_symbol, config_key, bar_as_of, position_key)
+        return cast(SignalSnapshot | None, self._inner.get(vt_symbol, config_key, bar_as_of, position_key))
 
     def get_latest(self, vt_symbol: str, config_key: str, position_key: str) -> SignalSnapshot | None:
-        return self._inner.get_latest(vt_symbol, config_key, position_key)
+        return cast(SignalSnapshot | None, self._inner.get_latest(vt_symbol, config_key, position_key))
 
     def load_many(
         self,
@@ -55,7 +56,7 @@ class _L1PositionCacheWrapper:
             bar_as_of_for=bar_as_of_for,
         )
         self._load_many_hits[cache_key] = (time.monotonic(), dict(loaded))
-        return loaded
+        return cast(dict[str, SignalSnapshot], loaded)
 
     def put(
         self,

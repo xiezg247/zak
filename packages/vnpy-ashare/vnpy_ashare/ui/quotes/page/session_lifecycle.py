@@ -88,6 +88,12 @@ def _deferred_radar_activate(page: Any) -> None:
 
 
 def _deferred_strategy_monitor_activate(page: Any) -> None:
+    """策略页延后任务入口：分帧执行，先关加载遮罩再跑较重逻辑。"""
+    _deferred_strategy_monitor_activate_frame1(page)
+
+
+def _deferred_strategy_monitor_activate_frame1(page: Any) -> None:
+    """帧 1：同步自选池；尽快结束切页加载态。"""
     if not page._active or page.page_name != STRATEGY_MONITOR_PAGE:
         return
     if page._watchlist_bootstrap is not None:
@@ -97,6 +103,15 @@ def _deferred_strategy_monitor_activate(page: Any) -> None:
         page.all_stocks = list(pool)
         page.display_stocks = list(pool)
         page._watchlist.refresh_keys()
+    if hasattr(page, "end_tab_switch_loading"):
+        page.end_tab_switch_loading()
+    QtCore.QTimer.singleShot(0, lambda: _deferred_strategy_monitor_activate_frame2(page))
+
+
+def _deferred_strategy_monitor_activate_frame2(page: Any) -> None:
+    """帧 2：策略巡检、磁盘 hydrate 与上下文条。"""
+    if not page._active or page.page_name != STRATEGY_MONITOR_PAGE:
+        return
     if page.config.show_watchlist_signals or page.config.show_watchlist_positions:
         if _strategy_stale_sweep_enabled(page):
             page._strategy_refresh.start()
@@ -107,6 +122,13 @@ def _deferred_strategy_monitor_activate(page: Any) -> None:
     if feature is not None:
         feature.on_activate()
     page._update_quote_source_label()
+    QtCore.QTimer.singleShot(0, lambda: _deferred_strategy_monitor_activate_frame3(page))
+
+
+def _deferred_strategy_monitor_activate_frame3(page: Any) -> None:
+    """帧 3：splitter 布局与面板重绘（较重）。"""
+    if not page._active or page.page_name != STRATEGY_MONITOR_PAGE:
+        return
     if page.config.show_watchlist_signals or page.config.show_watchlist_positions:
         restore_center_splitter(page)
 

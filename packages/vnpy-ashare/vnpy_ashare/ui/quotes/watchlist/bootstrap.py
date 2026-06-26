@@ -115,7 +115,7 @@ class WatchlistBootstrapCoordinator:
 
         page._update_action_buttons()
         self.schedule_downstream(page, reason=source)
-        if page.page_name != STRATEGY_MONITOR_PAGE and hasattr(page, "end_tab_switch_loading"):
+        if hasattr(page, "end_tab_switch_loading"):
             page.end_tab_switch_loading()
 
     def schedule_downstream(self, page: WatchlistHost, *, reason: ScheduleReason) -> None:
@@ -191,8 +191,10 @@ class WatchlistBootstrapCoordinator:
                 self._render_downstream_only(page)
                 return
 
-        self._schedule_signals(page, delay_ms=0)
-        self._schedule_positions(page, delay_ms=100)
+        # 信号区仅手动刷新：hydrate + render，不触发 on_stock_list_loaded Worker 链
+        if page.config.show_watchlist_signals:
+            page._signals.render_on_resume()
+        self._schedule_positions(page, delay_ms=0)
         if hasattr(page, "end_tab_switch_loading"):
             page.end_tab_switch_loading()
 

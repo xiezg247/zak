@@ -762,7 +762,7 @@ class ActionsController:
             selected = page._table.selected_items()
             label = f"移出 {len(selected)} 只" if len(selected) > 1 else "移出自选"
             action = menu.addAction(label)
-            action.triggered.connect(page.remove_from_watchlist)
+            action.triggered.connect(lambda _checked=False: page.remove_from_watchlist())
             added = True
         if page.config.show_refresh_quotes_button and not page.config.use_market_rank:
             action = menu.addAction("刷新行情")

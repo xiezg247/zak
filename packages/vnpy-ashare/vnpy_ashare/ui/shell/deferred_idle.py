@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 from vnpy.trader.ui import QtCore, QtWidgets
 
 if TYPE_CHECKING:
-    from vnpy_ashare.ui.shell.main_window import AshareMainWindow
+    pass
 
 IDLE_PREWARM_MS = 3000
 IDLE_RETRY_MS = 1000
@@ -30,7 +30,7 @@ def touch_user_activity(win: Any) -> None:
     win._last_user_activity_at = time.monotonic()
 
 
-def bind_idle_activity_tracking(win: AshareMainWindow) -> None:
+def bind_idle_activity_tracking(win: Any) -> None:
     if getattr(win, "_idle_activity_bound", False):
         return
     win._idle_activity_bound = True
@@ -64,7 +64,7 @@ def is_user_idle(win: Any, idle_ms: int = IDLE_PREWARM_MS) -> bool:
     last = getattr(win, "_last_user_activity_at", None)
     if last is None:
         return True
-    return (time.monotonic() - last) * 1000 >= idle_ms
+    return bool((time.monotonic() - last) * 1000 >= idle_ms)
 
 
 def run_when_idle(

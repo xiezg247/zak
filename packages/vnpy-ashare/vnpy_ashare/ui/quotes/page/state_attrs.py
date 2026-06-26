@@ -114,3 +114,4 @@ class QuotesPageStateAttrs:
     _task_lock_table: bool
     _task_lock_search: bool
     _active_worker_attr: str | None
+    _watchlist_quotes_loading: bool

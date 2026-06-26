@@ -299,7 +299,7 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QuotesPageStat
             return self._market_table_host
         board = getattr(self, "radar_board", None)
         if board is not None:
-            return board
+            return cast(QtWidgets.QWidget, board)
         return getattr(self, "_center_splitter", None)
 
     def _ensure_tab_switch_loading_overlay(self, host: QtWidgets.QWidget) -> ContentLoadingOverlay:
@@ -320,19 +320,19 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QuotesPageStat
             host.hide_loading()
 
     def _show_tab_switch_loading(self, text: str) -> None:
+        market_host = self._market_table_host
+        if market_host is not None:
+            market_host.show_loading(text)
+            return
         host = self._tab_switch_loading_host()
         if host is None:
-            return
-        if host is self._market_table_host:
-            host.show_loading(text)
             return
         self._ensure_tab_switch_loading_overlay(host).show_loading(text)
 
     def _hide_tab_switch_loading(self) -> None:
-        host = self._tab_switch_loading_host()
-        if host is self._market_table_host:
-            host.hide_loading()
-            return
+        market_host = self._market_table_host
+        if market_host is not None:
+            market_host.hide_loading()
         overlay = getattr(self, "_tab_switch_loading_overlay", None)
         if overlay is not None:
             overlay.hide_loading()

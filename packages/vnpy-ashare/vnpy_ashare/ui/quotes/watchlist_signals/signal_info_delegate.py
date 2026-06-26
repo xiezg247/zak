@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
+IndexType = QtCore.QModelIndex | QtCore.QPersistentModelIndex
+
 
 class SignalInfoColumnDelegate(QtWidgets.QStyledItemDelegate):
     """最后一列显示「理由」，单击打开详情。"""
@@ -14,7 +16,7 @@ class SignalInfoColumnDelegate(QtWidgets.QStyledItemDelegate):
         self,
         painter: QtGui.QPainter,
         option: QtWidgets.QStyleOptionViewItem,
-        index: QtCore.QModelIndex,
+        index: IndexType,
     ) -> None:
         opt = QtWidgets.QStyleOptionViewItem(option)
         self.initStyleOption(opt, index)
@@ -33,7 +35,7 @@ class SignalInfoColumnDelegate(QtWidgets.QStyledItemDelegate):
         event: QtCore.QEvent,
         model: QtCore.QAbstractItemModel,
         option: QtWidgets.QStyleOptionViewItem,
-        index: QtCore.QModelIndex,
+        index: IndexType,
     ) -> bool:
         if (
             event.type() == QtCore.QEvent.Type.MouseButtonRelease

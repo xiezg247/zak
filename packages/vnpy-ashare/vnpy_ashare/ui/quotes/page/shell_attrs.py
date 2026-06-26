@@ -122,3 +122,5 @@ class QuotesPageShellAttrs:
     _market_sort_column: str | None
     _market_sort_ascending: bool
     _center_splitter_bound: bool
+    _lazy_chart_row: QtWidgets.QHBoxLayout | None
+    _lazy_right_panel: QtWidgets.QVBoxLayout | None

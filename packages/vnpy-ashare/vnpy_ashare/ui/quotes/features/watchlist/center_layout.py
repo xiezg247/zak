@@ -5,6 +5,7 @@ from __future__ import annotations
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
+from vnpy_ashare.ui.quotes._host_widget import as_qwidget
 from vnpy_ashare.ui.quotes.features.watchlist.context_bar import WatchlistPoolContextBar
 from vnpy_ashare.ui.quotes.features.watchlist.lazy_build import watchlist_lazy_build_enabled
 from vnpy_ashare.ui.quotes.page.run_log import load_run_output_expanded, on_run_output_expansion_changed
@@ -52,7 +53,7 @@ def build_watchlist_center_layout(page: WatchlistHost, center_layout: QtWidgets.
         page._center_view_stack.setObjectName("WatchlistCenterViewStack")
         page._center_view_stack.addWidget(page._market_table_host)
         if not lazy:
-            page.multiview_board = WatchlistMultiViewBoard(page)
+            page.multiview_board = WatchlistMultiViewBoard(as_qwidget(page))
             page._center_view_stack.addWidget(page.multiview_board)
         center_primary = page._center_view_stack
 

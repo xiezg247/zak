@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from vnpy.trader.ui import QtWidgets
 
@@ -22,6 +22,7 @@ from vnpy_ashare.ui.quotes.watchlist_signals.splitter import bind_center_splitte
 from vnpy_common.ui.theme.manager import theme_manager
 
 if TYPE_CHECKING:
+    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
     from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 
@@ -85,8 +86,10 @@ class WatchlistLazyBuildCoordinator:
             return
 
         page.chart_panel = ChartPanel()
-        page.chart_panel.tab_changed.connect(page._on_chart_tab_changed)
-        page._on_chart_tab_changed(page.chart_panel.current_tab_index())
+        on_tab_changed = getattr(page, "_on_chart_tab_changed", None)
+        if on_tab_changed is not None:
+            page.chart_panel.tab_changed.connect(on_tab_changed)
+            on_tab_changed(page.chart_panel.current_tab_index())
         chart_row.addWidget(page.chart_panel, stretch=1)
 
         if page.config.show_depth_panel:
@@ -95,9 +98,11 @@ class WatchlistLazyBuildCoordinator:
 
         right_panel: QtWidgets.QVBoxLayout | None = getattr(page, "_lazy_right_panel", None)
         if page.config.show_stock_notes and right_panel is not None and getattr(page, "stock_note_panel", None) is None:
-            page.stock_note_panel = StockNotePanel(page)
+            page.stock_note_panel = StockNotePanel(cast("QuotesPage", page))
             right_panel.addWidget(page.stock_note_panel)
-            page._wire_stock_note_panel()
+            wire_notes = getattr(page, "_wire_stock_note_panel", None)
+            if wire_notes is not None:
+                wire_notes()
 
         self._chart_ready = True
 

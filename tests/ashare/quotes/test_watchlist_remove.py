@@ -31,3 +31,14 @@ def test_remove_targets_uses_context_item_when_single_select() -> None:
     page.current_item = _item("600000")
     controller = WatchlistController(page)
     assert controller._remove_targets(clicked) == [clicked]
+
+
+def test_remove_targets_ignores_qt_checked_bool() -> None:
+    """QAction.triggered 会传入 checked: bool，不能当作 StockItem。"""
+    page = MagicMock()
+    current = _item("600000")
+    page._table.selected_items.return_value = []
+    page.current_item = current
+    controller = WatchlistController(page)
+    assert controller._remove_targets(False) == [current]
+    assert controller._remove_targets(True) == [current]

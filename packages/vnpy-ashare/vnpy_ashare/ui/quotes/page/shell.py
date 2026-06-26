@@ -478,6 +478,7 @@ class QuotesPageShell:
 
         if page.config.show_chart_tabs:
             lazy_chart = watchlist_lazy_build_enabled(page)
+            chart_widget: QtWidgets.QWidget | None
             if lazy_chart:
                 page.chart_panel = None
                 chart_widget = create_lazy_chart_row_host(page)
@@ -485,7 +486,7 @@ class QuotesPageShell:
                 page.chart_panel = ChartPanel()
                 page.chart_panel.tab_changed.connect(page._on_chart_tab_changed)
                 page._on_chart_tab_changed(page.chart_panel.current_tab_index())
-                chart_widget: QtWidgets.QWidget | None = page.chart_panel
+                chart_widget = page.chart_panel
         elif not page.config.show_kline:
             chart_widget = None
         else:

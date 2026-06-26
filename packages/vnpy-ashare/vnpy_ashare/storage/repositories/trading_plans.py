@@ -5,11 +5,12 @@ from __future__ import annotations
 import uuid
 from collections.abc import Sequence
 from datetime import datetime
+from typing import cast
 
 from sqlalchemy import delete, insert, select, update
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.domain.trading.plan import TradingPlanRecord, TradingPlanSymbolRecord
+from vnpy_ashare.domain.trading.plan import TradingPlanRecord, TradingPlanStatus, TradingPlanSymbolRecord
 from vnpy_ashare.storage.repository.app import AppUserScopedRepository
 from vnpy_common.storage.tables import trading_plan_symbols as tps
 from vnpy_common.storage.tables import trading_plans as tp
@@ -52,6 +53,13 @@ def _row_to_symbol(row, *, sort_order: int) -> TradingPlanSymbolRecord:
     )
 
 
+def _normalize_plan_status(raw: object) -> TradingPlanStatus:
+    text = str(raw or "draft")
+    if text in ("draft", "active", "archived"):
+        return text  # type: ignore[return-value]
+    return "draft"
+
+
 def _row_to_plan(row, symbols: tuple[TradingPlanSymbolRecord, ...]) -> TradingPlanRecord:
     return TradingPlanRecord(
         id=str(row["id"]),
@@ -59,7 +67,7 @@ def _row_to_plan(row, symbols: tuple[TradingPlanSymbolRecord, ...]) -> TradingPl
         emotion_expected=str(row["emotion_expected"] or ""),
         max_position_pct=float(row["max_position_pct"] or 0),
         notes=str(row["notes"] or ""),
-        status=str(row["status"]),
+        status=_normalize_plan_status(row["status"]),
         created_at=str(row["created_at"]),
         updated_at=str(row["updated_at"]),
         symbols=symbols,
@@ -122,7 +130,7 @@ class TradingPlanRepository(AppUserScopedRepository):
             symbols = self._load_symbols(conn, plan_id)
             return _row_to_plan(row, symbols)
 
-        return self.run(_write)
+        return cast(TradingPlanRecord | None, self.run(_write))
 
     def load_active_plan(self, trade_date: str) -> TradingPlanRecord | None:
         def _write(conn):
@@ -135,7 +143,7 @@ class TradingPlanRepository(AppUserScopedRepository):
             symbols = self._load_symbols(conn, plan_id)
             return _row_to_plan(row, symbols)
 
-        return self.run(_write)
+        return cast(TradingPlanRecord | None, self.run(_write))
 
     def list_plans(self, *, limit: int = 20) -> list[TradingPlanRecord]:
         def _write(conn):
@@ -146,7 +154,7 @@ class TradingPlanRepository(AppUserScopedRepository):
             symbols_map = self._batch_load_symbols(conn, plan_ids)
             return [_row_to_plan(row, symbols_map.get(str(row["id"]), ())) for row in rows]
 
-        return self.run(_write)
+        return cast(list[TradingPlanRecord], self.run(_write))
 
     def create_plan(
         self,
