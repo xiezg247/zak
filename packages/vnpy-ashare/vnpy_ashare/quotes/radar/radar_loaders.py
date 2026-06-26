@@ -21,6 +21,7 @@ from vnpy_ashare.quotes.radar.loaders import (
     load_discovery_volume_surge,
     load_radar_board,
     load_radar_card,
+    load_radar_cards_batch,
     load_screen_task,
 )
 
@@ -43,5 +44,6 @@ __all__ = [
     "load_discovery_volume_surge",
     "load_radar_board",
     "load_radar_card",
+    "load_radar_cards_batch",
     "load_screen_task",
 ]

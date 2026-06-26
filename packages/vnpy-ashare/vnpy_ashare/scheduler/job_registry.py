@@ -26,6 +26,7 @@ from vnpy_ashare.jobs.prefetch.concept import prefetch_concept_board
 from vnpy_ashare.jobs.prefetch.moneyflow import prefetch_moneyflow
 from vnpy_ashare.jobs.prefetch.sector_flow import sync_sector_flow_daily_job
 from vnpy_ashare.jobs.quotes.collect import collect_market_quotes
+from vnpy_ashare.jobs.radar.card_snapshot_warmup import warm_radar_card_snapshots_job
 from vnpy_ashare.jobs.screen.auto_screen import run_scheduled_auto_screen
 from vnpy_ashare.jobs.screen.horizon_scan import run_horizon_outlook_scan_job
 from vnpy_ashare.jobs.sync.stock_industry import sync_stock_industry_job
@@ -200,6 +201,17 @@ def build_scheduler_jobs(runners: SchedulerJobRunners) -> dict[str, SchedulerJob
             config_attr=specs["warm_watchlist_strategy_cache"].config_attr,
             schedule_builder=_weekly_cron_trigger,
             schedule_text_builder=lambda cfg: _workday_schedule_text(cfg, suffix="（建议在日 K 补全之后）"),
+        ),
+        "warm_radar_card_snapshots": SchedulerJobMeta(
+            job_id="warm_radar_card_snapshots",
+            name=specs["warm_radar_card_snapshots"].name,
+            description=specs["warm_radar_card_snapshots"].description,
+            runner=warm_radar_card_snapshots_job,
+            config_attr=specs["warm_radar_card_snapshots"].config_attr,
+            schedule_builder=lambda cfg: IntervalTrigger(seconds=max(cfg.interval_seconds, 300)),
+            schedule_text_builder=lambda cfg: (
+                f"交易日每 {max(cfg.interval_seconds, 300) // 60} 分钟（仅交易时段执行）"
+            ),
         ),
         "sync_watchlist_financials": SchedulerJobMeta(
             job_id="sync_watchlist_financials",

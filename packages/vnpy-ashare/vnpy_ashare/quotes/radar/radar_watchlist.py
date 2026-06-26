@@ -274,7 +274,9 @@ def _score_candidates(
 
 
 def load_watchlist_intraday(spec: RadarCardSpec) -> RadarCardData:
-    candidates = collect_personal_vt_symbols()
+    from vnpy_ashare.screener.hard_filters import filter_vt_symbols_by_recipe_market_board
+
+    candidates = filter_vt_symbols_by_recipe_market_board(collect_personal_vt_symbols())
     if not candidates:
         return RadarCardData(
             card_id=spec.id,

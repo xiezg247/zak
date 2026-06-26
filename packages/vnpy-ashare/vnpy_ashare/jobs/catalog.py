@@ -16,6 +16,7 @@ MANUAL_FORCE_JOB_IDS = frozenset(
         "screen_post_close",
         "scan_horizon_outlook",
         "warm_watchlist_strategy_cache",
+        "warm_radar_card_snapshots",
         "sync_bilibili_feed",
     },
 )
@@ -166,6 +167,13 @@ JOB_SPECS: tuple[JobSpec, ...] = (
         description="收盘后全市场扫描未来·关注/可持/情景/预测，写入本地缓存",
         cli_description="全市场扫描未来·关注/可持并写入本地缓存",
         config_attr="scan_horizon_outlook",
+    ),
+    JobSpec(
+        job_id="warm_radar_card_snapshots",
+        name="雷达卡片预热",
+        description="交易时段批量重算雷达统计/发现重卡并写入本地快照，供 UI 冷读",
+        cli_description="重算雷达统计/发现卡片并写入本地快照",
+        config_attr="warm_radar_card_snapshots",
     ),
     JobSpec(
         job_id="sync_bilibili_feed",

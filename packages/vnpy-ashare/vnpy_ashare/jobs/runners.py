@@ -27,6 +27,7 @@ from vnpy_ashare.jobs.sync.stock_industry import sync_stock_industry_job
 from vnpy_ashare.jobs.sync.suspend_sync import sync_suspend_daily_job
 from vnpy_ashare.jobs.sync.trade_calendar import sync_trade_calendar_job
 from vnpy_ashare.jobs.sync.universe import sync_universe_job
+from vnpy_ashare.jobs.radar.card_snapshot_warmup import warm_radar_card_snapshots_job
 from vnpy_ashare.jobs.watchlist.strategy_prewarm import warm_watchlist_strategy_cache_job
 from vnpy_ashare.scheduler.config import load_scheduler_config
 
@@ -134,6 +135,8 @@ def run_job(
         return run_horizon_outlook_scan_job(force=force)
     if job_id == "warm_watchlist_strategy_cache":
         return warm_watchlist_strategy_cache_job(engine=engine, force=force)
+    if job_id == "warm_radar_card_snapshots":
+        return warm_radar_card_snapshots_job(force=force)
     if job_id == "batch_download_universe":
         start = download_start or load_scheduler_config().batch_download_universe.download_start
         return batch_download_universe_daily_bars(daily_start=start)

@@ -18,7 +18,11 @@ from vnpy_ashare.quotes.radar.radar_watchlist import (
 
 
 def load_watchlist_short_term(spec: RadarCardSpec) -> RadarCardData:
-    candidates = collect_short_term_focus_vt_symbols(max_items=spec.top_n * 3)
+    from vnpy_ashare.screener.hard_filters import filter_vt_symbols_by_recipe_market_board
+
+    candidates = filter_vt_symbols_by_recipe_market_board(
+        collect_short_term_focus_vt_symbols(max_items=spec.top_n * 3),
+    )
     if not candidates:
         return RadarCardData(
             card_id=spec.id,

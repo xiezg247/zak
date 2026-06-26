@@ -1,4 +1,4 @@
-"""雷达控制器性能相关行为：共振防抖与错峰刷新。"""
+"""雷达控制器性能相关行为：批量加载、共振防抖与 UI 错峰。"""
 
 from __future__ import annotations
 
@@ -36,10 +36,11 @@ def _make_controller(qapp: QtWidgets.QApplication) -> tuple[object, MagicMock, M
 
     controller._board = board
     controller.refresh_card = MagicMock()
+    controller._start_group_load = MagicMock()
     return controller, board, panel
 
 
-def test_refresh_current_group_staggers_card_starts(qapp: QtWidgets.QApplication) -> None:
+def test_refresh_current_group_uses_batch_worker(qapp: QtWidgets.QApplication) -> None:
     controller, _board, _panel = _make_controller(qapp)
     specs = [
         MagicMock(id="market_emotion"),
@@ -51,36 +52,46 @@ def test_refresh_current_group_staggers_card_starts(qapp: QtWidgets.QApplication
         "vnpy_ashare.ui.quotes.radar.controller.list_radar_cards_for_group",
         return_value=specs,
     ):
-        with patch(
-            "vnpy_ashare.ui.quotes.radar.controller.QtCore.QTimer.start",
-        ) as start_timer:
-            controller.refresh_current_group()
+        controller.refresh_current_group()
 
-    assert controller.refresh_card.call_count == 1
-    assert controller.refresh_card.call_args.args[0] == "market_emotion"
-    assert start_timer.call_count == 1
+    controller._start_group_load.assert_called_once()
+    items = controller._start_group_load.call_args.args[0]
+    assert [card_id for card_id, _kwargs in items] == [
+        "market_emotion",
+        "leader_pick",
+        "watchlist_short_term",
+    ]
+    controller.refresh_card.assert_not_called()
 
-    controller._dequeue_refresh()
-    assert controller.refresh_card.call_count == 2
-    assert controller.refresh_card.call_args.args[0] == "leader_pick"
 
-    controller._dequeue_refresh()
-    assert controller.refresh_card.call_count == 3
-    assert controller.refresh_card.call_args.args[0] == "watchlist_short_term"
+def test_enqueue_single_card_still_uses_refresh_card(qapp: QtWidgets.QApplication) -> None:
+    controller, _board, _panel = _make_controller(qapp)
+    controller._enqueue_refresh_many([("leader_pick", {})])
+    controller.refresh_card.assert_called_once_with("leader_pick", force_recompute=False, quote_only=False)
+    controller._start_group_load.assert_not_called()
 
 
 def test_on_card_loaded_debounces_resonance_sync(qapp: QtWidgets.QApplication) -> None:
     from vnpy_ashare.quotes.radar.radar_loaders import RadarCardData
 
     controller, board, _panel = _make_controller(qapp)
+    controller.refresh_card = controller.__class__.refresh_card  # restore real method not needed
+    # Rebuild without mocking refresh_card
+    page = QtWidgets.QWidget()
+    board = MagicMock()
+    board.current_mode.return_value = "statistical"
+    board.current_group.return_value = "leader"
+    from vnpy_ashare.ui.quotes.radar.controller import RadarController
+
+    with patch.object(RadarController, "_setup_auto_refresh_timers"):
+        controller = RadarController(page, board, resonance_panel=MagicMock())
+
     panel_sync_calls: list[int] = []
 
-    def _flush() -> None:
-        controller._cached_resonance = {"600000.SH": 2}
-        board.sync_resonance(controller._cached_resonance)
+    def _panel_sync() -> None:
         panel_sync_calls.append(1)
 
-    controller._flush_resonance_sync = _flush  # type: ignore[method-assign]
+    controller._sync_resonance_panel = _panel_sync  # type: ignore[method-assign]
     controller._update_status = MagicMock()
 
     data_a = RadarCardData(
@@ -100,19 +111,95 @@ def test_on_card_loaded_debounces_resonance_sync(qapp: QtWidgets.QApplication) -
         updated_at="10:01",
     )
 
+    timers: list[object] = []
+
+    def _capture_timer(_ms: int, callback) -> None:
+        timers.append(callback)
+
     with patch.object(controller, "_schedule_resonance_sync", wraps=controller._schedule_resonance_sync):
         controller._on_card_loaded("market_emotion", data_a)
         controller._on_card_loaded("leader_pick", data_b)
         assert panel_sync_calls == []
-        controller._flush_resonance_sync()
-        assert panel_sync_calls == [1]
+        with patch("vnpy_ashare.ui.quotes.radar.controller.QtCore.QTimer.singleShot", side_effect=_capture_timer):
+            controller._flush_resonance_sync()
+        assert panel_sync_calls == []
         board.sync_resonance.assert_called_once()
+        assert len(timers) == 1
+        timers[0]()
+        assert panel_sync_calls == [1]
+
+
+def test_group_load_splits_viewport_priority(qapp: QtWidgets.QApplication) -> None:
+    from vnpy_ashare.ui.quotes.radar.controller import RadarController
+
+    page = QtWidgets.QWidget()
+    board = MagicMock()
+    board.current_mode.return_value = "statistical"
+    board.current_group.return_value = "leader"
+    board.visible_card_ids_for_current_group.return_value = ["market_emotion", "leader_pick"]
+
+    with patch.object(RadarController, "_setup_auto_refresh_timers"):
+        controller = RadarController(page, board, resonance_panel=MagicMock())
+
+    controller._run_group_worker = MagicMock()
+    items = [
+        ("market_emotion", {}),
+        ("leader_pick", {}),
+        ("watchlist_short_term", {}),
+        ("sector_theme", {}),
+    ]
+    controller._start_group_load(items)
+    controller._run_group_worker.assert_called_once()
+    first_batch = controller._run_group_worker.call_args.args[0]
+    assert {card_id for card_id, _kwargs in first_batch} == {"market_emotion", "leader_pick"}
+    assert {card_id for card_id, _kwargs in controller._deferred_group_items} == {
+        "watchlist_short_term",
+        "sector_theme",
+    }
+
+
+def test_schedule_sibling_prefetch_queues_other_groups(qapp: QtWidgets.QApplication) -> None:
+    from vnpy_ashare.ui.quotes.radar.controller import RadarController
+
+    page = QtWidgets.QWidget()
+    board = MagicMock()
+    board.current_mode.return_value = "statistical"
+    board.current_group.return_value = "leader"
+    host = MagicMock()
+
+    with patch.object(RadarController, "_setup_auto_refresh_timers"):
+        controller = RadarController(page, board, resonance_panel=MagicMock())
+
+    controller._find_main_window = MagicMock(return_value=host)
+    kick_callbacks: list[object] = []
+
+    def _capture_idle(_host, callback, **kwargs) -> None:
+        kick_callbacks.append(callback)
+
+    with patch(
+        "vnpy_ashare.ui.quotes.radar.controller.run_when_idle",
+        side_effect=_capture_idle,
+    ):
+        controller._schedule_sibling_prefetch()
+
+    assert controller._prefetch_mode == "statistical"
+    assert controller._prefetch_siblings == ["discovery", "portfolio"]
+    assert len(kick_callbacks) == 1
+    controller._start_prefetch_group = MagicMock()
+    kick_callbacks[0]()
+    controller._start_prefetch_group.assert_called_once()
 
 
 def test_quote_only_load_skips_resonance_panel_sync(qapp: QtWidgets.QApplication) -> None:
     from vnpy_ashare.quotes.radar.radar_loaders import RadarCardData
 
-    controller, board, _panel = _make_controller(qapp)
+    page = QtWidgets.QWidget()
+    board = MagicMock()
+    from vnpy_ashare.ui.quotes.radar.controller import RadarController
+
+    with patch.object(RadarController, "_setup_auto_refresh_timers"):
+        controller = RadarController(page, board, resonance_panel=MagicMock())
+
     controller._sync_resonance_panel = MagicMock()
     controller._schedule_resonance_sync = MagicMock()
 

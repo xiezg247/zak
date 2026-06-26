@@ -15,6 +15,10 @@ from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.dimensions.sector_strength import run_sector_strength
 from vnpy_ashare.screener.hard_filters import is_at_limit_board
 from vnpy_ashare.screener.sector.sector_summary import attach_sector_fields, compute_sector_distribution
+from vnpy_ashare.quotes.radar.radar_leader_pool_cache import (
+    peek_leader_candidate_pool,
+    store_leader_candidate_pool,
+)
 from vnpy_ashare.trading.signals.intraday_seal_time import attach_first_time_fields
 
 LeaderPickVariant = Literal["mainline", "all_market"]
@@ -29,6 +33,10 @@ def build_leader_candidate_pool(
     pool_size: int = 80,
 ) -> tuple[list[QuoteRow | dict[str, Any]], int]:
     """构建龙头评分候选池；返回 (candidates, total_scanned)。"""
+    peeked = peek_leader_candidate_pool(variant=variant, pool_size=pool_size)
+    if peeked is not None:
+        return peeked
+
     try:
         snapshot = load_screening_quote_snapshot()
     except MarketQuotesLoadError:
@@ -50,6 +58,7 @@ def build_leader_candidate_pool(
             else:
                 pool_rows.append(row)
         attach_first_time_fields(pool_rows)
+        store_leader_candidate_pool(variant=variant, pool_size=pool_size, candidates=pool_rows, total=snapshot.total)
         return pool_rows, snapshot.total
 
     distribution = compute_sector_distribution(enriched, top_n=10, min_stocks=3)
@@ -84,6 +93,7 @@ def build_leader_candidate_pool(
     )
     trimmed = candidates[:pool_size]
     attach_first_time_fields(trimmed)
+    store_leader_candidate_pool(variant=variant, pool_size=pool_size, candidates=trimmed, total=snapshot.total)
     return trimmed, snapshot.total
 
 

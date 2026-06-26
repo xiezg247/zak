@@ -560,6 +560,7 @@ class RadarBoard(QtWidgets.QWidget):
         self._mode_tab_index: dict[RadarCardMode, int] = {}
         self._group_tabs: dict[RadarCardMode, QtWidgets.QTabWidget] = {}
         self._group_index: dict[RadarCardMode, dict[int, RadarGroupKey]] = {}
+        self._group_scrolls: dict[tuple[RadarCardMode, RadarGroupKey], QtWidgets.QScrollArea] = {}
         self._outlook_strategy_combo: QtWidgets.QComboBox | None = None
 
         self._tabs = configure_document_tab_widget(
@@ -634,6 +635,7 @@ class RadarBoard(QtWidgets.QWidget):
 
                 scroll.setWidget(section_host)
                 group_layout.addWidget(scroll, stretch=1)
+                self._group_scrolls[(section.mode, group_key)] = scroll
                 group_tabs.addTab(group_page, group_label)
                 index_map[group_index] = group_key
 
@@ -764,6 +766,35 @@ class RadarBoard(QtWidgets.QWidget):
 
     def card(self, card_id: str) -> RadarCardWidget | None:
         return self._cards.get(card_id)
+
+    def visible_card_ids_for_current_group(self) -> list[str]:
+        mode = self.current_mode()
+        return self.visible_card_ids_in_group(mode, self.current_group(mode))
+
+    def visible_card_ids_in_group(self, mode: RadarCardMode, group_key: RadarGroupKey) -> list[str]:
+        """返回分组内当前视口可见的卡片 id（按网格顺序）；不可见时回退首行。"""
+        specs = list_radar_cards_for_group(mode, group_key)
+        if not specs:
+            return []
+        scroll = self._group_scrolls.get((mode, group_key))
+        if scroll is None:
+            return [spec.id for spec in specs[:RADAR_GRID_COLUMNS]]
+        viewport = scroll.viewport()
+        if viewport is None:
+            return [spec.id for spec in specs[:RADAR_GRID_COLUMNS]]
+        viewport_rect = viewport.rect()
+        visible: list[str] = []
+        for spec in specs:
+            card = self._cards.get(spec.id)
+            if card is None or not card.isVisible():
+                continue
+            top_left = card.mapTo(viewport, QtCore.QPoint(0, 0))
+            card_rect = QtCore.QRect(top_left, card.size())
+            if viewport_rect.intersects(card_rect):
+                visible.append(spec.id)
+        if visible:
+            return visible
+        return [spec.id for spec in specs[:RADAR_GRID_COLUMNS]]
 
     def focus_card(self, card_id: str) -> bool:
         """切换分区并滚动到指定卡片。"""

@@ -378,10 +378,8 @@ class RadarResonancePanel(QtWidgets.QWidget):
         self._stats_label.setText(f"共振 {self._resonance_total} · 龙一 {self._dragon_1_total} · 主池 {self._ultra_short_count}")
         for tab_key, raw in self._raw_entries_by_tab.items():
             self._entries_by_tab[tab_key] = _filter_entries(raw)
+        # 仅重绘当前 Tab；其余 Tab 在切换时由 _on_tab_changed 懒渲染，避免共振同步时主线程拥堵。
         self._render_current_tab()
-        for tab_key in self._entries_by_tab:
-            if tab_key != self._current_tab_key():
-                self._render_tab(tab_key)
 
     def _sync_action_buttons(self) -> None:
         """同步侧栏操作按钮可用态与提示。"""

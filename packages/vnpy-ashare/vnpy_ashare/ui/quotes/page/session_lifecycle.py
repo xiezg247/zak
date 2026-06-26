@@ -77,14 +77,26 @@ def _deferred_watchlist_activate_frame3(page: Any) -> None:
 
 
 def _deferred_radar_activate(page: Any) -> None:
-    """雷达页延后：卡片刷新与自动轮询，避免切页卡死。"""
+    """雷达页延后任务入口：先关加载遮罩，下一帧再刷新卡片。"""
+    _deferred_radar_activate_frame1(page)
+
+
+def _deferred_radar_activate_frame1(page: Any) -> None:
+    """帧 1：尽快结束切页加载态。"""
+    if not page._active or page.page_name != RADAR_PAGE:
+        return
+    if hasattr(page, "end_tab_switch_loading"):
+        page.end_tab_switch_loading()
+    QtCore.QTimer.singleShot(0, lambda: _deferred_radar_activate_frame2(page))
+
+
+def _deferred_radar_activate_frame2(page: Any) -> None:
+    """帧 2：卡片刷新与自动轮询（较重）。"""
     if not page._active or page.page_name != RADAR_PAGE:
         return
     controller = getattr(page, "_radar_controller", None)
     if controller is not None:
         controller.activate_heavy()
-    if hasattr(page, "end_tab_switch_loading"):
-        page.end_tab_switch_loading()
 
 
 def _deferred_strategy_monitor_activate(page: Any) -> None:

@@ -26,9 +26,11 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
     list_radar_cards,
     list_radar_cards_for_group,
     list_radar_cards_for_mode,
+    list_radar_groups_for_mode,
     radar_card_group,
 )
-from vnpy_ashare.quotes.radar.radar_full_refresh_prefs import save_radar_full_refresh_every
+from vnpy_ashare.quotes.radar.loaders.load import RADAR_SNAPSHOT_CARD_IDS
+from vnpy_ashare.quotes.radar.radar_card_snapshot_cache import peek_radar_card_snapshot, radar_card_variant_key
 from vnpy_ashare.quotes.radar.radar_horizon import OUTLOOK_FORCE_RECOMPUTE_CARD_IDS
 from vnpy_ashare.quotes.radar.radar_loaders import (
     RadarCardData,
@@ -57,8 +59,9 @@ from vnpy_ashare.trading.plan.propose import _next_trade_date
 from vnpy_ashare.ui.features.stock_analysis.open import show_stock_analysis_from_quotes_page
 from vnpy_ashare.ui.quotes.page.config import save_radar_card_refresh_ms
 from vnpy_ashare.ui.quotes.radar.resonance_weight_dialog import RadarResonanceWeightDialog
-from vnpy_ashare.ui.quotes.radar.worker import RadarCardLoadWorker
+from vnpy_ashare.ui.quotes.radar.worker import RadarCardLoadWorker, RadarGroupLoadWorker
 from vnpy_ashare.ui.quotes.watchlist_positions.plan_dialog import TradingPlanDialog
+from vnpy_ashare.ui.shell.deferred_idle import run_when_idle
 from vnpy_common.ui.feedback import page_notify
 from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
 
@@ -68,7 +71,11 @@ if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.radar.resonance_panel import RadarResonancePanel
 
 _RADAR_CARD_REFRESH_STAGGER_MS = 80
+_RADAR_UI_APPLY_STAGGER_MS = 16
 _RADAR_RESONANCE_SYNC_DEBOUNCE_MS = 80
+_RADAR_GROUP_LOAD_MIN_CARDS = 2
+_RADAR_PREFETCH_NOT_BEFORE_MS = 1500
+_RADAR_PREFETCH_NEXT_GROUP_MS = 500
 
 
 class RadarController(QtCore.QObject):
@@ -84,6 +91,11 @@ class RadarController(QtCore.QObject):
         self._board = board
         self._resonance_panel = resonance_panel
         self._card_workers: dict[str, RadarCardLoadWorker] = {}
+        self._group_worker: RadarGroupLoadWorker | None = None
+        self._prefetch_worker: RadarGroupLoadWorker | None = None
+        self._deferred_group_items: list[tuple[str, dict[str, object]]] = []
+        self._prefetch_mode: str | None = None
+        self._prefetch_siblings: list[str] = []
         self._retired_workers: list[QtCore.QThread] = []
         self._sector_variant = DEFAULT_SECTOR_VARIANT
         self._card_variants: dict[str, str] = {
@@ -98,6 +110,10 @@ class RadarController(QtCore.QObject):
         self._auto_refresh_ticks: dict[str, int] = {}
         self._auto_refresh_timers: dict[str, QtCore.QTimer] = {}
         self._refresh_queue: list[tuple[str, dict[str, object]]] = []
+        self._pending_apply_queue: list[tuple[str, RadarCardData]] = []
+        self._apply_stagger_timer = QtCore.QTimer(self)
+        self._apply_stagger_timer.setSingleShot(True)
+        self._apply_stagger_timer.timeout.connect(self._dequeue_apply)
         self._refresh_stagger_timer = QtCore.QTimer(self)
         self._refresh_stagger_timer.setSingleShot(True)
         self._refresh_stagger_timer.timeout.connect(self._dequeue_refresh)
@@ -241,7 +257,12 @@ class RadarController(QtCore.QObject):
         self._session_timer.stop()
         self._stop_auto_refresh()
         self._cancel_all_workers()
+        self._deferred_group_items.clear()
+        self._prefetch_siblings.clear()
+        self._prefetch_mode = None
         self._refresh_queue.clear()
+        self._pending_apply_queue.clear()
+        self._apply_stagger_timer.stop()
         self._refresh_stagger_timer.stop()
         self._resonance_sync_timer.stop()
 
@@ -336,8 +357,28 @@ class RadarController(QtCore.QObject):
     def _enqueue_refresh_many(self, items: list[tuple[str, dict[str, object]]]) -> None:
         if not items:
             return
-        kick = not self._refresh_queue and not self._refresh_stagger_timer.isActive()
+        quote_items: list[tuple[str, dict[str, object]]] = []
+        load_items: list[tuple[str, dict[str, object]]] = []
         for card_id, kwargs in items:
+            if kwargs.get("quote_only"):
+                quote_items.append((card_id, kwargs))
+            else:
+                load_items.append((card_id, kwargs))
+        for card_id, kwargs in quote_items:
+            self.refresh_card(
+                card_id,
+                force_recompute=bool(kwargs.get("force_recompute", False)),
+                quote_only=True,
+            )
+        if not load_items:
+            return
+        if len(load_items) >= _RADAR_GROUP_LOAD_MIN_CARDS:
+            self._refresh_queue.clear()
+            self._refresh_stagger_timer.stop()
+            self._start_group_load(load_items)
+            return
+        kick = not self._refresh_queue and not self._refresh_stagger_timer.isActive()
+        for card_id, kwargs in load_items:
             self._refresh_queue = [(cid, kw) for cid, kw in self._refresh_queue if cid != card_id]
             self._refresh_queue.append((card_id, kwargs))
         if kick:
@@ -395,6 +436,9 @@ class RadarController(QtCore.QObject):
         force_recompute: bool = False,
         quote_only: bool = False,
     ) -> None:
+        group_worker = self._group_worker
+        if group_worker is not None and thread_is_active(group_worker) and card_id in group_worker.card_ids:
+            return
         if thread_is_active(self._card_workers.get(card_id)):
             return
         existing = self._last_payload.get(card_id)
@@ -563,9 +607,195 @@ class RadarController(QtCore.QObject):
         release_thread(self._retired_workers, worker, timeout_ms=0)
 
     def _cancel_all_workers(self) -> None:
+        self._cancel_group_worker()
+        self._cancel_prefetch_worker()
         card_ids = list(self._card_workers)
         for card_id in card_ids:
             self._cancel_card_worker(card_id)
+
+    def _cancel_group_worker(self) -> None:
+        worker = self._group_worker
+        if worker is None:
+            return
+        self._group_worker = None
+        worker.request_cancel()
+        release_thread(self._retired_workers, worker, timeout_ms=0)
+
+    def _cancel_prefetch_worker(self) -> None:
+        worker = self._prefetch_worker
+        if worker is None:
+            return
+        self._prefetch_worker = None
+        worker.request_cancel()
+        release_thread(self._retired_workers, worker, timeout_ms=0)
+
+    def _card_load_variants(self) -> dict[str, str]:
+        return {
+            "sector_variant": self._card_variants.get("sector_theme", DEFAULT_SECTOR_VARIANT),
+            "sector_flow_hot_variant": self._card_variants.get("sector_flow_hot", DEFAULT_SECTOR_FLOW_HOT_VARIANT),
+            "leader_pick_variant": self._card_variants.get("leader_pick", DEFAULT_LEADER_PICK_VARIANT),
+            "limit_ladder_variant": self._card_variants.get("discovery_limit_ladder", DEFAULT_LIMIT_LADDER_VARIANT),
+            "scenario_variant": self._card_variants.get("outlook_scenario", DEFAULT_SCENARIO_VARIANT),
+        }
+
+    def _variant_key_for_card(self, card_id: str) -> str:
+        return radar_card_variant_key(card_id, self._card_load_variants())
+
+    def _show_cached_cards(self, card_ids: frozenset[str] | set[str]) -> None:
+        """有缓存时先展示旧数据，后台刷新完成后再覆盖。"""
+        for card_id in card_ids:
+            cached = self._last_payload.get(card_id)
+            if cached is None and card_id in RADAR_SNAPSHOT_CARD_IDS:
+                cached = peek_radar_card_snapshot(card_id, variant_key=self._variant_key_for_card(card_id))
+            if cached is None:
+                continue
+            if not cached.rows and not cached.empty_message:
+                continue
+            self._board.apply_card(card_id, cached, resonance_counts=self._cached_resonance)
+
+    def _set_cards_loading(self, card_ids: frozenset[str] | set[str], *, loading: bool) -> None:
+        for card_id in card_ids:
+            widget = self._board.card(card_id)
+            if widget is not None:
+                widget.set_loading(loading)
+
+    def _start_group_load(
+        self,
+        items: list[tuple[str, dict[str, object]]],
+        *,
+        skip_viewport_split: bool = False,
+    ) -> None:
+        if not skip_viewport_split:
+            self._deferred_group_items.clear()
+            self._prefetch_siblings.clear()
+            self._cancel_prefetch_worker()
+        if (
+            not skip_viewport_split
+            and len(items) >= _RADAR_GROUP_LOAD_MIN_CARDS
+        ):
+            visible_ids = set(self._board.visible_card_ids_for_current_group())
+            priority = [(card_id, kwargs) for card_id, kwargs in items if card_id in visible_ids]
+            deferred = [(card_id, kwargs) for card_id, kwargs in items if card_id not in visible_ids]
+            if priority and deferred:
+                self._deferred_group_items = deferred
+                self._run_group_worker(priority)
+                return
+        self._run_group_worker(items)
+
+    def _run_group_worker(self, items: list[tuple[str, dict[str, object]]]) -> None:
+        card_ids = frozenset(card_id for card_id, _kwargs in items)
+        self._cancel_group_worker()
+        for card_id in card_ids:
+            self._cancel_card_worker(card_id)
+        self._show_cached_cards(card_ids)
+        self._set_cards_loading(card_ids, loading=True)
+        self._update_status()
+
+        worker = RadarGroupLoadWorker(
+            items=items,
+            parent=self._page,
+            **self._card_load_variants(),
+        )
+        self._group_worker = worker
+        worker.finished.connect(self._on_group_loaded)
+        worker.failed.connect(self._on_group_failed)
+        worker.finished.connect(lambda _loaded, _errors, w=worker: self._release_group_worker(w))
+        worker.failed.connect(lambda _msg, w=worker: self._release_group_worker(w))
+        worker.start()
+
+    def _on_group_loaded(self, loaded: dict[str, RadarCardData], errors: dict[str, str]) -> None:
+        visible_ids = set(self._board.visible_card_ids_for_current_group())
+        self._pending_apply_queue = sorted(
+            loaded.items(),
+            key=lambda item: (0 if item[0] in visible_ids else 1),
+        )
+        for card_id, message in errors.items():
+            self._on_card_failed(card_id, message)
+        if self._pending_apply_queue:
+            self._dequeue_apply()
+        else:
+            self._update_status()
+        if self._deferred_group_items:
+            deferred = self._deferred_group_items
+            self._deferred_group_items = []
+            self._start_group_load(deferred, skip_viewport_split=True)
+            return
+        self._schedule_sibling_prefetch()
+
+    def _schedule_sibling_prefetch(self) -> None:
+        host = self._find_main_window()
+        if host is None:
+            return
+        mode = self._board.current_mode()
+        current = self._board.current_group(mode)
+        siblings = [group_key for group_key, _label in list_radar_groups_for_mode(mode) if group_key != current]
+        if not siblings:
+            return
+        self._prefetch_mode = mode
+        self._prefetch_siblings = siblings
+
+        def _kick() -> None:
+            self._drain_prefetch_siblings()
+
+        run_when_idle(host, _kick, not_before_ms=_RADAR_PREFETCH_NOT_BEFORE_MS)
+
+    def _drain_prefetch_siblings(self) -> None:
+        if not self._prefetch_siblings:
+            return
+        if self._prefetch_worker is not None and thread_is_active(self._prefetch_worker):
+            return
+        if self._prefetch_mode is None or self._board.current_mode() != self._prefetch_mode:
+            self._prefetch_siblings.clear()
+            self._prefetch_mode = None
+            return
+        group_key = self._prefetch_siblings.pop(0)
+        items = [(spec.id, {}) for spec in list_radar_cards_for_group(self._prefetch_mode, group_key)]  # type: ignore[arg-type]
+        if len(items) < _RADAR_GROUP_LOAD_MIN_CARDS:
+            QtCore.QTimer.singleShot(0, self._drain_prefetch_siblings)
+            return
+        self._start_prefetch_group(items)
+
+    def _start_prefetch_group(self, items: list[tuple[str, dict[str, object]]]) -> None:
+        self._cancel_prefetch_worker()
+        worker = RadarGroupLoadWorker(
+            items=items,
+            parent=self._page,
+            **self._card_load_variants(),
+        )
+        self._prefetch_worker = worker
+        worker.finished.connect(self._on_prefetch_loaded)
+        worker.failed.connect(lambda _msg, w=worker: self._release_prefetch_worker(w))
+        worker.finished.connect(lambda _loaded, _errors, w=worker: self._release_prefetch_worker(w))
+        worker.start()
+
+    def _on_prefetch_loaded(self, loaded: dict[str, RadarCardData], errors: dict[str, str]) -> None:
+        for card_id, data in loaded.items():
+            self._last_payload[card_id] = data
+        for card_id in errors:
+            self._last_payload.pop(card_id, None)
+        QtCore.QTimer.singleShot(_RADAR_PREFETCH_NEXT_GROUP_MS, self._drain_prefetch_siblings)
+
+    def _release_prefetch_worker(self, worker: RadarGroupLoadWorker) -> None:
+        if self._prefetch_worker is worker:
+            self._prefetch_worker = None
+        release_thread(self._retired_workers, worker)
+
+    def _on_group_failed(self, message: str) -> None:
+        page_notify(self._page, f"雷达批量加载失败：{message}", level="warning")
+        self._update_status()
+
+    def _dequeue_apply(self) -> None:
+        if not self._pending_apply_queue:
+            return
+        card_id, data = self._pending_apply_queue.pop(0)
+        self._on_card_loaded(card_id, data)
+        if self._pending_apply_queue:
+            self._apply_stagger_timer.start(_RADAR_UI_APPLY_STAGGER_MS)
+
+    def _release_group_worker(self, worker: RadarGroupLoadWorker) -> None:
+        if self._group_worker is worker:
+            self._group_worker = None
+        release_thread(self._retired_workers, worker)
 
     def _release_worker(self, worker: RadarCardLoadWorker) -> None:
         card_id = worker.card_id
@@ -591,8 +821,9 @@ class RadarController(QtCore.QObject):
             return
         self._cached_resonance = compute_radar_resonance(self._last_payload)
         self._board.sync_resonance(self._cached_resonance)
-        self._sync_resonance_panel()
         self._update_status(resonance=self._cached_resonance)
+        # 侧栏共振列表重建较重，延后一帧避免与多张卡片 apply_card 挤在同一事件循环。
+        QtCore.QTimer.singleShot(0, self._sync_resonance_panel)
 
     def _sync_resonance_panel(self) -> None:
         panel = self._resonance_panel
@@ -649,6 +880,8 @@ class RadarController(QtCore.QObject):
         if not hasattr(self._page, "status_label"):
             return
         active = sum(1 for worker in self._card_workers.values() if thread_is_active(worker))
+        if self._group_worker is not None and thread_is_active(self._group_worker):
+            active += 1
         if active:
             self._page.status_label.setText(f"雷达加载中…（{active} 张卡）")
             return
