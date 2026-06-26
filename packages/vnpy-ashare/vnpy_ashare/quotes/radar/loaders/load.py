@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from vnpy_ashare.data.download_concurrency import run_parallel_map
+from vnpy_ashare.data.download_concurrency import radar_board_max_workers, run_parallel_map
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.quotes.radar.loaders.discovery import load_discovery_moneyflow_intraday, load_discovery_volume_surge
 from vnpy_ashare.quotes.radar.radar_card_snapshot_cache import (
@@ -197,12 +197,7 @@ def _load_radar_card_item(
 
 
 def _batch_max_workers(count: int) -> int:
-    raw = os.getenv("RADAR_BOARD_MAX_WORKERS", "4").strip()
-    try:
-        max_workers = max(1, min(int(raw), 8))
-    except ValueError:
-        max_workers = 4
-    return min(max_workers, max(1, count))
+    return radar_board_max_workers(item_count=count)
 
 
 def _load_radar_cards_in_context(
@@ -278,10 +273,31 @@ def load_radar_cards_batch(
 
     loaded: dict[str, RadarCardData] = {}
     errors: dict[str, str] = {}
-    for mode in ("full", "quote", "none"):
-        batch_loaded, batch_errors = _load_radar_cards_in_context(buckets[mode], context_mode=mode, variants=variants)
-        loaded.update(batch_loaded)
-        errors.update(batch_errors)
+    bucket_modes = [(mode, buckets[mode]) for mode in ("full", "quote", "none") if buckets[mode]]
+    if len(bucket_modes) <= 1:
+        for mode, batch_items in bucket_modes:
+            batch_loaded, batch_errors = _load_radar_cards_in_context(
+                batch_items,
+                context_mode=mode,
+                variants=variants,
+            )
+            loaded.update(batch_loaded)
+            errors.update(batch_errors)
+    else:
+        with ThreadPoolExecutor(max_workers=len(bucket_modes)) as pool:
+            future_map = {
+                pool.submit(
+                    _load_radar_cards_in_context,
+                    batch_items,
+                    context_mode=mode,
+                    variants=variants,
+                ): mode
+                for mode, batch_items in bucket_modes
+            }
+            for future in as_completed(future_map):
+                batch_loaded, batch_errors = future.result()
+                loaded.update(batch_loaded)
+                errors.update(batch_errors)
     return loaded, errors
 
 

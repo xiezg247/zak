@@ -20,7 +20,7 @@ from strategies.signals import (
 )
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.config.preferences.watchlist_signal import SIGNAL_LOOKBACK_BARS
-from vnpy_ashare.data.download_concurrency import run_parallel_map
+from vnpy_ashare.data.download_concurrency import relative_index_enrich_max_workers, run_parallel_map
 from vnpy_ashare.data.pattern_bars import load_daily_bars_batch, load_daily_bars_tail, pattern_load_max_workers
 from vnpy_ashare.domain.trading.signal_benchmark import compute_relative_index_excess, resolve_benchmark_return_pct
 from vnpy_ashare.domain.trading.signal_snapshot import (
@@ -304,10 +304,19 @@ class TechnicalSignalsMixin(_TechnicalAnalyzerBase):
         if not snapshots:
             return snapshots
         self.reset_benchmark_cache()
-        enriched: dict[str, SignalSnapshot] = {}
-        for vt_symbol, snapshot in snapshots.items():
-            enriched[vt_symbol] = self.enrich_relative_index(snapshot)
-        return enriched
+        self._benchmark_return_pct(SIGNAL_BENCHMARK_LOOKBACK)
+        items = list(snapshots.items())
+        if len(items) <= 1:
+            return {vt_symbol: self.enrich_relative_index(snapshot) for vt_symbol, snapshot in items}
+
+        workers = relative_index_enrich_max_workers(item_count=len(items))
+
+        def _enrich_item(item: tuple[str, SignalSnapshot]) -> tuple[str, SignalSnapshot]:
+            vt_symbol, snapshot = item
+            return vt_symbol, self.enrich_relative_index(snapshot)
+
+        pairs = run_parallel_map(items, _enrich_item, max_workers=workers)
+        return dict(pairs)
 
     def _load_strategy_bars(
         self,

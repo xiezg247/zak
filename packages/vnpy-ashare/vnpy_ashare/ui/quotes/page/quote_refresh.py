@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
+from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ, is_ashare_trading_session, next_quotes_collect_at
 from vnpy_ashare.quotes.core.provider import is_gateway_quote_active
 from vnpy_ashare.ui.quotes.page.config import (
@@ -14,9 +15,23 @@ from vnpy_ashare.ui.quotes.page.config import (
     radar_refresh_hint,
     save_market_auto_refresh_pref,
 )
+from vnpy_ashare.ui.quotes.page.roles import is_strategy_monitor_page
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
+
+
+def quote_refresh_stock_items(page: QuotesPage) -> list[StockItem]:
+    """策略监控页仅拉信号区∪持仓标的；其余页沿用主表展示范围。"""
+    if is_strategy_monitor_page(page.page_name):
+        from vnpy_ashare.services.focus_pool import load_focus_pool_stock_items
+
+        return load_focus_pool_stock_items()
+    if page.config.use_market_rank and page.config.market_full_list and page._market_catalog_loaded and market_auto_refresh_enabled(page):
+        return list(page._market_catalog)
+    if page.config.market_scroll_paging:
+        return page._table.visible_market_items()
+    return list(page.display_stocks)
 
 
 def market_auto_refresh_enabled(page: QuotesPage) -> bool:

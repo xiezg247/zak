@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from vnpy_ashare.data.download_concurrency import concept_member_max_workers, run_parallel_map
 from vnpy_ashare.domain.symbols.stock import ts_code_to_vt_symbol
 from vnpy_ashare.integrations.tushare.cache import (
     DATASET_THS_DAILY,
@@ -115,14 +116,24 @@ def build_hot_concept_vt_symbol_map(*, top_concepts: int = 5) -> tuple[dict[str,
         key=lambda item: item[1],
         reverse=True,
     )
+    top_ranked = ranked[:top_concepts]
+
+    def _fetch_members(item: tuple[str, float]) -> tuple[str, str, list[str]]:
+        concept_code, _pct = item
+        name = concept_map.get(concept_code, "")
+        if not name:
+            return concept_code, "", []
+        return concept_code, name, fetch_ths_member_vt_symbols(concept_code)
+
+    workers = concept_member_max_workers(item_count=len(top_ranked))
+    member_rows = run_parallel_map(top_ranked, _fetch_members, max_workers=workers)
     hot_names: list[str] = []
     vt_to_concept: dict[str, str] = {}
-    for concept_code, _pct in ranked[:top_concepts]:
-        name = concept_map.get(concept_code, "")
+    for _concept_code, name, vt_symbols in member_rows:
         if not name:
             continue
         hot_names.append(name)
-        for vt_symbol in fetch_ths_member_vt_symbols(concept_code):
+        for vt_symbol in vt_symbols:
             if vt_symbol not in vt_to_concept:
                 vt_to_concept[vt_symbol] = name
     return vt_to_concept, hot_names

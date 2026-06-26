@@ -30,6 +30,7 @@ from vnpy_ashare.services.signals.stock_continuation import format_signal_panel_
 from vnpy_ashare.ui.features.stock_analysis.open import show_stock_analysis_from_quotes_page
 from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
 from vnpy_ashare.ui.quotes.page.config import AI_CONTEXT_DEBOUNCE_MS
+from vnpy_ashare.ui.quotes.page.quote_refresh import quote_refresh_stock_items
 from vnpy_ashare.ui.quotes.page.roles import WATCHLIST_PAGE
 from vnpy_ashare.ui.quotes.watchlist.quote_status import begin_watchlist_quotes_fetch, end_watchlist_quotes_fetch
 from vnpy_ashare.ui.quotes.workers.quotes_workers import DepthRefreshWorker, DiagnoseWorker, QuotesRefreshWorker
@@ -313,7 +314,7 @@ class ActionsController:
                 return
             self.refresh_quotes_rest()
             return
-        if not page.display_stocks:
+        if not quote_refresh_stock_items(page):
             page.schedule_quote_auto_refresh()
             return
         if page._use_quote_stream():
@@ -327,7 +328,7 @@ class ActionsController:
         page = self._p
         if not page.config.quote_source:
             return
-        if not page.display_stocks:
+        if not quote_refresh_stock_items(page):
             page._toast.info("列表为空，无可刷新标的")
             return
         if page._thread_active(page._quotes_worker):
@@ -340,7 +341,8 @@ class ActionsController:
 
     def refresh_quotes_rest(self) -> None:
         page = self._p
-        if not page.display_stocks:
+        refresh_items = quote_refresh_stock_items(page)
+        if not refresh_items:
             return
         if page._thread_active(page._quotes_worker):
             return
@@ -351,14 +353,6 @@ class ActionsController:
             self.refresh_depth()
 
         refresh_source = page.config.quote_refresh_source or page.config.quote_source or "watchlist"
-        if page.config.use_market_rank and page.config.market_full_list and page._market_catalog_loaded and page.market_auto_refresh_enabled():
-            refresh_items = list(page._market_catalog)
-        elif page.config.market_scroll_paging:
-            refresh_items = page._table.visible_market_items()
-        else:
-            refresh_items = list(page.display_stocks)
-        if not refresh_items:
-            return
         worker = QuotesRefreshWorker(refresh_items, refresh_source)
         page._quotes_worker = worker
         current = page.current_item

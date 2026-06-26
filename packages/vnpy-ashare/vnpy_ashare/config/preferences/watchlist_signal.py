@@ -15,7 +15,7 @@ from vnpy_ashare.config.preferences._local_ui_pref import (
 )
 from vnpy_ashare.config.preferences._settings import coerce_settings_bool, coerce_settings_int, get_settings
 from vnpy_ashare.config.preferences._user_pref import load_model_pref, save_model_pref
-from vnpy_ashare.config.preferences.signal_panel_columns import normalize_visible_optional_keys
+from vnpy_ashare.config.preferences.signal_panel_columns import ensure_quote_display_columns, normalize_visible_optional_keys
 from vnpy_ashare.domain.symbols.stock import canonical_vt_symbol
 from vnpy_common.domain.base import FrozenModel
 
@@ -199,7 +199,7 @@ def load_signal_panel_columns() -> list[str]:
     if not raw.strip():
         return normalize_visible_optional_keys(None)
     parts = [part.strip() for part in raw.split(",") if part.strip()]
-    return normalize_visible_optional_keys(parts)
+    return ensure_quote_display_columns(normalize_visible_optional_keys(parts))
 
 
 def save_signal_panel_columns(keys: list[str]) -> None:

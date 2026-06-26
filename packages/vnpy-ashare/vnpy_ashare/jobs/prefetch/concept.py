@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
+
+from vnpy_ashare.data.download_concurrency import concept_prefetch_max_workers
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError, get_tushare_pro
 from vnpy_ashare.integrations.tushare.concept_board import (
     build_hot_concept_vt_symbol_map,
@@ -20,11 +23,14 @@ def prefetch_concept_board() -> JobResult:
         return JobResult(success=True, skipped=True, message=str(ex))
 
     job_log("拉取同花顺概念指数与当日行情…")
-    concept_map = fetch_ths_concept_index_map()
+    with ThreadPoolExecutor(max_workers=concept_prefetch_max_workers(item_count=2)) as pool:
+        index_future = pool.submit(fetch_ths_concept_index_map)
+        pct_future = pool.submit(fetch_ths_daily_pct_map)
+        concept_map = index_future.result()
+        pct_map = pct_future.result()
     if not concept_map:
         return JobResult(success=False, message="未拉取到同花顺概念列表（可能权限不足）")
 
-    pct_map = fetch_ths_daily_pct_map()
     vt_map, hot_names = build_hot_concept_vt_symbol_map(top_concepts=5)
     return JobResult(
         success=True,

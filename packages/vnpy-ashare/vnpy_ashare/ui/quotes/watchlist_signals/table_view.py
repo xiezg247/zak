@@ -233,6 +233,8 @@ class SignalPanelTableView(QtWidgets.QWidget):
         default_widths = {
             "symbol": 72,
             "name": 88,
+            "last_price": 72,
+            "change_pct": 72,
             "signal": 56,
             "signal_date": 88,
             "volume_ratio_5d": 64,
@@ -591,6 +593,9 @@ def _build_signal_row_cells(
                 elif bias == "偏空":
                     bias_value = -1.0
             fg = pct_change_color(bias_value, theme_manager().tokens())
+        elif key in {"last_price", "change_pct"}:
+            change = quote.change_pct if quote is not None and quote.last_price > 0 else 0.0
+            fg = pct_change_color(change, theme_manager().tokens())
         cell_tooltip = strength_tooltip if key == "signal_strength" and strength_tooltip else tooltip
         cells.append(QuoteCell(text=text, color=fg or None, tooltip=cell_tooltip))
 
@@ -618,6 +623,25 @@ def _resolve_signal_row_name(item, quote) -> str:
     return "—"
 
 
+def _resolve_quote_last_price(quote, snapshot: SignalSnapshot | None) -> float | None:
+    if quote is not None and quote.last_price > 0:
+        return quote.last_price
+    if snapshot is not None and snapshot.last_close is not None and snapshot.last_close > 0:
+        return snapshot.last_close
+    return None
+
+
+def _format_quote_last_price(quote, snapshot: SignalSnapshot | None) -> str:
+    last_price = _resolve_quote_last_price(quote, snapshot)
+    return f"{last_price:.2f}" if last_price is not None else "—"
+
+
+def _format_quote_change_pct(quote) -> str:
+    if quote is not None and quote.last_price > 0:
+        return f"{quote.change_pct:+.2f}%"
+    return "—"
+
+
 def _compute_row_values(
     item,
     snapshot: SignalSnapshot | None,
@@ -631,6 +655,8 @@ def _compute_row_values(
     values: dict[str, str] = {
         "symbol": item.symbol if item is not None else "—",
         "name": _resolve_signal_row_name(item, quote),
+        "last_price": _format_quote_last_price(quote, snapshot),
+        "change_pct": _format_quote_change_pct(quote),
     }
     if snapshot is None:
         for col_key, _ in panel_columns:
@@ -648,7 +674,7 @@ def _compute_row_values(
         "fast_window": config.fast_window,
     }
     for key, _ in panel_columns:
-        if key in {"symbol", "name"}:
+        if key in {"symbol", "name", "last_price", "change_pct"}:
             continue
         if key == "continuation_pattern":
             values[key] = continuation.headline_pattern if continuation else "—"

@@ -13,6 +13,7 @@ from vnpy_ashare.ui.quotes.page.layout_persistence import (
     restore_center_splitter,
     schedule_save_layout,
 )
+from vnpy_ashare.ui.quotes.page.quote_refresh import quote_auto_refresh_enabled
 from vnpy_ashare.ui.quotes.page.roles import RADAR_PAGE, STRATEGY_MONITOR_PAGE, WATCHLIST_PAGE
 from vnpy_ashare.ui.quotes.page.worker_lifecycle import teardown_quotes_page_workers
 
@@ -134,6 +135,8 @@ def _deferred_strategy_monitor_activate_frame2(page: Any) -> None:
     if feature is not None:
         feature.on_activate()
     page._update_quote_source_label()
+    if quote_auto_refresh_enabled(page):
+        page.refresh_quotes()
     QtCore.QTimer.singleShot(0, lambda: _deferred_strategy_monitor_activate_frame3(page))
 
 

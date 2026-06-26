@@ -87,7 +87,10 @@ class TableRefreshMixin(TableControllerBase):
         if page.config.market_scroll_paging:
             self.refresh_visible_table_quotes()
             return
-        symbols = {item.tickflow_symbol for item in page.display_stocks}
+        from vnpy_ashare.ui.quotes.page.quote_refresh import quote_refresh_stock_items
+
+        items = list(page.display_stocks) if page.config.show_market_table else quote_refresh_stock_items(page)
+        symbols = {item.tickflow_symbol for item in items}
         self.refresh_table_quotes_for_symbols(symbols)
 
     def refresh_table_quotes_for_symbols(self, symbols: set[str]) -> None:
