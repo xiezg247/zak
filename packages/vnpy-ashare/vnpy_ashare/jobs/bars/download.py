@@ -19,7 +19,7 @@ from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError, get_tushare_pro
 from vnpy_ashare.jobs.core.progress import job_log, job_progress
 from vnpy_ashare.jobs.core.result import JobResult
-from vnpy_ashare.storage.connection import get_meta, set_meta
+from vnpy_ashare.storage.meta import get_meta, set_meta
 from vnpy_ashare.storage.repositories.universe import load_universe_rows, universe_exists
 from vnpy_common.domain.base import FrozenModel
 

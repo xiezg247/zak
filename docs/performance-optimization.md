@@ -315,6 +315,8 @@ TickFlow → collect_quotes → Redis (~5k HASH + 10× ZSET 全量重建)
 - [x] Redis JSON blob + MGET 批量读（`ZAK_REDIS_QUOTE_BLOB=1`）  
 - [x] 行情 REST 刷新去抖（`QUOTE_REFRESH_DEBOUNCE_MS=200`）  
 - [x] 市场表固定行高（`setUniformRowHeights`）  
+- [x] 性能预设 `ZAK_PERF_PROFILE=client|leader`（`vnpy_common/perf_profile.py`）  
+- [x] 信号区 / 持仓区 `set_rows_with_symbols` 增量同步（`VtSymbolPanelTableModel`）  
 
 **预期**：整体体感 ~2×；collect 与市场刷新明显改善。
 
@@ -356,12 +358,7 @@ RADAR_BOARD_MAX_WORKERS=6
 # 性能（Phase 0/1）
 ZAK_STARTUP_PROFILE=0
 ZAK_PERF_TRACE=0
-ZAK_QUOTE_L1_CACHE=0
-ZAK_COLLECT_DEFER_ENRICH=0
-ZAK_REDIS_QUOTE_COMPACT=0
-ZAK_REDIS_QUOTE_BLOB=0
-ZAK_QUOTE_REDIS_NOTIFY=1
-ZAK_RANK_ORDERED_LIST=1
+# ZAK_PERF_PROFILE=off|client|leader
 
 # 性能（Phase 2）
 ZAK_RANK_PRECOMPUTE=1

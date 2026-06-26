@@ -7,10 +7,10 @@ from dataclasses import dataclass
 from vnpy_ashare.storage.auth.private_tables import PRIVATE_TABLES
 from vnpy_ashare.storage.auth.users import (
     _invalidate_default_user_cache,
-    create_user,
     get_or_create_default_user_id,
-    users_table,
 )
+from vnpy_ashare.storage.repositories.user_preferences import UserPreferencesRepository
+from vnpy_ashare.storage.repositories.users import UsersRepository
 from vnpy_common.auth.users import DEFAULT_USERNAME
 
 _CHAT_USER_TABLES: tuple[str, ...] = (
@@ -21,6 +21,9 @@ _CHAT_USER_TABLES: tuple[str, ...] = (
 )
 
 _APP_USER_TABLES: tuple[str, ...] = (*PRIVATE_TABLES, "feed_item_reads")
+
+_users_repo = UsersRepository()
+_prefs_repo = UserPreferencesRepository()
 
 
 @dataclass(frozen=True)
@@ -36,15 +39,6 @@ class PruneUsersReport:
             return lines
         lines.append(f"已删除 {len(self.removed_usernames)} 个用户：{', '.join(self.removed_usernames)}")
         return lines
-
-
-def _list_non_default_users(conn) -> list[tuple[str, str]]:
-    table = users_table()
-    rows = conn.execute(
-        f"SELECT id, username FROM {table} WHERE username != %s",
-        (DEFAULT_USERNAME,),
-    ).fetchall()
-    return [(str(row["id"]), str(row["username"])) for row in rows]
 
 
 def _delete_user_scoped_rows(conn, *, table: str, user_ids: list[str], schema: str) -> None:
@@ -63,21 +57,8 @@ def _prune_user_data(conn, user_ids: list[str], tables: tuple[str, ...], schema:
         _delete_user_scoped_rows(conn, table=table, user_ids=user_ids, schema=schema)
 
 
-def _ensure_default_user(conn) -> str:
-    table = users_table()
-    row = conn.execute(
-        f"SELECT id FROM {table} WHERE username = %s",
-        (DEFAULT_USERNAME,),
-    ).fetchone()
-    if row is not None:
-        return str(row["id"])
-    user = create_user(conn, username=DEFAULT_USERNAME, password="default", display_name="默认用户")
-    return user.id
-
-
 def prune_to_default_user() -> PruneUsersReport:
     """删除 default 以外所有用户及其 app/chat/auth 私有数据。"""
-    from vnpy_ashare.storage.connection import connect
     from vnpy_common.storage.session import chat_session
 
     _invalidate_default_user_cache()
@@ -86,22 +67,16 @@ def prune_to_default_user() -> PruneUsersReport:
     other_names: list[str] = []
     default_id = ""
 
-    with connect() as conn:
-        with conn.transaction():
-            default_id = _ensure_default_user(conn)
-            others = _list_non_default_users(conn)
-            other_ids = [user_id for user_id, _ in others]
-            other_names = [username for _, username in others]
+    with _users_repo.transaction() as conn:
+        default_id = _users_repo.ensure_default_conn(conn, default_username=DEFAULT_USERNAME)
+        others = _users_repo.list_non_default_conn(conn, default_username=DEFAULT_USERNAME)
+        other_ids = [user_id for user_id, _ in others]
+        other_names = [username for _, username in others]
 
-            if other_ids:
-                _prune_user_data(conn, other_ids, _APP_USER_TABLES, "app")
-                _delete_user_scoped_rows(conn, table="user_preferences", user_ids=other_ids, schema="auth")
-                table = users_table()
-                placeholders = ", ".join("%s" for _ in other_ids)
-                conn.execute(
-                    f"DELETE FROM {table} WHERE id IN ({placeholders})",
-                    tuple(other_ids),
-                )
+        if other_ids:
+            _prune_user_data(conn, other_ids, _APP_USER_TABLES, "app")
+            _prefs_repo.delete_for_user_ids(conn, other_ids)
+            _users_repo.delete_ids(conn, other_ids)
 
     if other_ids:
         with chat_session() as chat_conn:

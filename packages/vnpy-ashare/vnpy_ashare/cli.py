@@ -20,6 +20,9 @@ def bootstrap_runtime() -> None:
         sys.path.insert(0, str(root))
     os.chdir(root)
     load_dotenv(ENV_FILE)
+    from vnpy_common.perf_profile import apply_perf_profile_from_env
+
+    apply_perf_profile_from_env()
 
 
 bootstrap_runtime()

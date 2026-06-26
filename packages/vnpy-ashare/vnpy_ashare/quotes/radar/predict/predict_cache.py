@@ -12,36 +12,14 @@ from vnpy_ashare.quotes.radar.radar_models import (
     radar_row_from_cache_dict,
     radar_row_to_cache_dict,
 )
-from vnpy_ashare.storage.cache.db_session import cache_db_session
-
-_SCHEMA = """
-CREATE TABLE IF NOT EXISTS radar_predict_cache (
-    variant TEXT PRIMARY KEY,
-    rows_json TEXT NOT NULL,
-    scanned_total INTEGER NOT NULL DEFAULT 0,
-    excluded_count INTEGER NOT NULL DEFAULT 0,
-    prefilter_total INTEGER NOT NULL DEFAULT 0,
-    refined_total INTEGER NOT NULL DEFAULT 0,
-    kline_missing INTEGER NOT NULL DEFAULT 0,
-    model_label TEXT NOT NULL DEFAULT '',
-    computed_at TEXT NOT NULL
-);
-"""
-
-
-def _connect():
-    return cache_db_session(_SCHEMA)
+from vnpy_ashare.storage.repositories.cache_stores import _radar_predict_repo
 
 
 def get_predict_cache(variant: str) -> PredictCacheEntry | None:
     text = str(variant or "").strip()
     if not text:
         return None
-    with _connect() as conn:
-        row = conn.execute(
-            "SELECT * FROM radar_predict_cache WHERE variant = %s",
-            (text,),
-        ).fetchone()
+    row = _radar_predict_repo.get_row(text)
     if row is None:
         return None
     try:
@@ -83,32 +61,14 @@ def put_predict_cache(
 ) -> None:
     payload = [radar_row_to_cache_dict(row) for row in rows]
     ts = computed_at or format_china_datetime_minute()
-    with _connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO radar_predict_cache (
-                variant, rows_json, scanned_total, excluded_count,
-                prefilter_total, refined_total, kline_missing, model_label, computed_at
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-            ON CONFLICT(variant) DO UPDATE SET
-                rows_json = excluded.rows_json,
-                scanned_total = excluded.scanned_total,
-                excluded_count = excluded.excluded_count,
-                prefilter_total = excluded.prefilter_total,
-                refined_total = excluded.refined_total,
-                kline_missing = excluded.kline_missing,
-                model_label = excluded.model_label,
-                computed_at = excluded.computed_at
-            """,
-            (
-                variant,
-                json.dumps(payload, ensure_ascii=False),
-                stats.scanned_total,
-                stats.excluded_count,
-                stats.prefilter_total,
-                stats.refined_total,
-                stats.kline_missing,
-                model_label,
-                ts,
-            ),
-        )
+    _radar_predict_repo.upsert(
+        variant=variant,
+        rows_json=json.dumps(payload, ensure_ascii=False),
+        scanned_total=stats.scanned_total,
+        excluded_count=stats.excluded_count,
+        prefilter_total=stats.prefilter_total,
+        refined_total=stats.refined_total,
+        kline_missing=stats.kline_missing,
+        model_label=model_label,
+        computed_at=ts,
+    )

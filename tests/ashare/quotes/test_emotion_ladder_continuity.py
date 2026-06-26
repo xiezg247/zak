@@ -7,23 +7,34 @@ import unittest
 from vnpy_ashare.config.preferences.emotion_cycle import DEFAULT_EMOTION_CYCLE_THRESHOLDS
 from vnpy_ashare.quotes.market.emotion_cycle import classify_emotion_cycle
 from vnpy_ashare.quotes.market.emotion_cycle_inputs import EmotionCycleInputs
+from sqlalchemy import delete
+
 from vnpy_ashare.quotes.market.emotion_ladder_continuity import (
     build_ladder_snapshot_from_map,
     compute_ladder_continuity,
     is_limit_down_change,
 )
-from vnpy_ashare.storage.connection import connect
+from vnpy_ashare.storage.repository.app import AppBaseRepository, MetaRepository
 from vnpy_ashare.storage.repositories.emotion_ladder_daily import (
     load_ladder_snapshot,
     save_ladder_snapshot,
 )
+from vnpy_common.storage.tables import emotion_limit_ladder_daily as eld
+from vnpy_common.storage.tables import meta
+
+
+class _EmotionLadderTableRepo(AppBaseRepository):
+    table = eld
+
+
+_ladder_repo = _EmotionLadderTableRepo()
+_meta_repo = MetaRepository()
 
 
 class EmotionLadderContinuityTest(unittest.TestCase):
     def setUp(self) -> None:
-        with connect() as conn:
-            conn.execute("DELETE FROM emotion_limit_ladder_daily")
-            conn.execute("DELETE FROM meta WHERE key LIKE 'emotion_ladder_counts:%'")
+        _ladder_repo.run(lambda conn: conn.execute_stmt(delete(eld)))
+        _meta_repo.run(lambda conn: conn.execute_stmt(delete(meta).where(meta.c.key.like("emotion_ladder_counts:%"))))
 
     def test_build_snapshot_from_tickflow_map(self) -> None:
         snapshot = build_ladder_snapshot_from_map(

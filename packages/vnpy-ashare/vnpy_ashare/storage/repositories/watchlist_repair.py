@@ -122,12 +122,9 @@ def repair_watchlist_names_for_user(
 def repair_all_watchlist_names(*, dry_run: bool = False) -> WatchlistRepairReport:
     """修复所有用户的自选名称（仅补空名）。"""
     from vnpy_ashare.storage.auth.users import list_users
-    from vnpy_ashare.storage.connection import connect
 
     report = WatchlistRepairReport(dry_run=dry_run)
-
-    with connect() as conn:
-        users = list_users(conn)
+    users = list_users()
 
     if not users:
         from vnpy_ashare.storage.auth.scope import get_user_id

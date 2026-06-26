@@ -7,7 +7,7 @@ import uuid
 from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-from vnpy_ashare.storage.connection import get_meta, set_meta
+from vnpy_ashare.storage.meta import get_meta, set_meta
 from vnpy_common.storage.query import user_scope
 from vnpy_common.storage.session import connect_app
 from vnpy_common.storage.tables import meta

@@ -29,6 +29,12 @@ ZAK_PERF_TRACE=1 uv run python bench/run_hotpaths.py --integration recipe --reci
 Phase 1 Leader 推荐 `.env`：
 
 ```env
+ZAK_PERF_PROFILE=leader
+```
+
+或逐项开启：
+
+```env
 ZAK_QUOTE_L1_CACHE=1
 ZAK_COLLECT_DEFER_ENRICH=1
 ZAK_QUOTE_REDIS_NOTIFY=1

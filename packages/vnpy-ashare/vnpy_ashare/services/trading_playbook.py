@@ -19,7 +19,7 @@ from vnpy_ashare.screener.hard_filter_prefs import (
     STRATEGY_PROFILE_HARD_FILTER_PRESET,
     load_hard_filter_prefs,
 )
-from vnpy_ashare.storage.connection import get_meta, set_meta
+from vnpy_ashare.storage.meta import get_meta, set_meta
 from vnpy_ashare.storage.repositories.positions import load_position_rows
 from vnpy_ashare.storage.repositories.trading_plans import load_active_trading_plan
 from vnpy_ashare.storage.repositories.trading_playbook import (

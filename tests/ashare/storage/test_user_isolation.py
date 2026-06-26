@@ -9,7 +9,6 @@ import uuid
 from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.storage.auth.users import create_user
-from vnpy_ashare.storage.connection import connect
 from vnpy_ashare.storage.repositories import watchlist as watchlist_repo
 from vnpy_common.auth.context import set_current_user
 from vnpy_common.storage.config import force_database_url, reset_storage_config
@@ -23,9 +22,8 @@ class TestUserIsolation(unittest.TestCase):
         reset_storage_config()
         force_database_url(url)
         suffix = uuid.uuid4().hex[:8]
-        with connect() as conn:
-            self.user_a = create_user(conn, username=f"alice_{suffix}", password="pass-a", display_name="Alice")
-            self.user_b = create_user(conn, username=f"bob_{suffix}", password="pass-b", display_name="Bob")
+        self.user_a = create_user(username=f"alice_{suffix}", password="pass-a", display_name="Alice")
+        self.user_b = create_user(username=f"bob_{suffix}", password="pass-b", display_name="Bob")
 
     def tearDown(self) -> None:
         from vnpy_ashare.storage.auth import users as users_module

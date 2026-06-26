@@ -6,7 +6,7 @@ import json
 
 from pydantic import Field
 
-from vnpy_ashare.storage.connection import delete_meta, get_meta, set_meta
+from vnpy_ashare.storage.meta import delete_meta, get_meta, set_meta
 from vnpy_common.domain.base import FrozenModel
 
 _META_PREFIX = "scheduler/job_last_run/"

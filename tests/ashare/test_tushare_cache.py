@@ -28,21 +28,29 @@ class TushareCacheTests(unittest.TestCase):
         self.assertEqual(cached, rows)
 
     def test_cache_miss_on_expired(self) -> None:
-        from vnpy_ashare.storage.connection import connect
+        from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+        from vnpy_ashare.integrations.tushare.cache import _repo
+        from vnpy_common.storage.tables import tushare_factor_cache as tfc
 
         stale_at = (datetime.now() - timedelta(hours=25)).isoformat(timespec="seconds")
         payload = '[{"vt_symbol": "600519.SSE"}]'
-        with connect() as conn:
-            conn.execute(
-                """
-                INSERT INTO tushare_factor_cache(dataset, trade_date, fetched_at, payload)
-                VALUES (%s, %s, %s, %s)
-                ON CONFLICT (dataset, trade_date) DO UPDATE SET
-                    fetched_at = EXCLUDED.fetched_at,
-                    payload = EXCLUDED.payload
-                """,
-                (DATASET_DAILY_BASIC, "20260604", stale_at, payload),
+
+        def _write(conn) -> None:
+            stmt = pg_insert(tfc).values(
+                dataset=DATASET_DAILY_BASIC,
+                trade_date="20260604",
+                fetched_at=stale_at,
+                payload=payload,
             )
+            conn.execute_stmt(
+                stmt.on_conflict_do_update(
+                    index_elements=[tfc.c.dataset, tfc.c.trade_date],
+                    set_={"fetched_at": stmt.excluded.fetched_at, "payload": stmt.excluded.payload},
+                )
+            )
+
+        _repo.run(_write)
         cached = get_cached_rows(DATASET_DAILY_BASIC, "20260604", max_age=timedelta(hours=24))
         self.assertIsNone(cached)
 

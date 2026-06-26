@@ -7,7 +7,6 @@ import unittest
 import uuid
 
 from vnpy_ashare.storage.auth.users import create_user, get_or_create_default_user_id
-from vnpy_ashare.storage.connection import connect
 from vnpy_common.auth.context import clear_current_user, set_current_user
 from vnpy_common.storage.config import force_database_url, reset_storage_config
 
@@ -40,13 +39,11 @@ class PgStorageTestCase(unittest.TestCase):
         force_database_url(url)
         if self.isolated_user:
             suffix = uuid.uuid4().hex[:8]
-            with connect() as conn:
-                user = create_user(
-                    conn,
-                    username=f"ut_{suffix}",
-                    password="test",
-                    display_name=f"test-{suffix}",
-                )
+            user = create_user(
+                username=f"ut_{suffix}",
+                password="test",
+                display_name=f"test-{suffix}",
+            )
             set_current_user(user.id)
             self.test_user_id = user.id
         else:

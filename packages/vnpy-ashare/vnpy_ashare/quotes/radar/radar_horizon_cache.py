@@ -11,26 +11,8 @@ from vnpy_ashare.quotes.radar.radar_models import (
     radar_row_from_cache_dict,
     radar_row_to_cache_dict,
 )
-from vnpy_ashare.storage.cache.db_session import cache_db_session
+from vnpy_ashare.storage.repositories.cache_stores import _radar_horizon_repo
 from vnpy_common.storage.compat import DbRow
-
-_SCHEMA = """
-CREATE TABLE IF NOT EXISTS radar_horizon_cache (
-    variant TEXT PRIMARY KEY,
-    rows_json TEXT NOT NULL,
-    scanned_total INTEGER NOT NULL DEFAULT 0,
-    excluded_count INTEGER NOT NULL DEFAULT 0,
-    prefilter_total INTEGER NOT NULL DEFAULT 0,
-    refined_total INTEGER NOT NULL DEFAULT 0,
-    kline_missing INTEGER NOT NULL DEFAULT 0,
-    strategy_key TEXT NOT NULL DEFAULT '',
-    computed_at TEXT NOT NULL
-);
-"""
-
-
-def _connect():
-    return cache_db_session(_SCHEMA)
 
 
 def horizon_cache_storage_key(variant: str, strategy_key: str) -> str:
@@ -69,11 +51,7 @@ def get_horizon_cache(variant: str, *, strategy_key: str = "") -> HorizonCacheEn
         return None
     key = str(strategy_key or "").strip()
     storage_key = horizon_cache_storage_key(text, key) if key else text
-    with _connect() as conn:
-        row = conn.execute(
-            "SELECT * FROM radar_horizon_cache WHERE variant = %s",
-            (storage_key,),
-        ).fetchone()
+    row = _radar_horizon_repo.get_row(storage_key)
     if row is None:
         return None
     cached_key = str(row["strategy_key"] or "").strip()
@@ -102,36 +80,17 @@ def put_horizon_cache(
         return
     stamp = computed_at or format_china_datetime_minute()
     payload = json.dumps([radar_row_to_cache_dict(row) for row in rows], ensure_ascii=False)
-    with _connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO radar_horizon_cache (
-                variant, rows_json, scanned_total, excluded_count,
-                prefilter_total, refined_total, kline_missing,
-                strategy_key, computed_at
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-            ON CONFLICT(variant) DO UPDATE SET
-                rows_json = excluded.rows_json,
-                scanned_total = excluded.scanned_total,
-                excluded_count = excluded.excluded_count,
-                prefilter_total = excluded.prefilter_total,
-                refined_total = excluded.refined_total,
-                kline_missing = excluded.kline_missing,
-                strategy_key = excluded.strategy_key,
-                computed_at = excluded.computed_at
-            """,
-            (
-                storage_key,
-                payload,
-                int(scanned_total),
-                int(excluded_count),
-                int(prefilter_total),
-                int(refined_total),
-                int(kline_missing),
-                str(strategy_key or ""),
-                stamp,
-            ),
-        )
+    _radar_horizon_repo.upsert(
+        storage_key=storage_key,
+        rows_json=payload,
+        scanned_total=int(scanned_total),
+        excluded_count=int(excluded_count),
+        prefilter_total=int(prefilter_total),
+        refined_total=int(refined_total),
+        kline_missing=int(kline_missing),
+        strategy_key=str(strategy_key or ""),
+        computed_at=stamp,
+    )
 
 
 def build_horizon_subtitle(

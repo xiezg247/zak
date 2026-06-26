@@ -6,20 +6,21 @@ import argparse
 
 from vnpy_ashare.storage.auth.prune_users import prune_to_default_user
 from vnpy_ashare.storage.auth.users import create_user, list_users
-from vnpy_ashare.storage.connection import connect
 
 
 def _cmd_create(args: argparse.Namespace) -> int:
-    with connect() as conn:
-        user = create_user(conn, username=args.username, password=args.password, display_name=args.display_name or args.username)
+    user = create_user(
+        username=args.username,
+        password=args.password,
+        display_name=args.display_name or args.username,
+    )
     print(f"已创建用户：{user.username} ({user.id})")
     print("提示：创建第二个用户后，启动时将弹出登录框。")
     return 0
 
 
 def _cmd_list(_args: argparse.Namespace) -> int:
-    with connect() as conn:
-        users = list_users(conn)
+    users = list_users()
     if not users:
         print("暂无用户")
         return 0

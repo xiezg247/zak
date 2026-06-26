@@ -7,23 +7,9 @@ from datetime import datetime
 
 from vnpy_ashare.domain.radar.card import RadarCardData
 from vnpy_ashare.domain.time.china import CHINA_TZ, DATETIME_FMT, DATETIME_MINUTE_FMT, china_now, format_china_datetime_minute
-from vnpy_ashare.storage.cache.db_session import cache_db_session
-
-_SCHEMA = """
-CREATE TABLE IF NOT EXISTS radar_card_snapshot (
-    card_id TEXT NOT NULL,
-    variant_key TEXT NOT NULL DEFAULT '',
-    payload_json TEXT NOT NULL,
-    computed_at TEXT NOT NULL,
-    PRIMARY KEY (card_id, variant_key)
-);
-"""
+from vnpy_ashare.storage.repositories.cache_stores import _radar_card_snapshot_repo
 
 _DEFAULT_MAX_AGE_SEC = 120.0
-
-
-def _connect():
-    return cache_db_session(_SCHEMA)
 
 
 def _parse_computed_at(value: str) -> datetime | None:
@@ -68,11 +54,7 @@ def peek_radar_card_snapshot(
         return None
     key = str(variant_key or "")
     ttl = card_snapshot_max_age_sec(text_id) if max_age_sec is None else max_age_sec
-    with _connect() as conn:
-        row = conn.execute(
-            "SELECT payload_json, computed_at FROM radar_card_snapshot WHERE card_id = %s AND variant_key = %s",
-            (text_id, key),
-        ).fetchone()
+    row = _radar_card_snapshot_repo.get_row(text_id, key)
     if row is None:
         return None
     computed = _parse_computed_at(str(row["computed_at"] or ""))
@@ -103,19 +85,13 @@ def put_radar_card_snapshot(
     key = str(variant_key or "")
     stamp = format_china_datetime_minute() if computed_at is None else computed_at
     payload = data.model_dump(mode="json")
-    with _connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO radar_card_snapshot (card_id, variant_key, payload_json, computed_at)
-            VALUES (%s, %s, %s, %s)
-            ON CONFLICT(card_id, variant_key) DO UPDATE SET
-                payload_json = excluded.payload_json,
-                computed_at = excluded.computed_at
-            """,
-            (text_id, key, json.dumps(payload, ensure_ascii=False), stamp),
-        )
+    _radar_card_snapshot_repo.upsert(
+        card_id=text_id,
+        variant_key=key,
+        payload_json=json.dumps(payload, ensure_ascii=False),
+        computed_at=stamp,
+    )
 
 
 def invalidate_radar_card_snapshots() -> None:
-    with _connect() as conn:
-        conn.execute("DELETE FROM radar_card_snapshot")
+    _radar_card_snapshot_repo.clear_all()

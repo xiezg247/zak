@@ -11,24 +11,7 @@ from vnpy_ashare.domain.market.sector_flow import (
     SectorFlowOutlookSnapshot,
     SectorFlowRow,
 )
-from vnpy_ashare.storage.cache.db_session import cache_db_session
-
-_SCHEMA = """
-CREATE TABLE IF NOT EXISTS sector_flow_outlook_llm_cache (
-    cache_key TEXT PRIMARY KEY,
-    sector_kind TEXT NOT NULL,
-    strategy_key TEXT NOT NULL DEFAULT '',
-    fingerprint TEXT NOT NULL,
-    forward_dates_json TEXT NOT NULL,
-    rows_json TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
-    expires_at TEXT NOT NULL
-);
-"""
-
-
-def _connect():
-    return cache_db_session(_SCHEMA)
+from vnpy_ashare.storage.repositories.cache_stores import _sector_outlook_repo
 
 
 def outlook_llm_cache_key(*, sector_kind: str, strategy_key: str, fingerprint: str) -> str:
@@ -104,11 +87,7 @@ def get_outlook_llm_cache(
 ) -> SectorFlowOutlookSnapshot | None:
     key = outlook_llm_cache_key(sector_kind=sector_kind, strategy_key=strategy_key, fingerprint=fingerprint)
     now = __import__("datetime").datetime.now().isoformat(timespec="seconds")
-    with _connect() as conn:
-        row = conn.execute(
-            "SELECT * FROM sector_flow_outlook_llm_cache WHERE cache_key = %s AND expires_at > %s",
-            (key, now),
-        ).fetchone()
+    row = _sector_outlook_repo.get_row_if_fresh(key, now_text=now)
     if row is None:
         return None
     try:
@@ -160,27 +139,13 @@ def put_outlook_llm_cache(
     expires_at = updated_at + timedelta(hours=max(1, int(ttl_hours)))
     rows_json = json.dumps([_row_to_dict(row) for row in snapshot.rows], ensure_ascii=False)
     forward_dates_json = json.dumps(list(snapshot.forward_dates), ensure_ascii=False)
-    with _connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO sector_flow_outlook_llm_cache (
-                cache_key, sector_kind, strategy_key, fingerprint,
-                forward_dates_json, rows_json, updated_at, expires_at
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            ON CONFLICT(cache_key) DO UPDATE SET
-                forward_dates_json = excluded.forward_dates_json,
-                rows_json = excluded.rows_json,
-                updated_at = excluded.updated_at,
-                expires_at = excluded.expires_at
-            """,
-            (
-                key,
-                snapshot.sector_kind,
-                strategy_key,
-                fingerprint,
-                forward_dates_json,
-                rows_json,
-                updated_at.isoformat(timespec="seconds"),
-                expires_at.isoformat(timespec="seconds"),
-            ),
-        )
+    _sector_outlook_repo.upsert(
+        cache_key=key,
+        sector_kind=snapshot.sector_kind,
+        strategy_key=strategy_key,
+        fingerprint=fingerprint,
+        forward_dates_json=forward_dates_json,
+        rows_json=rows_json,
+        updated_at=updated_at.isoformat(timespec="seconds"),
+        expires_at=expires_at.isoformat(timespec="seconds"),
+    )

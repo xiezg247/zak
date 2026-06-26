@@ -13,11 +13,11 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from vnpy_ashare.domain.symbols.stock import canonical_vt_symbol
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
 from vnpy_ashare.storage.cache.signal_payload import snapshot_from_payload, snapshot_to_payload
-from vnpy_ashare.storage.repository.app import AppBaseRepository
+from vnpy_ashare.storage.repository.cache import CacheBaseRepository
 from vnpy_common.storage.tables.cache import watchlist_signal_cache as wsc
 
 
-class PgSignalCacheBackend(AppBaseRepository):
+class PgSignalCacheBackend(CacheBaseRepository):
     table = wsc
 
     def get(self, vt_symbol: str, config_key: str, bar_as_of: str) -> SignalSnapshot | None:

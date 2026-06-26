@@ -28,6 +28,13 @@ class BaseRepository:
         with connect_app() as conn:
             yield conn
 
+    @contextmanager
+    def transaction(self) -> Iterator[DbConnection]:
+        """单连接显式事务（多语句原子写）。"""
+        with self.session() as conn:
+            with conn.transaction():
+                yield conn
+
     def execute(self, statement) -> DbCursor:
         with self.session() as conn:
             return conn.execute_stmt(statement)

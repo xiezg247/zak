@@ -17,7 +17,7 @@ GUI → Service → Repository → PostgreSQL（app / chat / auth / cache / syst
 K 线 → VeighNa → PostgreSQL public（dbbardata 等）
 ```
 
-入口：`storage/connection.py`、`vnpy_common/storage/session.py`；schema 升级 `cli.py db upgrade`。
+入口：`storage/meta.py`、`storage/repositories/`、`vnpy_common/storage/session.py`；schema 升级 `cli.py db upgrade`。
 
 ---
 

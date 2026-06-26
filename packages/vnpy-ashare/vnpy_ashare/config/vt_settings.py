@@ -39,6 +39,9 @@ def default_vt_settings() -> dict:
 def build_vt_settings() -> dict:
     """根据 .env 生成 VeighNa 全局配置。"""
     load_dotenv(ENV_FILE)
+    from vnpy_common.perf_profile import apply_perf_profile_from_env
+
+    apply_perf_profile_from_env()
     return build_vt_settings_from_env_file(ENV_FILE)
 
 

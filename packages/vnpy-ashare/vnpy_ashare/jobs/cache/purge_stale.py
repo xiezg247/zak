@@ -6,7 +6,14 @@ import os
 from datetime import datetime, timedelta
 
 from vnpy_ashare.jobs.core.result import JobResult
-from vnpy_common.storage.session import cache_session
+from vnpy_ashare.storage.repositories.cache_stores import (
+    _position_cache_repo,
+    _radar_ai_hint_repo,
+    _radar_horizon_repo,
+    _radar_predict_repo,
+    _sector_outlook_repo,
+    _signal_cache_repo,
+)
 
 
 def _env_int(key: str, default: int) -> int:
@@ -27,25 +34,14 @@ def purge_stale_cache_job() -> JobResult:
         timespec="seconds"
     )
 
-    deleted: dict[str, int] = {}
-    with cache_session("", "") as conn:
-        conn.execute("DELETE FROM radar_ai_hint_cache WHERE expires_at <= %s", (now_text,))
-        deleted["radar_ai_hint"] = conn.last_rowcount
-
-        conn.execute("DELETE FROM sector_flow_outlook_llm_cache WHERE expires_at <= %s", (now_text,))
-        deleted["sector_flow_outlook_llm"] = conn.last_rowcount
-
-        conn.execute("DELETE FROM watchlist_signal_cache WHERE updated_at < %s", (signal_cutoff,))
-        deleted["watchlist_signal"] = conn.last_rowcount
-
-        conn.execute("DELETE FROM watchlist_position_cache WHERE updated_at < %s", (position_cutoff,))
-        deleted["watchlist_position"] = conn.last_rowcount
-
-        conn.execute("DELETE FROM radar_predict_cache WHERE computed_at < %s", (radar_snapshot_cutoff,))
-        deleted["radar_predict"] = conn.last_rowcount
-
-        conn.execute("DELETE FROM radar_horizon_cache WHERE computed_at < %s", (radar_snapshot_cutoff,))
-        deleted["radar_horizon"] = conn.last_rowcount
+    deleted: dict[str, int] = {
+        "radar_ai_hint": _radar_ai_hint_repo.delete_expired_before(now_text),
+        "sector_flow_outlook_llm": _sector_outlook_repo.delete_expired_before(now_text),
+        "watchlist_signal": _signal_cache_repo.delete_updated_before(signal_cutoff),
+        "watchlist_position": _position_cache_repo.delete_updated_before(position_cutoff),
+        "radar_predict": _radar_predict_repo.delete_computed_before(radar_snapshot_cutoff),
+        "radar_horizon": _radar_horizon_repo.delete_computed_before(radar_snapshot_cutoff),
+    }
 
     total = sum(deleted.values())
     parts = ", ".join(f"{name} {count}" for name, count in deleted.items() if count)

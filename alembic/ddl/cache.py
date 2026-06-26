@@ -73,9 +73,19 @@ CACHE_TABLES = (
         expires_at TEXT NOT NULL
     )
     """,
+    """
+    CREATE TABLE IF NOT EXISTS cache.radar_card_snapshot (
+        card_id TEXT NOT NULL,
+        variant_key TEXT NOT NULL DEFAULT '',
+        payload_json TEXT NOT NULL,
+        computed_at TEXT NOT NULL,
+        PRIMARY KEY (card_id, variant_key)
+    )
+    """,
 )
 
 CACHE_DOWNGRADE = (
+    "DROP TABLE IF EXISTS cache.radar_card_snapshot",
     "DROP TABLE IF EXISTS cache.sector_flow_outlook_llm_cache",
     "DROP TABLE IF EXISTS cache.watchlist_position_cache",
     "DROP TABLE IF EXISTS cache.watchlist_signal_cache",
