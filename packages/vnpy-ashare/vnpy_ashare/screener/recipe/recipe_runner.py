@@ -111,20 +111,9 @@ def run_recipe_object(
             merged_payloads.append(base)
 
         merged_rows = enrich_recipe_rows(merged_payloads)
-        from vnpy_ashare.screener.engine.config import polars_available, polars_engine_enabled
+        from vnpy_ashare.screener.engine.recipe_sort import sort_recipe_payloads_polars
 
-        if polars_engine_enabled() and polars_available():
-            from vnpy_ashare.screener.engine.recipe_sort import sort_recipe_payloads_polars
-
-            merged_rows = sort_recipe_payloads_polars(merged_rows)
-        else:
-            merged_rows.sort(
-                key=lambda row: (
-                    float(row.get("composite_score") or 0),
-                    len(row.get("hit_reasons") or []),
-                ),
-                reverse=True,
-            )
+        merged_rows = sort_recipe_payloads_polars(merged_rows)
         filtered_rows = apply_recipe_filters(merged_rows)
         use_sentiment = sentiment_gate_enabled() and (
             recipe.trigger_kind == "intraday"

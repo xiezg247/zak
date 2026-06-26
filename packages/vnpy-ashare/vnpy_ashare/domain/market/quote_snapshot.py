@@ -59,6 +59,9 @@ class QuoteSnapshot(MutableModel):
 
     @classmethod
     def from_redis_hash(cls, data: dict[str, str]) -> QuoteSnapshot | None:
+        from vnpy_ashare.quotes.core.quote_redis_codec import normalize_redis_hash
+
+        data = normalize_redis_hash(data)
         symbol = data.get("symbol", "")
         if not symbol:
             return None

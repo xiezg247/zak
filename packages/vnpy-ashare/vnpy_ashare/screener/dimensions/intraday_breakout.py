@@ -48,14 +48,10 @@ def run_intraday_breakout(pool_size: int, *, weight: float) -> tuple[list[Dimens
         return [], 0
 
     ratio_map = get_volume_ratio_map()
-    candidates: list[tuple[QuoteRow, float]] = []
-    for quote in snapshot.rows:
-        strength = _quote_breakout_strength(quote, ratio_map)
-        if strength is None:
-            continue
-        candidates.append((quote, strength))
+    from vnpy_ashare.screener.engine.dimensions.intraday_breakout import score_breakout_candidates_polars
 
-    candidates.sort(key=lambda item: item[1], reverse=True)
+    candidates = score_breakout_candidates_polars(list(snapshot.rows))
+
     lookback = _breakout_lookback_days()
     if lookback > 0 and candidates:
         candidates = _apply_rolling_high_confirm(candidates, lookback)

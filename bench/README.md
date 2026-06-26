@@ -39,4 +39,14 @@ Phase 1 Leader 推荐 `.env`：`ZAK_QUOTE_L1_CACHE=1`、`ZAK_COLLECT_DEFER_ENRIC
 | `run_recipe.*` / `recipe.*` | `screener/recipe/recipe_runner.py` |
 | `radar.load_cards[*]` | `quotes/radar/loaders/load.py` |
 
+### 基线报告
+
+```bash
+# synthetic + Top 5 热点（离线）
+uv run python bench/report_baseline.py
+
+# 追加 Redis / intraday_multi / leader_pick（需环境）
+ZAK_PERF_TRACE=1 uv run python bench/report_baseline.py --live --output bench/reports/latest.txt
+```
+
 详见 [性能优化方案](../docs/performance-optimization.md)。

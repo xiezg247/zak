@@ -53,50 +53,17 @@ def apply_quote_preset(
     top_n = max(1, min(int(top_n or 20), 200))
     quotes = apply_recipe_filters(quotes)
 
-    from vnpy_ashare.screener.engine.config import polars_available, polars_engine_enabled
+    from vnpy_ashare.screener.engine.presets import sort_quote_rows_polars
 
-    if (
-        polars_engine_enabled()
-        and polars_available()
-    ):
-        from vnpy_ashare.screener.engine.presets import sort_quote_rows_polars
-
-        sorted_quotes = sort_quote_rows_polars(
-            quotes,
-            preset=preset,
-            top_n=top_n,
-            min_change_pct=min_change_pct,
-            max_change_pct=max_change_pct,
-            min_turnover=min_turnover,
-        )
-        return [_quote_row(q) for q in sorted_quotes]
-
-    if preset == SCREENER_CUSTOM:
-        result = quotes
-        if min_change_pct is not None:
-            result = [q for q in result if q.get("change_pct", 0) >= min_change_pct]
-        if max_change_pct is not None:
-            result = [q for q in result if q.get("change_pct", 0) <= max_change_pct]
-        if min_turnover is not None:
-            result = [q for q in result if q.get("turnover_rate", 0) >= min_turnover]
-        result = sorted(result, key=lambda q: q.get("change_pct", 0), reverse=True)
-        return [_quote_row(q) for q in result[:top_n]]
-
-    if preset == SCREENER_CHANGE_TOP:
-        sorted_quotes = sorted(quotes, key=lambda q: q.get("change_pct", 0), reverse=True)
-    elif preset == SCREENER_STRONG_UP:
-        filtered = [q for q in quotes if float(q.get("change_pct") or 0) >= STRONG_UP_MIN_CHANGE_PCT]
-        sorted_quotes = sorted(filtered, key=lambda q: q.get("change_pct", 0), reverse=True)
-    elif preset == SCREENER_VOLUME_RATIO:
-        volume_ratio_rows = _sort_by_volume_ratio(quotes)
-        return [_quote_row(q) for q in volume_ratio_rows[:top_n]]
-    elif preset == SCREENER_TURNOVER:
-        sorted_quotes = sorted(quotes, key=lambda q: q.get("turnover_rate", 0), reverse=True)
-    elif preset == SCREENER_VOLUME_SURGE:
-        sorted_quotes = sorted(quotes, key=_quote_liquidity_key, reverse=True)
-    else:
-        return []
-    return [_quote_row(q) for q in sorted_quotes[:top_n]]
+    sorted_quotes = sort_quote_rows_polars(
+        quotes,
+        preset=preset,
+        top_n=top_n,
+        min_change_pct=min_change_pct,
+        max_change_pct=max_change_pct,
+        min_turnover=min_turnover,
+    )
+    return [_quote_row(q) for q in sorted_quotes]
 
 
 def apply_low_pe(rows: QuoteRowsLike, *, top_n: int, max_pe_ttm: float = 15.0) -> list[QuoteRow]:
@@ -142,10 +109,9 @@ def _sort_by_volume_ratio(quotes: QuoteRowsLike) -> list[QuoteRow]:
 
 def apply_moneyflow_in(rows: QuoteRowsLike, *, top_n: int) -> list[QuoteRow]:
     """主力净流入 > 0 降序取 top_n。"""
-    rows = apply_recipe_filters(rows)
-    filtered = [row for row in rows if row.get("net_mf_amount", 0) > 0]
-    filtered.sort(key=lambda r: r.get("net_mf_amount", 0), reverse=True)
-    return [_moneyflow_row(r) for r in filtered[:top_n]]
+    from vnpy_ashare.screener.engine.dimensions.moneyflow_in import apply_moneyflow_in_polars
+
+    return apply_moneyflow_in_polars(list(rows), top_n=top_n)
 
 
 _DISPLAY_FUNDAMENTAL_KEYS = ("close", "pe_ttm", "pb", "total_mv", "circ_mv", "trade_date")

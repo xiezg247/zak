@@ -1,4 +1,4 @@
-"""Polars 选股引擎与 Python 路径 parity。"""
+"""Polars 选股引擎回归测试。"""
 
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ def _symbols(rows: list) -> list[str]:
 
 @pytest.fixture
 def disable_pg_side_effects(monkeypatch):
-    """硬过滤 parity 不触发 PG / Tushare 快照。"""
+    """硬过滤不触发 PG / Tushare 快照。"""
     monkeypatch.setattr(
         "vnpy_ashare.screener.hard_filters.recipe_exclude_st_enabled",
         lambda: False,
@@ -73,15 +73,7 @@ def disable_pg_side_effects(monkeypatch):
     )
 
 
-def _run_python_polars_pair(fn, monkeypatch):
-    monkeypatch.delenv("ZAK_SCREENER_ENGINE", raising=False)
-    py_out = fn()
-    monkeypatch.setenv("ZAK_SCREENER_ENGINE", "polars")
-    pl_out = fn()
-    return py_out, pl_out
-
-
-def test_hard_filter_polars_matches_python(disable_pg_side_effects, monkeypatch):
+def test_hard_filter_excludes_low_amount(disable_pg_side_effects, monkeypatch):
     rows = [
         _quote("600001", amount=50_000_000, change_pct=3.0),
         _quote("600002", amount=1_000_000, change_pct=2.0),
@@ -95,12 +87,10 @@ def test_hard_filter_polars_matches_python(disable_pg_side_effects, monkeypatch)
         "vnpy_ashare.screener.hard_filters._screening_vt_name_map",
         lambda: {},
     )
-
-    py_out, pl_out = _run_python_polars_pair(lambda: _symbols(apply_recipe_filters(rows)), monkeypatch)
-    assert py_out == pl_out
+    assert _symbols(apply_recipe_filters(rows)) == ["600001"]
 
 
-def test_hard_filter_one_word_parity(disable_pg_side_effects, monkeypatch):
+def test_hard_filter_one_word(disable_pg_side_effects, monkeypatch):
     rows = [
         _quote(
             "600100",
@@ -127,12 +117,10 @@ def test_hard_filter_one_word_parity(disable_pg_side_effects, monkeypatch):
         "vnpy_ashare.screener.hard_filters.recipe_min_amount_yuan",
         lambda: 0.0,
     )
-
-    py_out, pl_out = _run_python_polars_pair(lambda: _symbols(apply_recipe_filters(rows)), monkeypatch)
-    assert py_out == pl_out == ["600101"]
+    assert _symbols(apply_recipe_filters(rows)) == ["600101"]
 
 
-def test_hard_filter_limit_board_parity(disable_pg_side_effects, monkeypatch):
+def test_hard_filter_limit_board(disable_pg_side_effects, monkeypatch):
     rows = [
         _quote("600200", change_pct=10.0, amount=50_000_000),
         _quote("600201", change_pct=5.0, amount=50_000_000),
@@ -141,46 +129,36 @@ def test_hard_filter_limit_board_parity(disable_pg_side_effects, monkeypatch):
         "vnpy_ashare.screener.hard_filters.recipe_exclude_limit_board_enabled",
         lambda: True,
     )
-
-    py_out, pl_out = _run_python_polars_pair(lambda: _symbols(apply_recipe_filters(rows)), monkeypatch)
-    assert py_out == pl_out == ["600201"]
+    assert _symbols(apply_recipe_filters(rows)) == ["600201"]
 
 
-def test_quote_preset_change_top_parity(disable_pg_side_effects, monkeypatch):
+def test_quote_preset_change_top(disable_pg_side_effects):
     quotes = [
         _quote("600010", change_pct=1.0),
         _quote("600011", change_pct=5.0),
         _quote("600012", change_pct=3.0),
     ]
-    py_out, pl_out = _run_python_polars_pair(
-        lambda: _symbols(apply_quote_preset("涨幅榜", quotes, top_n=2)),
-        monkeypatch,
-    )
-    assert py_out == pl_out == ["600011", "600012"]
+    assert _symbols(apply_quote_preset("涨幅榜", quotes, top_n=2)) == ["600011", "600012"]
 
 
-def test_quote_preset_custom_parity(disable_pg_side_effects, monkeypatch):
+def test_quote_preset_custom(disable_pg_side_effects):
     quotes = [
         _quote("600020", change_pct=1.0, turnover_rate=1.0),
         _quote("600021", change_pct=4.0, turnover_rate=2.0),
         _quote("600022", change_pct=8.0, turnover_rate=3.0),
     ]
-    py_out, pl_out = _run_python_polars_pair(
-        lambda: _symbols(
-            apply_quote_preset(
-                "自定义筛选",
-                quotes,
-                top_n=5,
-                min_change_pct=2.0,
-                max_change_pct=5.0,
-            )
-        ),
-        monkeypatch,
-    )
-    assert py_out == pl_out == ["600021"]
+    assert _symbols(
+        apply_quote_preset(
+            "自定义筛选",
+            quotes,
+            top_n=5,
+            min_change_pct=2.0,
+            max_change_pct=5.0,
+        )
+    ) == ["600021"]
 
 
-def test_quote_preset_volume_ratio_parity(disable_pg_side_effects, monkeypatch):
+def test_quote_preset_volume_ratio(disable_pg_side_effects, monkeypatch):
     quotes = [
         _quote("600030", volume_ratio=1.2),
         _quote("600031", volume_ratio=3.5),
@@ -194,15 +172,10 @@ def test_quote_preset_volume_ratio_parity(disable_pg_side_effects, monkeypatch):
         "vnpy_ashare.screener.preset.rules.get_volume_ratio_map",
         lambda: {"600030.SSE": 2.0, "600031.SSE": 4.0},
     )
-
-    py_out, pl_out = _run_python_polars_pair(
-        lambda: _symbols(apply_quote_preset("量比排行", quotes, top_n=2)),
-        monkeypatch,
-    )
-    assert py_out == pl_out == ["600031", "600030"]
+    assert _symbols(apply_quote_preset("量比排行", quotes, top_n=2)) == ["600031", "600030"]
 
 
-def test_recipe_sort_parity(monkeypatch):
+def test_recipe_sort():
     from vnpy_ashare.screener.engine.recipe_sort import sort_recipe_payloads_polars
 
     rows = [
@@ -210,19 +183,5 @@ def test_recipe_sort_parity(monkeypatch):
         {"symbol": "B", "composite_score": 90.0, "hit_reasons": ["a", "b"]},
         {"symbol": "C", "composite_score": 90.0, "hit_reasons": ["a"]},
     ]
-
-    def python_sort() -> list[str]:
-        copied = [dict(row) for row in rows]
-        copied.sort(
-            key=lambda row: (float(row.get("composite_score") or 0), len(row.get("hit_reasons") or [])),
-            reverse=True,
-        )
-        return [str(row["symbol"]) for row in copied]
-
-    monkeypatch.delenv("ZAK_SCREENER_ENGINE", raising=False)
-    py_out = python_sort()
-
-    monkeypatch.setenv("ZAK_SCREENER_ENGINE", "polars")
-    pl_out = [str(row["symbol"]) for row in sort_recipe_payloads_polars([dict(row) for row in rows])]
-
-    assert py_out == pl_out == ["B", "C", "A"]
+    ordered = [str(row["symbol"]) for row in sort_recipe_payloads_polars([dict(row) for row in rows])]
+    assert ordered == ["B", "C", "A"]

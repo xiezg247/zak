@@ -1,24 +1,16 @@
-"""选股引擎配置。"""
+"""Polars 为选股引擎必选依赖。"""
 
 from __future__ import annotations
 
-import pytest
+import importlib
 
-from vnpy_ashare.screener.engine.config import polars_available, polars_engine_enabled, screener_engine
-
-
-def test_screener_engine_defaults_to_python(monkeypatch):
-    monkeypatch.delenv("ZAK_SCREENER_ENGINE", raising=False)
-    assert screener_engine() == "python"
-    assert polars_engine_enabled() is False
+import polars as pl
 
 
-def test_screener_engine_polars_flag(monkeypatch):
-    monkeypatch.setenv("ZAK_SCREENER_ENGINE", "polars")
-    assert screener_engine() == "polars"
-    assert polars_engine_enabled() is True
+def test_polars_core_dependency() -> None:
+    assert pl.__version__
 
 
-def test_polars_available():
-    pytest.importorskip("polars")
-    assert polars_available() is True
+def test_screener_engine_config_exports_polars() -> None:
+    config = importlib.import_module("vnpy_ashare.screener.engine.config")
+    assert config.pl is pl

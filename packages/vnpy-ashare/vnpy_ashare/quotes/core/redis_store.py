@@ -19,6 +19,7 @@ from vnpy_ashare.quotes.core.quote_l1_cache import (
     try_get_quotes,
     try_list_rank_symbols,
 )
+from vnpy_ashare.quotes.core.quote_redis_codec import encode_quote_hash, quote_compact_enabled
 from vnpy_ashare.quotes.misc.speed_baseline import apply_change_speed_5m
 from vnpy_ashare.quotes.rank.rank_engine import compute_intraday_change_pct
 from vnpy_common.paths import ENV_FILE
@@ -26,9 +27,12 @@ from vnpy_common.paths import ENV_FILE
 KEY_PREFIX = "zak"
 QUOTE_KEY_FMT = f"{KEY_PREFIX}:quote:{{symbol}}"
 RANK_KEY_FMT = f"{KEY_PREFIX}:rank:{{field}}"
+PRECOMPUTED_RANK_KEY_FMT = f"{KEY_PREFIX}:rank:precomputed:{{field}}"
 RANK_CHANGE_PCT_KEY = f"{KEY_PREFIX}:rank:change_pct"
 META_UPDATED_AT_KEY = f"{KEY_PREFIX}:meta:updated_at"
 META_QUOTE_COUNT_KEY = f"{KEY_PREFIX}:meta:quote_count"
+
+PRECOMPUTED_RANK_TOP_N = 200
 
 RANK_REDIS_FIELDS: tuple[str, ...] = (
     "change_pct",
@@ -44,6 +48,14 @@ RANK_REDIS_FIELDS: tuple[str, ...] = (
 )
 # 盘中可能暂无新值（如窗口刚滚动、盘后静止），保留上一版榜避免 UI 整榜为空
 _RANK_PRESERVE_WHEN_EMPTY: frozenset[str] = frozenset({"change_speed_5m"})
+# 全市场每轮采集都会写入的成员榜（无需 delete 重建）
+_FULL_RANK_FIELDS: frozenset[str] = frozenset(
+    {"change_pct", "turnover_rate", "amount", "volume", "amplitude", "intraday_change_pct"},
+)
+# 条件成员榜：未达标标的需 zrem
+_SPARSE_RANK_FIELDS: frozenset[str] = frozenset(
+    {"volume_ratio", "net_mf_amount", "change_speed_5m", "limit_times"},
+)
 # 单次 pipeline 命令数上限，避免全市场 ~5k 标的一次 hgetall 写 socket 超时
 QUOTE_READ_BATCH_SIZE = 300
 
@@ -60,6 +72,62 @@ def quote_key(tf_symbol: str) -> str:
 
 def rank_key(field: str) -> str:
     return RANK_KEY_FMT.format(field=field)
+
+
+def precomputed_rank_key(field: str) -> str:
+    return PRECOMPUTED_RANK_KEY_FMT.format(field=field)
+
+
+def rank_precompute_enabled() -> bool:
+    return os.getenv("ZAK_RANK_PRECOMPUTE", "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def rank_incremental_enabled() -> bool:
+    return os.getenv("ZAK_RANK_INCREMENTAL", "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _write_precomputed_rank(pipe, field: str, members: list[tuple[float, str]]) -> None:
+    if not rank_precompute_enabled() or not members:
+        return
+    top = sorted(members, key=lambda item: item[0], reverse=True)[:PRECOMPUTED_RANK_TOP_N]
+    pkey = precomputed_rank_key(field)
+    pipe.delete(pkey)
+    if top:
+        pipe.rpush(pkey, *[member for _score, member in top])
+
+
+def _write_rank_field(
+    pipe,
+    *,
+    field: str,
+    members: list[tuple[float, str]],
+    quotes: dict[str, QuoteSnapshot],
+) -> None:
+    if not members and field in _RANK_PRESERVE_WHEN_EMPTY and is_ashare_trading_session():
+        return
+
+    key = rank_key(field)
+    if rank_incremental_enabled():
+        if field in _FULL_RANK_FIELDS:
+            if members:
+                pipe.zadd(key, {member: score for score, member in members})
+        elif field in _SPARSE_RANK_FIELDS:
+            member_scores = {member: score for score, member in members}
+            for tf_symbol in quotes:
+                if tf_symbol not in member_scores:
+                    pipe.zrem(key, tf_symbol)
+            if member_scores:
+                pipe.zadd(key, member_scores)
+        else:
+            pipe.delete(key)
+            if members:
+                pipe.zadd(key, {member: score for score, member in members})
+    else:
+        pipe.delete(key)
+        if members:
+            pipe.zadd(key, {member: score for score, member in members})
+
+    _write_precomputed_rank(pipe, field, members)
 
 
 def create_redis_client():
@@ -97,7 +165,11 @@ class RedisQuoteStore:
         rank_members: dict[str, list[tuple[float, str]]] = {field: [] for field in RANK_REDIS_FIELDS}
 
         for tf_symbol, quote in quotes.items():
-            pipe.hset(quote_key(tf_symbol), mapping=quote.to_redis_hash())
+            key = quote_key(tf_symbol)
+            mapping = encode_quote_hash(quote)
+            if quote_compact_enabled():
+                pipe.delete(key)
+            pipe.hset(key, mapping=mapping)
             rank_members["change_pct"].append((quote.change_pct, tf_symbol))
             rank_members["turnover_rate"].append((quote.turnover_rate, tf_symbol))
             rank_members["amount"].append((quote.amount, tf_symbol))
@@ -114,13 +186,7 @@ class RedisQuoteStore:
                 rank_members["limit_times"].append((quote.limit_times, tf_symbol))
 
         for field in RANK_REDIS_FIELDS:
-            members = rank_members[field]
-            if not members and field in _RANK_PRESERVE_WHEN_EMPTY and is_ashare_trading_session():
-                continue
-            key = rank_key(field)
-            pipe.delete(key)
-            if members:
-                pipe.zadd(key, {member: score for score, member in members})
+            _write_rank_field(pipe, field=field, members=rank_members[field], quotes=quotes)
         pipe.set(META_UPDATED_AT_KEY, datetime.now().isoformat(timespec="seconds"))
         pipe.set(META_QUOTE_COUNT_KEY, str(len(quotes)))
         pipe.execute()
@@ -192,6 +258,18 @@ class RedisQuoteStore:
         total = int(self._client.zcard(key) or 0)
         if total == 0 or limit <= 0:
             return [], total
+        if (
+            rank_precompute_enabled()
+            and not ascending
+            and offset < PRECOMPUTED_RANK_TOP_N
+            and offset + limit <= PRECOMPUTED_RANK_TOP_N
+        ):
+            pkey = precomputed_rank_key(field)
+            pre_len = int(self._client.llen(pkey) or 0)
+            if pre_len > 0:
+                end = min(offset + limit - 1, pre_len - 1)
+                if offset <= end:
+                    return list(self._client.lrange(pkey, offset, end)), total
         if ascending:
             symbols = self._client.zrange(key, offset, offset + limit - 1)
         else:

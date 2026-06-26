@@ -64,3 +64,22 @@ def test_tracer_logs_to_stdout_when_enabled(monkeypatch, tmp_path, capfd) -> Non
     out, _err = capfd.readouterr()
     assert "span_x" in out
     assert "done" in out
+
+
+def test_aggregate_span_records(monkeypatch, tmp_path) -> None:
+    monkeypatch.delenv("ZAK_PERF_TRACE", raising=False)
+    _use_env_file(monkeypatch, tmp_path)
+    from vnpy_common.perf_trace import SpanAggregate, aggregate_span_records, format_baseline_report
+
+    records = [("a", 10.0), ("a", 20.0), ("b", 5.0)]
+    ranked = aggregate_span_records(records)
+    assert isinstance(ranked[0], SpanAggregate)
+    assert ranked[0].name == "a"
+    assert ranked[0].p50_ms == 15.0
+    report = format_baseline_report(
+        [{"name": "x", "p50_ms": 1.0, "p95_ms": 2.0, "max_ms": 3.0, "result_size": 1.0}],
+        ranked,
+        top_n=2,
+    )
+    assert "基准项" in report
+    assert "热点" in report

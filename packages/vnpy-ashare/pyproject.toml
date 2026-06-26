@@ -20,6 +20,7 @@ dependencies = [
     "pandas>=2.0.0",
     "python-dotenv>=1.0.0",
     "redis>=5.0.0",
+    "polars>=1.0,<2",
     "apscheduler>=3.10.0",
     "psycopg2-binary>=2.9.12",
     "vnpy_postgresql>=1.0.0",
@@ -30,8 +31,9 @@ dependencies = [
 llm = ["vnpy-llm"]
 full = ["vnpy-llm"]
 events = ["akshare>=1.18.0"]
-polars = ["polars>=1.0,<2"]
-perf = ["polars>=1.0,<2"]
+# polars 已为核心依赖；保留 perf 别名便于旧文档/脚本
+polars = []
+perf = []
 
 [project.scripts]
 zak = "vnpy_ashare.cli:main"

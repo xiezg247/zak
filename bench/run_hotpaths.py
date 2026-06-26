@@ -123,7 +123,6 @@ def bench_hard_filter_polars(*, symbols: int, rounds: int) -> dict[str, float] |
         try:
             import os
 
-            os.environ["ZAK_SCREENER_ENGINE"] = "polars"
             return apply_recipe_filters(rows)
         finally:
             for item in reversed(patches):
@@ -139,6 +138,37 @@ def bench_redis_quote_load(*, rounds: int) -> dict[str, float]:
         return load_market_quote_rows()
 
     return _bench("redis.load_market_quote_rows", run, rounds=rounds)
+
+
+def bench_radar_leader_pick(*, rounds: int) -> dict[str, float]:
+    from vnpy_ashare.quotes.radar.loaders.load import load_radar_cards_batch
+
+    def run() -> object:
+        loaded, errors = load_radar_cards_batch([("leader_pick", {})])
+        if errors:
+            raise RuntimeError("; ".join(f"{key}: {value}" for key, value in errors.items()))
+        return loaded
+
+    return _bench("radar.leader_pick", run, rounds=rounds)
+
+
+def bench_quote_snapshot_compact_roundtrip(*, symbols: int, rounds: int) -> dict[str, float] | None:
+    import os
+
+    from vnpy_ashare.quotes.core.quote_redis_codec import encode_quote_hash
+
+    if os.getenv("ZAK_REDIS_QUOTE_COMPACT", "").strip().lower() not in {"1", "true", "yes", "on"}:
+        return None
+
+    quotes = make_synthetic_quote_snapshots(symbols)
+
+    def run() -> list[QuoteSnapshot | None]:
+        parsed: list[QuoteSnapshot | None] = []
+        for quote in quotes.values():
+            parsed.append(QuoteSnapshot.from_redis_hash(encode_quote_hash(quote)))
+        return parsed
+
+    return _bench("quote_snapshot_compact_roundtrip", run, rounds=rounds)
 
 
 def bench_recipe(*, recipe_id: str, rounds: int) -> dict[str, float]:
@@ -165,17 +195,29 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--rounds", type=int, default=5, help="每项重复次数")
     parser.add_argument(
         "--integration",
-        choices=("redis", "recipe"),
+        choices=("redis", "recipe", "radar"),
         help="集成基准（需 Redis / 行情数据）",
     )
     parser.add_argument("--recipe", default="intraday_multi", help="--integration recipe 时使用的 recipe_id")
+    parser.add_argument("--json", action="store_true", help="JSON 行输出（便于 CI 解析）")
+    parser.add_argument("--trace-summary", action="store_true", help="结束后输出 perf trace Top 5")
     args = parser.parse_args(argv)
+
+    if args.trace_summary:
+        import os
+
+        os.environ.setdefault("ZAK_PERF_TRACE", "1")
+        from vnpy_common.perf_trace import tracer
+
+        tracer.reset()
 
     rows: list[dict[str, float]] = []
     if args.integration == "redis":
         rows.append(bench_redis_quote_load(rounds=args.rounds))
     elif args.integration == "recipe":
         rows.append(bench_recipe(recipe_id=args.recipe, rounds=max(1, min(args.rounds, 3))))
+    elif args.integration == "radar":
+        rows.append(bench_radar_leader_pick(rounds=max(1, min(args.rounds, 3))))
     else:
         rows.extend(
             [
@@ -187,10 +229,25 @@ def main(argv: list[str] | None = None) -> int:
         polars_row = bench_hard_filter_polars(symbols=args.symbols, rounds=args.rounds)
         if polars_row is not None:
             rows.append(polars_row)
+        compact_row = bench_quote_snapshot_compact_roundtrip(symbols=args.symbols, rounds=args.rounds)
+        if compact_row is not None:
+            rows.append(compact_row)
 
-    print(f"bench symbols={args.symbols} rounds={args.rounds} mode={args.integration or 'synthetic'}")
-    for row in rows:
-        _print_row(row)
+    if args.json:
+        import json
+
+        print(json.dumps({"mode": args.integration or "synthetic", "rows": rows}, ensure_ascii=False))
+    else:
+        print(f"bench symbols={args.symbols} rounds={args.rounds} mode={args.integration or 'synthetic'}")
+        for row in rows:
+            _print_row(row)
+
+    if args.trace_summary:
+        from vnpy_common.perf_trace import tracer
+
+        print()
+        print(tracer.baseline_report([], top_n=5, title="perf trace summary"))
+
     return 0
 
 

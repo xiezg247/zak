@@ -301,8 +301,8 @@ TickFlow → collect_quotes → Redis (~5k HASH + 10× ZSET 全量重建)
 
 - [x] 全链路打点（`ZAK_PERF_TRACE` + 热路径 span）  
 - [x] synthetic 基准脚本（`bench/run_hotpaths.py`）  
-- [ ] 记录 P50/P95：启动、collect、选股、雷达、信号、PG 慢查询  
-- [ ] 输出 Top 5 热点报告  
+- [x] 基线报告脚本（`bench/report_baseline.py`：P50/P95 + Top 5 热点）  
+- [ ] 记录真实环境 P50/P95：启动、collect、选股、雷达、信号、PG 慢查询（需 `--live` + 盘中采样）  
 
 ### Phase 1 — Quick Wins（约 2–3 周）
 
@@ -313,17 +313,19 @@ TickFlow → collect_quotes → Redis (~5k HASH + 10× ZSET 全量重建)
 - [x] K 线 batch 读前预热 overview（`load_daily_bars_batch`）  
 - [x] 行情 Worker 合并（`_pending_quote_refresh`）  
 - [x] `purge_stale_cache` 清理 cache schema 过期行  
-- [ ] Redis 读路径进一步瘦身（msgpack / 短 field key）  
+- [x] Redis 读路径瘦身：紧凑 HASH field key（`ZAK_REDIS_QUOTE_COMPACT=1`）  
 
 **预期**：整体体感 ~2×；collect 与市场刷新明显改善。
 
 ### Phase 2 — 列存选股引擎（约 3–5 周）
 
-- [ ] Polars 引入（边界：`screener/`、`quotes/rank/`）  
-- [ ] `QuoteSnapshot` ↔ DataFrame 桥接  
-- [ ] 硬过滤 + 主要维度向量化  
-- [ ] Redis 预计算榜  
-- [ ] Feature flag：`ZAK_SCREENER_ENGINE=polars|python`  
+- [x] Polars 引入（边界：`screener/`、`quotes/rank/`）  
+- [x] `QuoteSnapshot` ↔ DataFrame 桥接  
+- [x] 硬过滤 + 主要维度向量化（含 `first_board` / `leader_score` 板块统计 / `radar_resonance`）  
+- [x] Redis 预计算榜 Top-200（`ZAK_RANK_PRECOMPUTE=1` → `zak:rank:precomputed:{field}`）  
+- [x] Polars 为核心依赖（选股 / 排行无 Python 引擎回退）  
+- [x] ZSET 增量更新（`ZAK_RANK_INCREMENTAL=1`：全量榜 zadd、稀疏榜 zadd+zrem）  
+- [x] `moneyflow` 盘后 streak 批量读取 + Polars tier 排序  
 
 **预期**：Recipe 选股 5–10×。
 
@@ -355,6 +357,11 @@ ZAK_STARTUP_PROFILE=0
 ZAK_PERF_TRACE=0
 ZAK_QUOTE_L1_CACHE=0
 ZAK_COLLECT_DEFER_ENRICH=0
+ZAK_REDIS_QUOTE_COMPACT=0
+
+# 性能（Phase 2）
+ZAK_RANK_PRECOMPUTE=1
+ZAK_RANK_INCREMENTAL=1
 ```
 
 ---
@@ -365,7 +372,7 @@ ZAK_COLLECT_DEFER_ENRICH=0
 |------|------|
 | L1 与 Redis 不一致 | `meta:seq`；fallback Redis |
 | 异步 enrich 因子滞后 | 盘前 warmup；UI 标注数据时间 |
-| Polars 引入成本 | 仅 screener 边界；python 回退 |
+| Polars 引入成本 | 已为核心依赖；边界仍限于 screener / rank |
 | 多人 PG 连接风暴 | PgBouncer + Worker 上限 |
 | PG K 线表膨胀 | 分区 + 归档；盘后维护窗口 |
 

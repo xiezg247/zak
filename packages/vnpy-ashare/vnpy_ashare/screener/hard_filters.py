@@ -454,29 +454,6 @@ def passes_screening_hard_filter(
 
 def apply_recipe_filters(rows: Sequence[T_ScreeningRow]) -> list[T_ScreeningRow]:
     """排除 ST、停牌与流动性 / 小市值不达标的标的。"""
-    from vnpy_ashare.screener.engine.config import polars_available, polars_engine_enabled
+    from vnpy_ashare.screener.engine.hard_filter import apply_recipe_filters_polars
 
-    if polars_engine_enabled() and polars_available():
-        from vnpy_ashare.screener.engine.hard_filter import apply_recipe_filters_polars
-
-        return apply_recipe_filters_polars(rows)
-
-    allowed_industries = recipe_allowed_industries()
-    suspended_keys = _suspended_keys_for_screening() if recipe_exclude_suspended_enabled() else frozenset()
-    name_map = _screening_vt_name_map() if recipe_exclude_st_enabled() else None
-    list_date_map = _list_date_map_for_screening() if recipe_exclude_new_listing_enabled() else None
-    market_board_map = _market_board_map_for_screening() if recipe_exclude_limit_board_enabled() or recipe_exclude_one_word_enabled() else None
-    industry_map = _industry_map_for_screening() if allowed_industries else None
-    return [
-        row
-        for row in rows
-        if passes_screening_hard_filter(
-            row,
-            suspended_keys=suspended_keys,
-            name_map=name_map,
-            list_date_map=list_date_map,
-            market_board_map=market_board_map,
-            industry_map=industry_map,
-            allowed_industries=allowed_industries,
-        )
-    ]
+    return apply_recipe_filters_polars(rows)

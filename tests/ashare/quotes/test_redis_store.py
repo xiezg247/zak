@@ -105,5 +105,84 @@ class RedisQuoteStoreBatchReadTests(unittest.TestCase):
                 os.environ["ZAK_QUOTE_L1_CACHE"] = prev
 
 
+class RedisRankIncrementalTests(unittest.TestCase):
+    def test_incremental_full_rank_skips_delete(self) -> None:
+        from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
+        from vnpy_ashare.quotes.core import redis_store as rs
+
+        class _FakePipe:
+            def __init__(self) -> None:
+                self.ops: list[tuple] = []
+
+            def hset(self, key: str, mapping: dict[str, str]) -> None:
+                self.ops.append(("hset", key))
+
+            def zadd(self, key: str, mapping: dict[str, float]) -> None:
+                self.ops.append(("zadd", key, len(mapping)))
+
+            def zrem(self, key: str, member: str) -> None:
+                self.ops.append(("zrem", key, member))
+
+            def delete(self, key: str) -> None:
+                self.ops.append(("delete", key))
+
+            def rpush(self, key: str, *values: str) -> None:
+                self.ops.append(("rpush", key, len(values)))
+
+            def set(self, key: str, value: str) -> None:
+                self.ops.append(("set", key))
+
+            def execute(self) -> None:
+                return None
+
+        class _FakeClient:
+            def pipeline(self, transaction: bool = False):
+                del transaction
+                return self.pipe
+
+            def get(self, key: str) -> str | None:
+                del key
+                return None
+
+        pipe = _FakePipe()
+        client = _FakeClient()
+        client.pipe = pipe
+        store = RedisQuoteStore(client=client)
+
+        quote = QuoteSnapshot(
+            symbol="000001",
+            name="平安",
+            last_price=10.0,
+            prev_close=9.9,
+            open_price=9.9,
+            high_price=10.1,
+            low_price=9.8,
+            change_amount=0.1,
+            change_pct=1.0,
+            turnover_rate=1.0,
+            volume=1000.0,
+            volume_ratio=0.0,
+        )
+
+        prev = __import__("os").environ.get("ZAK_RANK_INCREMENTAL")
+        __import__("os").environ["ZAK_RANK_INCREMENTAL"] = "1"
+        try:
+            with patch.object(rs, "apply_change_speed_5m"), patch.object(rs, "quote_l1_enabled", return_value=False):
+                store.write_quotes({"000001.SZ": quote})
+        finally:
+            if prev is None:
+                __import__("os").environ.pop("ZAK_RANK_INCREMENTAL", None)
+            else:
+                __import__("os").environ["ZAK_RANK_INCREMENTAL"] = prev
+
+        deletes = [op for op in pipe.ops if op[0] == "delete"]
+        change_pct_deletes = [op for op in deletes if op[1] == rs.rank_key("change_pct")]
+        self.assertEqual(change_pct_deletes, [])
+        zadd_ops = [op for op in pipe.ops if op[0] == "zadd" and op[1] == rs.rank_key("change_pct")]
+        self.assertEqual(len(zadd_ops), 1)
+        zrem_volume = [op for op in pipe.ops if op[0] == "zrem" and op[1] == rs.rank_key("volume_ratio")]
+        self.assertGreaterEqual(len(zrem_volume), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

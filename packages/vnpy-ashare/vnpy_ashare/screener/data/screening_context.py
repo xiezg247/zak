@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import threading
 from contextlib import contextmanager
+from typing import Any
 
 from pydantic import ConfigDict, PrivateAttr
 from vnpy.trader.constant import Exchange
@@ -60,6 +61,7 @@ class ScreeningContext(MutableModel):
     _industry_l1_map: dict[str, str] | None = PrivateAttr(default=None)
     _industry_l1_map_loaded: bool = PrivateAttr(default=False)
     _history_bars_map: dict[tuple[str, Exchange], list[BarData]] = PrivateAttr(default_factory=dict)
+    _snapshot_frame: Any | None = PrivateAttr(default=None)
 
     def load_history_bars_for_symbols(
         self,
@@ -107,6 +109,18 @@ class ScreeningContext(MutableModel):
         if self._snapshot is None:
             raise MarketQuotesLoadError("行情快照不可用。")
         return self._snapshot
+
+    def get_quote_snapshot_frame(self) -> Any:
+        """Polars 行情 DataFrame（同一次上下文内缓存）。"""
+        if self._snapshot_frame is not None:
+            return self._snapshot_frame
+        from vnpy_ashare.screener.engine.snapshot_frame import snapshot_rows_to_dataframe
+
+        snapshot = self.get_quote_snapshot()
+        with self._lock:
+            if self._snapshot_frame is None:
+                self._snapshot_frame = snapshot_rows_to_dataframe(snapshot.rows)
+        return self._snapshot_frame
 
     def preload_volume_ratio_map(self) -> dict[str, float]:
         return self.get_volume_ratio_map()
@@ -262,6 +276,10 @@ def preload_screening_context(ctx: ScreeningContext) -> None:
     ctx.preload_volume_ratio_map()
     ctx.preload_avg_turnover_map()
     ctx.preload_industry_map()
+    try:
+        ctx.get_quote_snapshot_frame()
+    except Exception:
+        pass
 
 
 def preload_screening_context_quotes(ctx: ScreeningContext) -> None:
