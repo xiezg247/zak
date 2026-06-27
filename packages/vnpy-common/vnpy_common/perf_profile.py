@@ -37,7 +37,6 @@ _PROFILE_DEFAULTS: dict[str, dict[str, str]] = {
         "ZAK_RANK_PRECOMPUTE": "1",
         "ZAK_RANK_ORDERED_LIST": "1",
         "ZAK_RANK_INCREMENTAL": "1",
-        "ZAK_REDIS_QUOTE_COMPACT": "1",
         "ZAK_REDIS_QUOTE_BLOB": "1",
     },
 }

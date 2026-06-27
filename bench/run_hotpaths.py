@@ -153,11 +153,9 @@ def bench_radar_leader_pick(*, rounds: int) -> dict[str, float]:
 
 
 def bench_quote_snapshot_compact_roundtrip(*, symbols: int, rounds: int) -> dict[str, float] | None:
-    import os
+    from vnpy_ashare.quotes.core.quote_redis_codec import encode_quote_hash, quote_compact_enabled
 
-    from vnpy_ashare.quotes.core.quote_redis_codec import encode_quote_hash
-
-    if os.getenv("ZAK_REDIS_QUOTE_COMPACT", "").strip().lower() not in {"1", "true", "yes", "on"}:
+    if not quote_compact_enabled():
         return None
 
     quotes = make_synthetic_quote_snapshots(symbols)
@@ -169,6 +167,22 @@ def bench_quote_snapshot_compact_roundtrip(*, symbols: int, rounds: int) -> dict
         return parsed
 
     return _bench("quote_snapshot_compact_roundtrip", run, rounds=rounds)
+
+
+def run_synthetic_benches(*, symbols: int, rounds: int) -> list[dict[str, float]]:
+    """运行 offline synthetic 套件（供 CLI / pytest 共用）。"""
+    rows: list[dict[str, float]] = [
+        bench_quote_snapshot_roundtrip(symbols=symbols, rounds=rounds),
+        bench_market_rank_sort(symbols=symbols, rounds=rounds),
+        bench_row_filter_scan(symbols=symbols, rounds=rounds),
+    ]
+    polars_row = bench_hard_filter_polars(symbols=symbols, rounds=rounds)
+    if polars_row is not None:
+        rows.append(polars_row)
+    compact_row = bench_quote_snapshot_compact_roundtrip(symbols=symbols, rounds=rounds)
+    if compact_row is not None:
+        rows.append(compact_row)
+    return rows
 
 
 def bench_recipe(*, recipe_id: str, rounds: int) -> dict[str, float]:
@@ -200,6 +214,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--recipe", default="intraday_multi", help="--integration recipe 时使用的 recipe_id")
     parser.add_argument("--json", action="store_true", help="JSON 行输出（便于 CI 解析）")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="synthetic 模式下校验 P95 未超过 bench/thresholds.py 上限（违规 exit 1）",
+    )
     parser.add_argument("--trace-summary", action="store_true", help="结束后输出 perf trace Top 5")
     args = parser.parse_args(argv)
 
@@ -219,19 +238,23 @@ def main(argv: list[str] | None = None) -> int:
     elif args.integration == "radar":
         rows.append(bench_radar_leader_pick(rounds=max(1, min(args.rounds, 3))))
     else:
-        rows.extend(
-            [
-                bench_quote_snapshot_roundtrip(symbols=args.symbols, rounds=args.rounds),
-                bench_market_rank_sort(symbols=args.symbols, rounds=args.rounds),
-                bench_row_filter_scan(symbols=args.symbols, rounds=args.rounds),
-            ]
-        )
-        polars_row = bench_hard_filter_polars(symbols=args.symbols, rounds=args.rounds)
-        if polars_row is not None:
-            rows.append(polars_row)
-        compact_row = bench_quote_snapshot_compact_roundtrip(symbols=args.symbols, rounds=args.rounds)
-        if compact_row is not None:
-            rows.append(compact_row)
+        rows.extend(run_synthetic_benches(symbols=args.symbols, rounds=args.rounds))
+
+    if args.check:
+        from bench.thresholds import check_live_regression, check_synthetic_regression
+
+        if args.integration:
+            violations = check_live_regression(rows)
+            if violations:
+                for line in violations:
+                    print(f"REGRESSION: {line}", file=sys.stderr)
+                return 1
+        else:
+            violations = check_synthetic_regression(rows, symbols=args.symbols)
+            if violations:
+                for line in violations:
+                    print(f"REGRESSION: {line}", file=sys.stderr)
+                return 1
 
     if args.json:
         import json

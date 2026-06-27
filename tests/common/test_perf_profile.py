@@ -46,6 +46,7 @@ def test_leader_profile_fills_missing_keys() -> None:
         assert profile == "leader"
         assert os.environ["ZAK_QUOTE_L1_CACHE"] == "1"
         assert os.environ["ZAK_REDIS_QUOTE_BLOB"] == "1"
+        assert "ZAK_REDIS_QUOTE_COMPACT" not in os.environ
     finally:
         _restore_perf_env(saved)
 

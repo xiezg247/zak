@@ -20,27 +20,17 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from bench.run_hotpaths import (  # noqa: E402
-    bench_hard_filter_polars,
-    bench_market_rank_sort,
-    bench_quote_snapshot_roundtrip,
     bench_radar_leader_pick,
     bench_recipe,
     bench_redis_quote_load,
-    bench_row_filter_scan,
+    run_synthetic_benches,
 )
+from bench.thresholds import check_live_regression, check_synthetic_regression  # noqa: E402
 from vnpy_common.perf_trace import perf_trace_enabled, tracer  # noqa: E402
 
 
 def _run_synthetic(*, symbols: int, rounds: int) -> list[dict[str, float]]:
-    rows = [
-        bench_quote_snapshot_roundtrip(symbols=symbols, rounds=rounds),
-        bench_market_rank_sort(symbols=symbols, rounds=rounds),
-        bench_row_filter_scan(symbols=symbols, rounds=rounds),
-    ]
-    polars_row = bench_hard_filter_polars(symbols=symbols, rounds=rounds)
-    if polars_row is not None:
-        rows.append(polars_row)
-    return rows
+    return run_synthetic_benches(symbols=symbols, rounds=rounds)
 
 
 def _run_live(*, rounds: int, recipe_id: str) -> list[dict[str, float]]:
@@ -68,12 +58,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--recipe", default="intraday_multi", help="live 模式 recipe_id")
     parser.add_argument("--top", type=int, default=5, help="Top N 热点 span")
     parser.add_argument("--output", type=Path, help="写入报告文件")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="synthetic 项 P95 超过 bench/thresholds.py 上限时 exit 1",
+    )
     args = parser.parse_args(argv)
 
     if perf_trace_enabled():
         tracer.reset()
 
-    bench_rows = _run_synthetic(symbols=args.symbols, rounds=args.rounds)
+    synthetic_rows = _run_synthetic(symbols=args.symbols, rounds=args.rounds)
+    bench_rows = list(synthetic_rows)
     if args.live:
         bench_rows.extend(_run_live(rounds=args.rounds, recipe_id=args.recipe))
 
@@ -88,6 +84,16 @@ def main(argv: list[str] | None = None) -> int:
 
     if perf_trace_enabled():
         tracer.summary("baseline trace")
+
+    if args.check:
+        violations = check_synthetic_regression(synthetic_rows, symbols=args.symbols)
+        if args.live:
+            live_rows = bench_rows[len(synthetic_rows) :]
+            violations.extend(check_live_regression(live_rows))
+        if violations:
+            for line in violations:
+                print(f"REGRESSION: {line}", file=sys.stderr)
+            return 1
 
     return 0
 

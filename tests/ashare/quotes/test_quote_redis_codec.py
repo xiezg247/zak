@@ -69,6 +69,25 @@ class QuoteRedisCodecTests(unittest.TestCase):
             else:
                 os.environ["ZAK_REDIS_QUOTE_COMPACT"] = prev
 
+    def test_compact_implicit_when_blob_enabled(self) -> None:
+        prev_compact = os.environ.get("ZAK_REDIS_QUOTE_COMPACT")
+        prev_blob = os.environ.get("ZAK_REDIS_QUOTE_BLOB")
+        os.environ.pop("ZAK_REDIS_QUOTE_COMPACT", None)
+        os.environ["ZAK_REDIS_QUOTE_BLOB"] = "1"
+        try:
+            self.assertTrue(quote_compact_enabled())
+            encoded = encode_quote_hash(_sample_quote())
+            self.assertIn("s", encoded)
+        finally:
+            if prev_blob is None:
+                os.environ.pop("ZAK_REDIS_QUOTE_BLOB", None)
+            else:
+                os.environ["ZAK_REDIS_QUOTE_BLOB"] = prev_blob
+            if prev_compact is None:
+                os.environ.pop("ZAK_REDIS_QUOTE_COMPACT", None)
+            else:
+                os.environ["ZAK_REDIS_QUOTE_COMPACT"] = prev_compact
+
 
 if __name__ == "__main__":
     unittest.main()

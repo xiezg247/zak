@@ -146,7 +146,8 @@ TickFlow → collect_quotes → Redis (~5k HASH + 10× ZSET 全量重建)
    - 改为差分 `ZADD` 或 Job 内预计算 Top-N 写入 `zak:rank:precomputed:{field}`  
 
 3. **Redis 读路径瘦身**  
-   - 评估短 field key 或 msgpack/orjson blob（单次 GET）  
+   - 推荐 `ZAK_REDIS_QUOTE_BLOB=1`（MGET 批量读）；BLOB 开启时 HASH/JSON **默认**短 field key  
+   - `ZAK_REDIS_QUOTE_COMPACT=1` 仅在不启用 BLOB 时单独开启；`COMPACT=0` 可强制长 key  
    - 保持 `QUOTE_READ_BATCH_SIZE` 分批，避免 socket 超时  
 
 4. **进程内 L1 行情缓存（Leader）**  
@@ -276,7 +277,7 @@ TickFlow → collect_quotes → Redis (~5k HASH + 10× ZSET 全量重建)
 | 工具 | 用途 |
 |------|------|
 | ~~`ZAK_PERF_TRACE=1`~~ | 已落地，见 §6.1 |
-| ~~`bench/` + pytest~~ | 已落地：`bench/run_hotpaths.py`、`tests/bench/test_hotpath_bench.py` |
+| ~~`bench/` + pytest~~ | 已落地：`bench/run_hotpaths.py`、`tests/bench/test_hotpath_bench.py`（含 P95 回归） |
 | Py-Spy / cProfile | 季度火焰图 |
 | PG `pg_stat_statements` | 慢查询 Top-N |
 | Redis `INFO` | commands/sec、latency |
@@ -307,14 +308,14 @@ TickFlow → collect_quotes → Redis (~5k HASH + 10× ZSET 全量重建)
 - [x] K 线 batch 读前预热 overview（`load_daily_bars_batch`）  
 - [x] 行情 Worker 合并（`_pending_quote_refresh`）  
 - [x] `purge_stale_cache` 清理 cache schema 过期行  
-- [x] Redis 读路径瘦身：紧凑 HASH field key（`ZAK_REDIS_QUOTE_COMPACT=1`）  
+- [x] Redis 读路径：`ZAK_REDIS_QUOTE_BLOB=1`；短 field key 随 BLOB 默认启用（`COMPACT` 可单独关闭）  
 - [x] L1 一致性 `meta:seq` + 异步 enrich Job（`enrich_market_quotes`）  
 - [x] K 线 tail 进程内 LRU（`ZAK_BARS_TAIL_LRU_SIZE`）  
 - [x] 全市场涨幅序 Redis LIST（`ZAK_RANK_ORDERED_LIST=1`）  
 - [x] Tab deactivate 取消行情 Worker（`QuotesRefreshWorker.request_cancel`）  
 - [x] Redis JSON blob + MGET 批量读（`ZAK_REDIS_QUOTE_BLOB=1`）  
 - [x] 行情 REST 刷新去抖（`QUOTE_REFRESH_DEBOUNCE_MS=200`）  
-- [x] 市场表固定行高（`setUniformRowHeights`）  
+- [x] 市场表固定行高（`verticalHeader` Fixed + 30px）  
 - [x] 性能预设 `ZAK_PERF_PROFILE=client|leader`（`vnpy_common/perf_profile.py`）  
 - [x] 信号区 / 持仓区 `set_rows_with_symbols` 增量同步（`VtSymbolPanelTableModel`）  
 
@@ -392,7 +393,7 @@ ZAK_RANK_INCREMENTAL=1
 - [ ] Hub「极致短线 unified」→ 结果 P95 < 2s  
 - [ ] 雷达 `leader_pick` P95 < 500ms（预计算榜启用后）  
 - [ ] 信号区 10 只手动刷新 P95 < 1s  
-- [ ] `bench/` CI 无回归  
+- [ ] `bench/` CI 无回归（synthetic P95 已接入 `bench/thresholds.py` + `--check`；live 项待 `--live` 采样）
 - [ ] 3 客户端并发读 PG，无连接耗尽  
 
 ---

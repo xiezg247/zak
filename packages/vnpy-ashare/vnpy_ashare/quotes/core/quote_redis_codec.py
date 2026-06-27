@@ -1,4 +1,4 @@
-"""Redis 行情 HASH 紧凑 field key（``ZAK_REDIS_QUOTE_COMPACT=1``）与 JSON blob（``ZAK_REDIS_QUOTE_BLOB=1``）。"""
+"""Redis 行情编码：JSON blob（``ZAK_REDIS_QUOTE_BLOB=1``）为主路径；HASH 短 field key 在 BLOB 开启时默认启用。"""
 
 from __future__ import annotations
 
@@ -35,7 +35,12 @@ SHORT_TO_QUOTE_FIELD: dict[str, str] = {short: long for long, short in QUOTE_FIE
 
 
 def quote_compact_enabled() -> bool:
-    return os.getenv("ZAK_REDIS_QUOTE_COMPACT", "").strip().lower() in _TRUTHY
+    raw = os.getenv("ZAK_REDIS_QUOTE_COMPACT", "").strip().lower()
+    if raw in {"0", "false", "no", "off"}:
+        return False
+    if raw in _TRUTHY:
+        return True
+    return quote_blob_enabled()
 
 
 def quote_blob_enabled() -> bool:
