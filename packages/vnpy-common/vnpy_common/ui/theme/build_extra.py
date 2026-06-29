@@ -446,7 +446,7 @@ def format_scheduler_run_log_html(t: ThemeTokens, records: Sequence[SchedulerRun
             mark = "成功" if record.success else "失败"
             mark_color = t.semantic_success if record.success else t.semantic_error
         message = html.escape(record.message)
-        time_text = html.escape(record.finished_at or record.started_at or "")
+        time_text = html.escape((record.started_at if record.running else None) or record.finished_at or record.started_at or "")
         lines.append(
             "<p style='margin:0 0 4px 0;line-height:1.5;'>"
             f"<span style='color:{t.text_muted};'>{time_text}</span> "

@@ -4,21 +4,21 @@ from __future__ import annotations
 
 import unittest
 
+from sqlalchemy import delete
+
 from vnpy_ashare.config.preferences.emotion_cycle import DEFAULT_EMOTION_CYCLE_THRESHOLDS
 from vnpy_ashare.quotes.market.emotion_cycle import classify_emotion_cycle
 from vnpy_ashare.quotes.market.emotion_cycle_inputs import EmotionCycleInputs
-from sqlalchemy import delete
-
 from vnpy_ashare.quotes.market.emotion_ladder_continuity import (
     build_ladder_snapshot_from_map,
     compute_ladder_continuity,
     is_limit_down_change,
 )
-from vnpy_ashare.storage.repository.app import AppBaseRepository, MetaRepository
 from vnpy_ashare.storage.repositories.emotion_ladder_daily import (
     load_ladder_snapshot,
     save_ladder_snapshot,
 )
+from vnpy_ashare.storage.repository.app import AppBaseRepository, MetaRepository
 from vnpy_common.storage.tables import emotion_limit_ladder_daily as eld
 from vnpy_common.storage.tables import meta
 

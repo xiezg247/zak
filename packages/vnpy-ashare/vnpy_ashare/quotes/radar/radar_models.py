@@ -271,6 +271,13 @@ def refresh_radar_rows_live_quotes(rows: tuple[RadarRow, ...]) -> tuple[RadarRow
     if not rows:
         return rows
     quotes = quotes_for_vt_symbols([row.vt_symbol for row in rows])
+    return _refresh_rows_from_quote_map(rows, quotes)
+
+
+def _refresh_rows_from_quote_map(
+    rows: tuple[RadarRow, ...],
+    quotes: dict[str, dict[str, Any]],
+) -> tuple[RadarRow, ...]:
     refreshed: list[RadarRow] = []
     for row in rows:
         quote = quotes.get(row.vt_symbol, {})
@@ -283,6 +290,33 @@ def refresh_radar_rows_live_quotes(rows: tuple[RadarRow, ...]) -> tuple[RadarRow
             updates["change_pct"] = change_pct
         refreshed.append(row.model_copy(update=updates) if updates else row)
     return tuple(refreshed)
+
+
+def refresh_radar_card_quotes_from_map(
+    data: RadarCardData,
+    quotes: dict[str, dict[str, Any]],
+) -> RadarCardData:
+    """用已批量拉取的行情映射刷新单卡行（避免重复 Redis / 快照查询）。"""
+    if not data.rows:
+        return data
+    refreshed = _refresh_rows_from_quote_map(data.rows, quotes)
+    if refreshed is data.rows:
+        return data
+    return data.model_copy(update={"rows": refreshed})
+
+
+def collect_radar_quote_vt_symbols(cards: list[RadarCardData]) -> list[str]:
+    """收集多卡待刷新行情的 vt_symbol（去重，跳过统计行）。"""
+    symbols: list[str] = []
+    seen: set[str] = set()
+    for data in cards:
+        for row in data.rows:
+            vt_symbol = row.vt_symbol
+            if not vt_symbol or vt_symbol.startswith("__stat__:") or vt_symbol in seen:
+                continue
+            seen.add(vt_symbol)
+            symbols.append(vt_symbol)
+    return symbols
 
 
 def enrich_radar_rows(rows: tuple[RadarRow, ...]) -> tuple[RadarRow, ...]:

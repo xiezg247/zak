@@ -45,7 +45,19 @@ class QuoteRedisCodecTests(unittest.TestCase):
         self.assertEqual(normalized["change_pct"], "5.0")
 
     def test_from_redis_hash_accepts_compact_keys(self) -> None:
-        compact = {"s": "000001", "n": "平安", "lp": "10.5", "pc": "10.0", "op": "10.1", "hi": "10.6", "lo": "10.0", "ca": "0.5", "cp": "5.0", "tr": "1.2", "v": "100000"}
+        compact = {
+            "s": "000001",
+            "n": "平安",
+            "lp": "10.5",
+            "pc": "10.0",
+            "op": "10.1",
+            "hi": "10.6",
+            "lo": "10.0",
+            "ca": "0.5",
+            "cp": "5.0",
+            "tr": "1.2",
+            "v": "100000",
+        }
         quote = QuoteSnapshot.from_redis_hash(compact)
         assert quote is not None
         self.assertEqual(quote.symbol, "000001")

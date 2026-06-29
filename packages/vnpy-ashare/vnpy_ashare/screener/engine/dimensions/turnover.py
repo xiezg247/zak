@@ -50,12 +50,7 @@ def run_turnover_polars(
     avg_col = pl.col("avg_turnover_rate").cast(pl.Float64, strict=False).fill_null(0.0)
     df = df.with_columns(
         avg_col.alias("avg_turnover_rate"),
-        pl.when(avg_col > 0)
-        .then(turnover / avg_col)
-        .when(turnover > 0)
-        .then(turnover)
-        .otherwise(pl.lit(0.0))
-        .alias("relative_turnover"),
+        pl.when(avg_col > 0).then(turnover / avg_col).when(turnover > 0).then(turnover).otherwise(pl.lit(0.0)).alias("relative_turnover"),
     )
     df = df.sort("relative_turnover", descending=True, nulls_last=True)
 

@@ -9,9 +9,9 @@ from typing import Any
 import polars as pl
 
 from vnpy_ashare.domain.symbols.stock import vt_symbol_to_ts_code
+from vnpy_ashare.screener import hard_filters as hf
 from vnpy_ashare.screener.engine.frame import restore_rows, rows_with_index
 from vnpy_ashare.screener.hard_filters import ONE_WORD_AMPLITUDE_MAX_PCT
-from vnpy_ashare.screener import hard_filters as hf
 
 
 def _symbol_expr() -> pl.Expr:
@@ -66,13 +66,7 @@ def _liquidity_mask(min_amount: float, min_mv: float) -> pl.Expr:
     )
     amount_ok = (amount > 0) & ((pl.lit(min_amount) <= 0) | (amount >= min_amount))
     mv_ok = (total_mv > 0) & ((pl.lit(min_mv) <= 0) | (total_mv >= min_mv))
-    return (
-        pl.when(amount > 0)
-        .then(amount_ok)
-        .when(total_mv > 0)
-        .then(mv_ok)
-        .otherwise(pl.lit(min_amount <= 0))
-    )
+    return pl.when(amount > 0).then(amount_ok).when(total_mv > 0).then(mv_ok).otherwise(pl.lit(min_amount <= 0))
 
 
 def _join_map(df: pl.DataFrame, key_col: str, mapping: dict[str, str], value_col: str) -> pl.DataFrame:
@@ -138,11 +132,7 @@ def apply_recipe_filters_polars(rows: Sequence[Any]) -> list[Any]:
     allowed_industries = hf.recipe_allowed_industries()
     if allowed_industries:
         industry_map = hf._industry_map_for_screening()
-        df = df.with_columns(
-            pl.col("_vt_symbol")
-            .map_elements(lambda vt: vt_symbol_to_ts_code(str(vt or "")) or "", return_dtype=pl.Utf8)
-            .alias("_ts_code")
-        )
+        df = df.with_columns(pl.col("_vt_symbol").map_elements(lambda vt: vt_symbol_to_ts_code(str(vt or "")) or "", return_dtype=pl.Utf8).alias("_ts_code"))
         df = _join_map(df, "_ts_code", industry_map, "_mapped_industry")
         industry_col = pl.coalesce(pl.col("industry").cast(pl.Utf8, strict=False), pl.col("_mapped_industry"))
         mask = mask & industry_col.is_in(list(allowed_industries))
@@ -177,9 +167,7 @@ def apply_recipe_filters_polars(rows: Sequence[Any]) -> list[Any]:
             listed = list_date_raw.str.slice(0, 8).str.strptime(pl.Date, "%Y%m%d", strict=False)
             today = date.today()
             days = (pl.lit(today) - listed).dt.total_days()
-            mask = mask & (
-                (list_date_raw.str.len_chars() < 8) | days.is_null() | (days >= min_days)
-            )
+            mask = mask & ((list_date_raw.str.len_chars() < 8) | days.is_null() | (days >= min_days))
 
     market_board_map: dict[str, str] | None = None
     if hf.recipe_exclude_limit_board_enabled() or hf.recipe_exclude_one_word_enabled():

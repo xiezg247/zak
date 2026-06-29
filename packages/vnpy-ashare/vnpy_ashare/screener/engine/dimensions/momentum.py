@@ -48,31 +48,17 @@ def score_momentum_rows_polars(
         return []
 
     benchmark = market_benchmark if market_benchmark is not None else market_benchmark_change_pct(frame_to_row_dicts(df))
-    ind_avg = (
-        df.filter(pl.col("industry").str.len_chars() > 0)
-        .group_by("industry")
-        .agg(change_pct_expr().mean().alias("_ind_avg"))
-    )
+    ind_avg = df.filter(pl.col("industry").str.len_chars() > 0).group_by("industry").agg(change_pct_expr().mean().alias("_ind_avg"))
     df = df.join(ind_avg, on="industry", how="left")
     has_industry_avg = pl.col("_ind_avg").is_not_null() & (pl.col("industry").str.len_chars() > 0)
     df = df.with_columns(
         pl.lit(benchmark).alias("benchmark_change_pct"),
-        pl.when(has_industry_avg)
-        .then(change - pl.col("_ind_avg"))
-        .otherwise(change - pl.lit(benchmark))
-        .round(2)
-        .alias("relative_strength"),
-        pl.when(has_industry_avg)
-        .then(pl.concat_str([pl.lit("行业"), pl.col("industry")]))
-        .otherwise(pl.lit("大盘"))
-        .alias("strength_basis"),
+        pl.when(has_industry_avg).then(change - pl.col("_ind_avg")).otherwise(change - pl.lit(benchmark)).round(2).alias("relative_strength"),
+        pl.when(has_industry_avg).then(pl.concat_str([pl.lit("行业"), pl.col("industry")])).otherwise(pl.lit("大盘")).alias("strength_basis"),
         (change - pl.lit(benchmark)).round(2).alias("market_relative_strength"),
     )
     df = df.with_columns(
-        pl.when(has_industry_avg)
-        .then((change - pl.col("_ind_avg")).round(2))
-        .otherwise(None)
-        .alias("industry_relative_strength"),
+        pl.when(has_industry_avg).then((change - pl.col("_ind_avg")).round(2)).otherwise(None).alias("industry_relative_strength"),
     )
     df = df.sort("relative_strength", descending=True, nulls_last=True)
     return frame_to_row_dicts(df)

@@ -37,6 +37,7 @@ def clear_market_quote_rows_cache() -> None:
     global _rows
     with _lock:
         _rows = []
+    on_market_quotes_updated()
 
 
 def set_market_quotes_cache(items: Sequence[StockItem | Any], quotes: Mapping[str, QuoteSnapshot | Any]) -> None:

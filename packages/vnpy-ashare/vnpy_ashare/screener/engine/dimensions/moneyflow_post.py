@@ -23,11 +23,7 @@ def rank_moneyflow_by_tier_polars(rows: list[QuoteRow], *, pool_size: int) -> li
     elg = buy_elg - sell_elg
     net = pl.col("net_mf_amount").cast(pl.Float64, strict=False).fill_null(0.0)
     tier = pl.when(elg != 0).then(elg).otherwise(net)
-    ranked = (
-        df.with_columns(tier.alias("_tier"))
-        .sort("_tier", descending=True, nulls_last=True)
-        .head(max(1, pool_size))
-    )
+    ranked = df.with_columns(tier.alias("_tier")).sort("_tier", descending=True, nulls_last=True).head(max(1, pool_size))
     return [_moneyflow_row(item) for item in frame_to_row_dicts(ranked)]
 
 

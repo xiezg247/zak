@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import pytest
-from vnpy.trader.ui import QtWidgets
 from vnpy.trader.constant import Exchange
+from vnpy.trader.ui import QtWidgets
+
 from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.ui.quotes.table.model import QuoteCell, QuoteTableModel
 

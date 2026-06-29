@@ -128,7 +128,7 @@ class DataSourceRoutingTests(unittest.TestCase):
         self.assertEqual(rows[0]["total_mv"], 2_000_000.0)
         self.assertEqual(rows[0]["circ_mv"], 1_800_000.0)
 
-    @patch("vnpy_ashare.screener.data.data_source.load_intraday_market_snapshot")
+    @patch("vnpy_ashare.screener.data.data_source._load_intraday_quote_snapshot")
     @patch("vnpy_ashare.screener.data.data_source.is_ashare_trading_session", return_value=True)
     def test_trading_session_uses_redis(
         self,

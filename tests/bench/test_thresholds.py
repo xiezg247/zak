@@ -12,7 +12,6 @@ from bench.thresholds import (
     check_synthetic_regression,
     live_p95_limit_ms,
     redis_bench_ready,
-    scaled_p95_limit_ms,
 )
 
 

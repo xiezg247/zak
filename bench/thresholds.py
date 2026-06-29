@@ -22,7 +22,7 @@ SYNTHETIC_P95_LIMITS_MS: dict[str, float] = {
 LIVE_P95_LIMITS_MS: dict[str, float] = {
     "redis.load_market_quote_rows": 800.0,
     "recipe.intraday_multi": 3000.0,
-    "radar.leader_pick": 800.0,
+    "radar.leader_pick": 500.0,
 }
 
 

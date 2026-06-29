@@ -121,8 +121,6 @@ def bench_hard_filter_polars(*, symbols: int, rounds: int) -> dict[str, float] |
         for item in patches:
             item.start()
         try:
-            import os
-
             return apply_recipe_filters(rows)
         finally:
             for item in reversed(patches):

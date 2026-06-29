@@ -68,7 +68,6 @@ class RedisQuoteStoreBatchReadTests(unittest.TestCase):
         self.assertEqual(scores_map, {})
         self.assertEqual(client.pipeline.call_count, 1)
 
-
     def test_get_quotes_uses_l1_when_enabled(self) -> None:
         import os
 

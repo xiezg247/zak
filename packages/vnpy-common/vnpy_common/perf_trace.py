@@ -65,18 +65,13 @@ def format_baseline_report(
         lines.append("## 基准项（bench）")
         lines.append(f"{'name':32s}  {'p50':>8s}  {'p95':>8s}  {'max':>8s}  n")
         for row in bench_rows:
-            lines.append(
-                f"{row['name']:32s}  {row['p50_ms']:8.1f}  {row['p95_ms']:8.1f}  "
-                f"{row['max_ms']:8.1f}  {int(row.get('result_size', 0))}"
-            )
+            lines.append(f"{row['name']:32s}  {row['p50_ms']:8.1f}  {row['p95_ms']:8.1f}  {row['max_ms']:8.1f}  {int(row.get('result_size', 0))}")
         lines.append("")
     if span_aggregates:
         lines.append(f"## 运行时 span Top {top_n}（P95 降序）")
         lines.append(f"{'span':40s}  {'count':>5s}  {'p50':>8s}  {'p95':>8s}  {'max':>8s}")
         for item in span_aggregates[:top_n]:
-            lines.append(
-                f"{item.name:40s}  {item.count:5d}  {item.p50_ms:8.1f}  {item.p95_ms:8.1f}  {item.max_ms:8.1f}"
-            )
+            lines.append(f"{item.name:40s}  {item.count:5d}  {item.p50_ms:8.1f}  {item.p95_ms:8.1f}  {item.max_ms:8.1f}")
         lines.append("")
         lines.append("## 热点（按 P95 × count 加权）")
         weighted = sorted(span_aggregates, key=lambda item: item.p95_ms * item.count, reverse=True)

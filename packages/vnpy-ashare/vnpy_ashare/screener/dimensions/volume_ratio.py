@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow
 from vnpy_ashare.integrations.tushare.factors import fetch_daily_basic
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError

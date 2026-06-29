@@ -5,12 +5,16 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import Any
 
+from vnpy.trader.object import BarData
+
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.domain.stock.context import DiagnoseMetrics, MoneyflowDayRow, MoneyflowProfile
 from vnpy_ashare.domain.time.china import china_now, format_china_date_compact
+from vnpy_ashare.domain.time.trade_dates import iter_trade_date_strs
 from vnpy_ashare.domain.trading.signal_benchmark import resolve_benchmark_return_pct
 from vnpy_ashare.domain.trading.signal_snapshot import SIGNAL_LABELS, SignalSnapshot
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError, get_tushare_pro
+from vnpy_ashare.integrations.tushare.factors import DATASET_MONEYFLOW, get_cached_rows
 from vnpy_ashare.screener.data.data_source import fetch_moneyflow_with_fallback
 from vnpy_ashare.storage.repositories.financial import FinancialSnapshotRow
 
@@ -194,9 +198,21 @@ def lookup_latest_moneyflow(vt_symbol: str) -> MoneyflowDayRow | None:
     return None
 
 
-def fetch_stock_moneyflow_series(ts_code: str, *, days: int = 20) -> list[MoneyflowDayRow]:
-    """拉取单票近 N 日主力资金流（万元）。"""
-    days = max(5, min(int(days or 20), 60))
+def _fetch_stock_moneyflow_from_cache(ts_code: str, *, days: int) -> list[MoneyflowDayRow]:
+    """从 prefetch 全市场 moneyflow 缓存拼单票序列。"""
+    rows: list[MoneyflowDayRow] = []
+    for trade_date in iter_trade_date_strs(max_lookback=days):
+        cached = get_cached_rows(DATASET_MONEYFLOW, trade_date)
+        if not cached:
+            continue
+        match = next((record for record in cached if record.get("ts_code") == ts_code), None)
+        if match is not None:
+            rows.append(_row_from_dict(match))
+    rows.sort(key=lambda item: item.trade_date, reverse=True)
+    return rows[:days]
+
+
+def _fetch_stock_moneyflow_from_api(ts_code: str, *, days: int) -> list[MoneyflowDayRow]:
     now = china_now()
     end = format_china_date_compact(now)
     start = format_china_date_compact(now - timedelta(days=days * 2))
@@ -222,14 +238,23 @@ def fetch_stock_moneyflow_series(ts_code: str, *, days: int = 20) -> list[Moneyf
     return rows[:days]
 
 
+def fetch_stock_moneyflow_series(ts_code: str, *, days: int = 20) -> list[MoneyflowDayRow]:
+    """拉取单票近 N 日主力资金流（万元）；优先单票 API，缓存作回退。"""
+    days = max(5, min(int(days or 20), 60))
+    api_rows = _fetch_stock_moneyflow_from_api(ts_code, days=days)
+    if api_rows:
+        return api_rows
+    return _fetch_stock_moneyflow_from_cache(ts_code, days=days)
+
+
 def build_moneyflow_profile(vt_symbol: str, *, history_days: int = 15) -> MoneyflowProfile:
     """组装单票资金流摘要（最新 + 历史序列）。"""
     item = parse_stock_symbol(vt_symbol)
     if item is None:
         return MoneyflowProfile(ts_code="", vt_symbol=vt_symbol, message="无法解析代码")
 
-    latest = lookup_latest_moneyflow(vt_symbol)
     history = fetch_stock_moneyflow_series(item.ts_code, days=history_days)
+    latest = history[0] if history else lookup_latest_moneyflow(vt_symbol)
     if not history and latest is not None:
         history = [latest]
 
@@ -320,7 +345,24 @@ def build_analysis_ai_context(payload: Any) -> str:
     return "；".join(parts)
 
 
-def compute_relative_returns(engine: Any, vt_symbol: str) -> dict[str, float | None]:
+def _return_pct_from_bars(bars: list[BarData], lookback_days: int) -> float | None:
+    if len(bars) < 2:
+        return None
+    days = max(2, lookback_days)
+    tail = bars[-days:] if len(bars) >= days else bars
+    first_close = tail[0].close_price
+    last_close = tail[-1].close_price
+    if first_close <= 0:
+        return None
+    return round((last_close - first_close) / first_close * 100, 2)
+
+
+def compute_relative_returns(
+    engine: Any,
+    vt_symbol: str,
+    *,
+    daily_bars: list[BarData] | None = None,
+) -> dict[str, float | None]:
     """计算多周期涨跌幅与相对沪深300超额。"""
     item = parse_stock_symbol(vt_symbol)
     if item is None or engine is None:
@@ -330,10 +372,14 @@ def compute_relative_returns(engine: Any, vt_symbol: str) -> dict[str, float | N
         return {}
 
     result: dict[str, float | None] = {}
-    for days, key in ((5, "ret_5d"), (20, "ret_20d"), (60, "ret_60d")):
-        payload = bar_service.get_return(item.symbol, item.exchange, "daily", lookback_days=days)
-        pct = payload.get("return_pct") if isinstance(payload, dict) else None
-        result[key] = float(pct) if isinstance(pct, (int, float)) else None
+    if daily_bars is not None and len(daily_bars) >= 2:
+        for days, key in ((5, "ret_5d"), (20, "ret_20d"), (60, "ret_60d")):
+            result[key] = _return_pct_from_bars(daily_bars, days)
+    else:
+        for days, key in ((5, "ret_5d"), (20, "ret_20d"), (60, "ret_60d")):
+            payload = bar_service.get_return(item.symbol, item.exchange, "daily", lookback_days=days)
+            pct = payload.get("return_pct") if isinstance(payload, dict) else None
+            result[key] = float(pct) if isinstance(pct, (int, float)) else None
 
     bench = resolve_benchmark_return_pct(bar_service, lookback=20)
     ret_20 = result.get("ret_20d")

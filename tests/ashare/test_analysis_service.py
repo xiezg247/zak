@@ -13,6 +13,7 @@ from vnpy_ashare.services.analysis import AnalysisService
 class _FakeBar:
     def __init__(self, day: int, price: float) -> None:
         self.datetime = datetime(2024, 1, day)
+        self.open_price = price
         self.close_price = price
         self.high_price = price + 0.05
         self.low_price = price - 0.05
@@ -61,7 +62,7 @@ class AnalysisServiceTests(unittest.TestCase):
         self.assertEqual(result["symbol"], "600000.SSE")
         self.assertIsNotNone(result["ma"]["ma5"])
         self.assertIn("ma_alignment", result)
-        self.assertEqual(result["period_return"]["return_pct"], 5.5)
+        self.assertAlmostEqual(result["period_return"]["return_pct"], 17.27, places=2)
 
     def test_diagnose_with_mock_wenda(self) -> None:
         def _execute(name: str, args: dict) -> str:

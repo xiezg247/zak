@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from vnpy_ashare.screener.data.data_source import fetch_fundamental_screening_rows
 from vnpy_ashare.screener.dimensions.base import DimensionHit
+
+
 def run_low_pe(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], int]:
     from vnpy_ashare.screener.engine.dimensions.low_pe import run_low_pe_polars
 

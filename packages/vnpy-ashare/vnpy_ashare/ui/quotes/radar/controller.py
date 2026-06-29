@@ -20,7 +20,6 @@ from vnpy_ashare.quotes.radar.loaders import (
     build_radar_resonance_list,
     collect_radar_risk_vt_symbols,
     compute_radar_resonance,
-    incremental_refresh_radar_card_quotes,
 )
 from vnpy_ashare.quotes.radar.loaders.load import RADAR_SNAPSHOT_CARD_IDS
 from vnpy_ashare.quotes.radar.outlook_strategy_prefs import OUTLOOK_SIGNAL_CARD_IDS, save_outlook_strategy_class
@@ -46,6 +45,11 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
 from vnpy_ashare.quotes.radar.radar_full_refresh_prefs import save_radar_full_refresh_every
 from vnpy_ashare.quotes.radar.radar_horizon import OUTLOOK_FORCE_RECOMPUTE_CARD_IDS
 from vnpy_ashare.quotes.radar.radar_market_emotion import is_stat_row
+from vnpy_ashare.quotes.radar.radar_models import (
+    collect_radar_quote_vt_symbols,
+    quotes_for_vt_symbols,
+    refresh_radar_card_quotes_from_map,
+)
 from vnpy_ashare.quotes.radar.radar_resonance_prefs import DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS
 from vnpy_ashare.quotes.radar.radar_resonance_store import set_radar_resonance_entries
 from vnpy_ashare.quotes.radar.radar_snapshot import (
@@ -76,10 +80,11 @@ if TYPE_CHECKING:
 
 _RADAR_CARD_REFRESH_STAGGER_MS = 80
 _RADAR_UI_APPLY_STAGGER_MS = 16
-_RADAR_RESONANCE_SYNC_DEBOUNCE_MS = 80
+_RADAR_CACHE_APPLY_STAGGER_MS = 8
+_RADAR_RESONANCE_SYNC_DEBOUNCE_MS = 120
 _RADAR_GROUP_LOAD_MIN_CARDS = 2
-_RADAR_PREFETCH_NOT_BEFORE_MS = 1500
-_RADAR_PREFETCH_NEXT_GROUP_MS = 500
+_RADAR_PREFETCH_NOT_BEFORE_MS = 3000
+_RADAR_PREFETCH_NEXT_GROUP_MS = 800
 
 
 class RadarController(QtCore.QObject):
@@ -115,9 +120,13 @@ class RadarController(QtCore.QObject):
         self._auto_refresh_timers: dict[str, QtCore.QTimer] = {}
         self._refresh_queue: list[tuple[str, dict[str, object]]] = []
         self._pending_apply_queue: list[tuple[str, RadarCardData]] = []
+        self._pending_cache_apply_queue: list[str] = []
         self._apply_stagger_timer = QtCore.QTimer(self)
         self._apply_stagger_timer.setSingleShot(True)
         self._apply_stagger_timer.timeout.connect(self._dequeue_apply)
+        self._cache_apply_timer = QtCore.QTimer(self)
+        self._cache_apply_timer.setSingleShot(True)
+        self._cache_apply_timer.timeout.connect(self._dequeue_cached_apply)
         self._refresh_stagger_timer = QtCore.QTimer(self)
         self._refresh_stagger_timer.setSingleShot(True)
         self._refresh_stagger_timer.timeout.connect(self._dequeue_refresh)
@@ -266,7 +275,9 @@ class RadarController(QtCore.QObject):
         self._prefetch_mode = None
         self._refresh_queue.clear()
         self._pending_apply_queue.clear()
+        self._pending_cache_apply_queue.clear()
         self._apply_stagger_timer.stop()
+        self._cache_apply_timer.stop()
         self._refresh_stagger_timer.stop()
         self._resonance_sync_timer.stop()
 
@@ -290,11 +301,12 @@ class RadarController(QtCore.QObject):
         self._page._update_refresh_hint_label()
 
     def _refresh_live_quotes_for_current_group(self) -> None:
-        """盘中同步刷新当前分组各卡行的现价/涨幅（不走 worker）。"""
+        """盘中同步刷新当前分组各卡行的现价/涨幅（批量行情查询，避免逐卡阻塞主线程）。"""
         if not is_ashare_trading_session():
             return
         mode = self._board.current_mode()
         group_key = self._board.current_group(mode)
+        pending: list[tuple[str, RadarCardData]] = []
         for spec in list_radar_cards_for_group(mode, group_key):
             if not self._card_is_visible(spec.id):
                 continue
@@ -303,9 +315,14 @@ class RadarController(QtCore.QObject):
                 continue
             if all(is_stat_row(row.vt_symbol) for row in data.rows):
                 continue
-            refreshed = incremental_refresh_radar_card_quotes(data)
-            self._last_payload[spec.id] = refreshed
-            self._board.apply_quote_update(spec.id, refreshed.rows)
+            pending.append((spec.id, data))
+        if not pending:
+            return
+        quotes = quotes_for_vt_symbols(collect_radar_quote_vt_symbols([data for _card_id, data in pending]))
+        for card_id, data in pending:
+            refreshed = refresh_radar_card_quotes_from_map(data, quotes)
+            self._last_payload[card_id] = refreshed
+            self._board.apply_quote_update(card_id, refreshed.rows)
 
     def _stop_auto_refresh(self) -> None:
         for timer in self._auto_refresh_timers.values():
@@ -429,13 +446,34 @@ class RadarController(QtCore.QObject):
     def _on_board_mode_changed(self, mode: str) -> None:
         self._sync_resonance_tab_from_board(mode)
         self._start_auto_refresh()
+        if self._try_apply_current_group_from_cache():
+            return
         self.refresh_current_group()
 
     def _on_board_group_changed(self, mode: str, _group_key: str) -> None:
         if mode != self._board.current_mode():
             return
         self._start_auto_refresh()
+        if self._try_apply_current_group_from_cache():
+            return
         self.refresh_current_group()
+
+    def _try_apply_current_group_from_cache(self) -> bool:
+        """分组内卡片均已加载过时，直接展示缓存，跳过后台重算。"""
+        mode = self._board.current_mode()
+        group_key = self._board.current_group(mode)
+        card_ids = [spec.id for spec in list_radar_cards_for_group(mode, group_key)]
+        if not card_ids:
+            return False
+        if not all(card_id in self._last_payload for card_id in card_ids):
+            return False
+        self._apply_group_from_cache(card_ids)
+        return True
+
+    def _apply_group_from_cache(self, card_ids: list[str]) -> None:
+        self._show_cached_cards(card_ids)
+        self._schedule_resonance_sync()
+        self._update_status()
 
     def _sync_resonance_tab_from_board(self, mode: str | None = None) -> None:
         panel = self._resonance_panel
@@ -664,19 +702,36 @@ class RadarController(QtCore.QObject):
     def _variant_key_for_card(self, card_id: str) -> str:
         return radar_card_variant_key(card_id, self._card_load_variants())
 
-    def _show_cached_cards(self, card_ids: frozenset[str] | set[str]) -> None:
-        """有缓存时先展示旧数据，后台刷新完成后再覆盖。"""
-        for card_id in card_ids:
-            cached = self._last_payload.get(card_id)
-            if cached is None and card_id in RADAR_SNAPSHOT_CARD_IDS:
-                cached = peek_radar_card_snapshot(card_id, variant_key=self._variant_key_for_card(card_id))
-            if cached is None:
-                continue
-            if is_ashare_trading_session() and cached.rows and not all(is_stat_row(row.vt_symbol) for row in cached.rows):
-                cached = incremental_refresh_radar_card_quotes(cached)
-            if not cached.rows and not cached.empty_message:
-                continue
+    def _resolve_cached_card(self, card_id: str) -> RadarCardData | None:
+        cached = self._last_payload.get(card_id)
+        if cached is None and card_id in RADAR_SNAPSHOT_CARD_IDS:
+            cached = peek_radar_card_snapshot(card_id, variant_key=self._variant_key_for_card(card_id))
+        if cached is None:
+            return None
+        if not cached.rows and not cached.empty_message:
+            return None
+        return cached
+
+    def _show_cached_cards(self, card_ids: frozenset[str] | set[str] | list[str]) -> None:
+        """有缓存时先展示旧数据，后台刷新完成后再覆盖（分帧 apply，避免主线程卡顿）。"""
+        queue = [card_id for card_id in card_ids if self._resolve_cached_card(card_id) is not None]
+        if not queue:
+            return
+        self._pending_cache_apply_queue = [cid for cid in self._pending_cache_apply_queue if cid not in queue]
+        self._pending_cache_apply_queue.extend(queue)
+        if not self._cache_apply_timer.isActive():
+            self._dequeue_cached_apply()
+
+    def _dequeue_cached_apply(self) -> None:
+        if not self._pending_cache_apply_queue:
+            return
+        card_id = self._pending_cache_apply_queue.pop(0)
+        cached = self._resolve_cached_card(card_id)
+        if cached is not None:
+            self._last_payload.setdefault(card_id, cached)
             self._board.apply_card(card_id, cached, resonance_counts=self._cached_resonance)
+        if self._pending_cache_apply_queue:
+            self._cache_apply_timer.start(_RADAR_CACHE_APPLY_STAGGER_MS)
 
     def _set_cards_loading(self, card_ids: frozenset[str] | set[str], *, loading: bool) -> None:
         for card_id in card_ids:
@@ -763,6 +818,9 @@ class RadarController(QtCore.QObject):
 
     def _drain_prefetch_siblings(self) -> None:
         if not self._prefetch_siblings:
+            return
+        if self._group_worker is not None and thread_is_active(self._group_worker):
+            QtCore.QTimer.singleShot(_RADAR_PREFETCH_NEXT_GROUP_MS, self._drain_prefetch_siblings)
             return
         if self._prefetch_worker is not None and thread_is_active(self._prefetch_worker):
             return

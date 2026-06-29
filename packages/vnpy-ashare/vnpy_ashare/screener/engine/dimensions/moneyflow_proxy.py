@@ -65,10 +65,7 @@ def hits_from_moneyflow_proxy_polars(
                 label=_INTRADAY_LABEL,
                 weight=weight,
                 score=rank_score(index, total),
-                reason=(
-                    f"盘中资金：涨幅 {float(item.get('change_pct') or 0):+.2f}% + "
-                    f"成交额 {amount_wan:,.0f} 万（代理），排名第 {index}"
-                ),
+                reason=(f"盘中资金：涨幅 {float(item.get('change_pct') or 0):+.2f}% + 成交额 {amount_wan:,.0f} 万（代理），排名第 {index}"),
                 row=dimension_hit_row(payload),
             )
         )

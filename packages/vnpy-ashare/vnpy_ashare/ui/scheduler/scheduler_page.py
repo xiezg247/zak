@@ -153,8 +153,7 @@ class SchedulerPageWidget(QtWidgets.QWidget):
         if self._scheduler is None:
             return
         records = self._scheduler.list_run_log()
-        running = any(getattr(record, "running", False) for record in records)
         self._log_title.setText(f"执行日志 · {len(records)} 条" if records else "执行日志")
         self._log_view.setHtml(format_scheduler_run_log_html(theme_manager().tokens(), records))
         scrollbar = self._log_view.verticalScrollBar()
-        scrollbar.setValue(scrollbar.maximum() if running else scrollbar.minimum())
+        scrollbar.setValue(scrollbar.maximum())

@@ -7,6 +7,8 @@ from typing import Any
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.dimensions.base import DimensionHit
+
+
 def run_volume_surge(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], int]:
     from vnpy_ashare.screener.engine.dimensions.volume_surge import run_volume_surge_polars
 

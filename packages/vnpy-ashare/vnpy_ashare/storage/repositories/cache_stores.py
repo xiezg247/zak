@@ -280,9 +280,7 @@ class SectorFlowOutlookLlmCacheRepository(CacheBaseRepository):
 
     def delete_expired_before(self, cutoff: str) -> int:
         with self.session() as conn:
-            cur = conn.execute_stmt(
-                delete(sector_flow_outlook_llm_cache).where(sector_flow_outlook_llm_cache.c.expires_at <= cutoff)
-            )
+            cur = conn.execute_stmt(delete(sector_flow_outlook_llm_cache).where(sector_flow_outlook_llm_cache.c.expires_at <= cutoff))
             return int(cur.rowcount or 0)
 
 
@@ -300,9 +298,7 @@ class WatchlistPositionCacheRepository(CacheBaseRepository):
 
     def delete_updated_before(self, cutoff: str) -> int:
         with self.session() as conn:
-            cur = conn.execute_stmt(
-                delete(watchlist_position_cache).where(watchlist_position_cache.c.updated_at < cutoff)
-            )
+            cur = conn.execute_stmt(delete(watchlist_position_cache).where(watchlist_position_cache.c.updated_at < cutoff))
             return int(cur.rowcount or 0)
 
 

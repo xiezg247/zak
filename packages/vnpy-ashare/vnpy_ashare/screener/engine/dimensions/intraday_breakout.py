@@ -10,8 +10,8 @@ from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row
 from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
 from vnpy_ashare.screener.dimensions.intraday_breakout import (
     _MAX_PULLBACK_FROM_HIGH_PCT,
-    _MIN_BREAKOUT_VOLUME_RATIO,
     _MIN_BREAK_PCT,
+    _MIN_BREAKOUT_VOLUME_RATIO,
     _MIN_CHANGE_PCT,
     _NEAR_HIGH_RATIO,
 )

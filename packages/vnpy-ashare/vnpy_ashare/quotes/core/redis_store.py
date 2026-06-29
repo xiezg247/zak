@@ -21,6 +21,7 @@ from vnpy_ashare.quotes.core.quote_l1_cache import (
     try_get_quotes,
     try_list_rank_symbols,
 )
+from vnpy_ashare.quotes.core.quote_notify import publish_quote_updated
 from vnpy_ashare.quotes.core.quote_redis_codec import (
     decode_quote_blob,
     encode_enrich_hash,
@@ -29,7 +30,6 @@ from vnpy_ashare.quotes.core.quote_redis_codec import (
     quote_blob_enabled,
     quote_compact_enabled,
 )
-from vnpy_ashare.quotes.core.quote_notify import publish_quote_updated
 from vnpy_ashare.quotes.misc.speed_baseline import apply_change_speed_5m
 from vnpy_ashare.quotes.rank.rank_engine import compute_intraday_change_pct
 from vnpy_common.paths import ENV_FILE
@@ -366,12 +366,7 @@ class RedisQuoteStore:
         total = int(self._client.zcard(key) or 0)
         if total == 0 or limit <= 0:
             return [], total
-        if (
-            rank_precompute_enabled()
-            and not ascending
-            and offset < PRECOMPUTED_RANK_TOP_N
-            and offset + limit <= PRECOMPUTED_RANK_TOP_N
-        ):
+        if rank_precompute_enabled() and not ascending and offset < PRECOMPUTED_RANK_TOP_N and offset + limit <= PRECOMPUTED_RANK_TOP_N:
             pkey = precomputed_rank_key(field)
             pre_len = int(self._client.llen(pkey) or 0)
             if pre_len > 0:

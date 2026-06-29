@@ -21,7 +21,6 @@ from vnpy_ashare.jobs.bars.download import batch_download_universe_daily_bars
 from vnpy_ashare.jobs.catalog import COLLECT_QUOTES_JOB_ID, MANUAL_FORCE_JOB_IDS
 from vnpy_ashare.jobs.core.progress import bind_job_log
 from vnpy_ashare.jobs.core.result import JobResult
-from vnpy_ashare.quotes.core.collect_mode import scheduler_collect_quotes_enabled
 from vnpy_ashare.jobs.runners import (
     collect_quotes_interval_seconds,
     run_collect_quotes,
@@ -30,6 +29,7 @@ from vnpy_ashare.jobs.runners import (
     run_sync_bilibili_feed,
 )
 from vnpy_ashare.jobs.watchlist.strategy_prewarm import warm_watchlist_strategy_cache_job
+from vnpy_ashare.quotes.core.collect_mode import scheduler_collect_quotes_enabled
 from vnpy_ashare.scheduler.config import (
     AutoScreenJobConfig,
     JobConfig,
@@ -48,6 +48,18 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 _MAX_RUN_LOG = 200
 _MAX_RUN_DETAIL_LINES = 400
+
+
+def order_run_log_records(records: list[JobRunRecord]) -> list[JobRunRecord]:
+    """UI 展示顺序：已完成按开始时间升序，执行中任务固定在末尾（终端日志风格）。"""
+
+    def _sort_key(record: JobRunRecord) -> tuple[int, str]:
+        bucket = 1 if record.running else 0
+        stamp = record.started_at or record.finished_at or ""
+        return bucket, stamp
+
+    return sorted(records, key=_sort_key)
+
 
 SchedulerJobConfig = JobConfig | AutoScreenJobConfig
 
@@ -138,9 +150,7 @@ class TaskSchedulerManager:
 
     def _schedule_collect_quotes(self, *, prefer_immediate: bool = False) -> None:
         if not scheduler_collect_quotes_enabled():
-            logger.info(
-                "ZAK_QUOTE_COLLECT_MODE=external，Scheduler 不调度 collect_quotes（请用独立进程采集）"
-            )
+            logger.info("ZAK_QUOTE_COLLECT_MODE=external，Scheduler 不调度 collect_quotes（请用独立进程采集）")
             return
         cfg = self._get_job_config(COLLECT_QUOTES_JOB_ID)
         if not cfg.enabled:
@@ -265,9 +275,9 @@ class TaskSchedulerManager:
         if limit <= 0:
             return []
         records = list(self._run_log)
-        if limit >= len(records):
-            return list(reversed(records))
-        return list(reversed(records[-limit:]))
+        if limit < len(records):
+            records = records[-limit:]
+        return order_run_log_records(records)
 
     def get_status(self, job_id: str) -> JobStatus | None:
         if should_run_scheduler():

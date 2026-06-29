@@ -59,4 +59,3 @@ def apply_perf_profile_from_env() -> str:
         if not os.environ.get(key, "").strip():
             os.environ[key] = value
     return profile
-

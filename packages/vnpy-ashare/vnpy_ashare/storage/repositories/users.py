@@ -7,9 +7,9 @@ from datetime import datetime
 
 from sqlalchemy import delete, insert, select
 
-from vnpy_common.storage.repository import BaseRepository
 from vnpy_common.auth.users import DEFAULT_USERNAME, UserRecord, hash_password, verify_password
 from vnpy_common.storage.compat import DbConnection
+from vnpy_common.storage.repository import BaseRepository
 from vnpy_common.storage.tables.auth import users as auth_users
 
 
@@ -97,14 +97,9 @@ class UsersRepository(BaseRepository):
 
     def list_active(self) -> list[UserRecord]:
         rows = self.fetchall(
-            select(auth_users.c.id, auth_users.c.username, auth_users.c.display_name)
-            .where(auth_users.c.is_active.is_(True))
-            .order_by(auth_users.c.username)
+            select(auth_users.c.id, auth_users.c.username, auth_users.c.display_name).where(auth_users.c.is_active.is_(True)).order_by(auth_users.c.username)
         )
-        return [
-            UserRecord(id=str(r["id"]), username=str(r["username"]), display_name=str(r["display_name"] or ""))
-            for r in rows
-        ]
+        return [UserRecord(id=str(r["id"]), username=str(r["username"]), display_name=str(r["display_name"] or "")) for r in rows]
 
     def get_id_by_username(self, username: str) -> str | None:
         row = self.fetchone(
@@ -125,15 +120,11 @@ class UsersRepository(BaseRepository):
         return str(row["id"]) if row else None
 
     def list_non_default(self, *, default_username: str = DEFAULT_USERNAME) -> list[tuple[str, str]]:
-        rows = self.fetchall(
-            select(auth_users.c.id, auth_users.c.username).where(auth_users.c.username != default_username)
-        )
+        rows = self.fetchall(select(auth_users.c.id, auth_users.c.username).where(auth_users.c.username != default_username))
         return [(str(row["id"]), str(row["username"])) for row in rows]
 
     def list_non_default_conn(self, conn: DbConnection, *, default_username: str = DEFAULT_USERNAME) -> list[tuple[str, str]]:
-        rows = conn.execute_stmt(
-            select(auth_users.c.id, auth_users.c.username).where(auth_users.c.username != default_username)
-        ).fetchall()
+        rows = conn.execute_stmt(select(auth_users.c.id, auth_users.c.username).where(auth_users.c.username != default_username)).fetchall()
         return [(str(row["id"]), str(row["username"])) for row in rows]
 
     def delete_ids(self, conn: DbConnection, user_ids: list[str]) -> None:
@@ -165,11 +156,7 @@ class UsersRepository(BaseRepository):
     def get_or_create_default(self, *, default_username: str = DEFAULT_USERNAME) -> UserRecord:
         existing_id = self.get_id_by_username(default_username)
         if existing_id is not None:
-            row = self.fetchone(
-                select(auth_users.c.id, auth_users.c.username, auth_users.c.display_name).where(
-                    auth_users.c.id == existing_id
-                )
-            )
+            row = self.fetchone(select(auth_users.c.id, auth_users.c.username, auth_users.c.display_name).where(auth_users.c.id == existing_id))
             assert row is not None
             return UserRecord(
                 id=str(row["id"]),

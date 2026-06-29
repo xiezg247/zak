@@ -11,6 +11,8 @@ from vnpy_ashare.domain.symbols.stock import parse_tickflow_symbol
 from vnpy_ashare.quotes.core.enrich import backfill_rank_scores_from_zset, fill_missing_tushare_factors
 from vnpy_ashare.quotes.core.quote_l1_cache import (
     get_updated_at as l1_get_updated_at,
+)
+from vnpy_ashare.quotes.core.quote_l1_cache import (
     quote_l1_enabled,
     seq_matches,
     try_get_all_quotes,

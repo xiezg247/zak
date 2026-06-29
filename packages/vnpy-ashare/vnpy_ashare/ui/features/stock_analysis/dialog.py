@@ -199,7 +199,7 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         theme_manager().bind_stylesheet(self, extra=build_stock_analysis_stylesheet)
         self._refresh_live_quote()
         self._init_idle_tabs()
-        QtCore.QTimer.singleShot(0, lambda: self._ensure_tab_data(_TAB_OVERVIEW, sync_financials=True))
+        QtCore.QTimer.singleShot(0, lambda: self._ensure_tab_data(_TAB_OVERVIEW, sync_financials=False))
 
     def showEvent(self, event: QtGui.QShowEvent) -> None:
         super().showEvent(event)

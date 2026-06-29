@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
+from vnpy.trader.object import BarData
+
 from vnpy_ashare.ai.context.store import get_screening_results
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
+from vnpy_ashare.domain.stock.context import MoneyflowProfile
 from vnpy_ashare.domain.stock.overview import (
     AlertSeverity,
     DataReadinessItem,
@@ -13,7 +16,9 @@ from vnpy_ashare.domain.stock.overview import (
     OverviewDashboard,
     ScreeningHit,
 )
+from vnpy_ashare.domain.stock.profile import ValuationProfile
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError, get_tushare_pro
+from vnpy_ashare.integrations.tushare.stk_shock import load_recent_exchange_regulatory_for_vt_symbol
 from vnpy_ashare.quotes.core.limit_times_cache import get_cached_limit_times_map
 from vnpy_ashare.services.stock.context import (
     MoneyflowDayRow,
@@ -81,21 +86,25 @@ def _readiness_financial(engine: Any, vt_symbol: str) -> DataReadinessItem:
     return DataReadinessItem(key="financial", label="财报", status="missing", detail="请同步财报", jump_target="financial")
 
 
+_READINESS_VALUATION_LIMIT = 120
+
+
 def _readiness_valuation(ts_code: str) -> DataReadinessItem:
     if not ts_code:
         return DataReadinessItem(key="valuation", label="估值", status="missing", detail="无法解析", jump_target="sector")
-    history_days = len(list_valuation_history(ts_code, limit=750))
-    if history_days >= 120:
+    history_days = len(list_valuation_history(ts_code, limit=_READINESS_VALUATION_LIMIT))
+    if history_days >= _READINESS_VALUATION_LIMIT:
         return DataReadinessItem(key="valuation", label="估值", status="ready", detail=f"历史 {history_days} 日", jump_target="sector")
     if history_days > 0:
         return DataReadinessItem(key="valuation", label="估值", status="partial", detail=f"样本 {history_days} 日", jump_target="sector")
     return DataReadinessItem(key="valuation", label="估值", status="missing", detail="打开板块 Tab 同步", jump_target="sector")
 
 
-def _readiness_moneyflow(vt_symbol: str) -> DataReadinessItem:
-    if not _tushare_configured():
+def _readiness_moneyflow_profile(profile: MoneyflowProfile | None, *, tushare_ok: bool) -> DataReadinessItem:
+    if not tushare_ok:
         return DataReadinessItem(key="moneyflow", label="资金流", status="unconfigured", detail="需 TUSHARE_TOKEN", jump_target="capital")
-    profile = build_moneyflow_profile(vt_symbol, history_days=5)
+    if profile is None:
+        return DataReadinessItem(key="moneyflow", label="资金流", status="missing", detail="暂无缓存", jump_target="capital")
     if profile.history:
         latest = profile.latest.trade_date if profile.latest else profile.history[0].trade_date
         detail = f"最新 {latest or '—'}"
@@ -149,8 +158,7 @@ def _disclosure_alerts(ts_code: str) -> list[OverviewAlert]:
     return [OverviewAlert(text=hint, severity="warn", jump_target="events") for hint in hints[:2]]
 
 
-def _valuation_alerts(vt_symbol: str) -> list[OverviewAlert]:
-    profile = build_valuation_profile(vt_symbol)
+def _valuation_alerts_from_profile(profile: ValuationProfile) -> list[OverviewAlert]:
     alerts: list[OverviewAlert] = []
     pe_pct = profile.pe_percentile_3y
     if pe_pct is not None and pe_pct >= 85:
@@ -223,16 +231,28 @@ def _moneyflow_streak_alert(history: list[MoneyflowDayRow]) -> OverviewAlert | N
     )
 
 
-def _moneyflow_alerts(vt_symbol: str) -> list[OverviewAlert]:
-    if not _tushare_configured():
+_OVERVIEW_REGULATORY_LOOKBACK = 5
+
+
+def _moneyflow_alerts_from_profile(profile: MoneyflowProfile | None) -> list[OverviewAlert]:
+    if profile is None:
         return []
-    profile = build_moneyflow_profile(vt_symbol, history_days=8)
     alert = _moneyflow_streak_alert(profile.history)
     return [alert] if alert is not None else []
 
 
-def _regulatory_alerts(vt_symbol: str) -> list[OverviewAlert]:
-    snapshot = assess_regulatory_deviation_for_vt_symbol(vt_symbol)
+def _regulatory_alerts(vt_symbol: str, *, daily_bars: list[BarData] | None = None) -> list[OverviewAlert]:
+    exchange_records: tuple[Any, ...] = ()
+    if _tushare_configured():
+        exchange_records = load_recent_exchange_regulatory_for_vt_symbol(
+            vt_symbol,
+            lookback_trading_days=_OVERVIEW_REGULATORY_LOOKBACK,
+        )
+    snapshot = assess_regulatory_deviation_for_vt_symbol(
+        vt_symbol,
+        bars=daily_bars,
+        exchange_records=exchange_records,
+    )
     if snapshot is None or snapshot.risk_level == "none":
         return []
     severity: AlertSeverity = "warn" if snapshot.risk_level == "high" else "info"
@@ -266,28 +286,36 @@ def build_overview_dashboard(
     vt_symbol: str,
     *,
     technical: dict[str, Any],
+    daily_bars: list[BarData] | None = None,
 ) -> OverviewDashboard:
     item = parse_stock_symbol(vt_symbol)
     ts_code = item.ts_code if item is not None else ""
+    tushare_ok = _tushare_configured()
+    moneyflow_profile = build_moneyflow_profile(vt_symbol, history_days=8) if tushare_ok else None
+    valuation_profile = build_valuation_profile(vt_symbol, live=False) if tushare_ok else None
 
     readiness = [
         _readiness_daily_bars(technical),
         _readiness_short_term(vt_symbol),
         _readiness_financial(engine, vt_symbol),
         _readiness_valuation(ts_code),
-        _readiness_moneyflow(vt_symbol),
+        _readiness_moneyflow_profile(moneyflow_profile, tushare_ok=tushare_ok),
         _readiness_holders(),
     ]
 
     alerts: list[OverviewAlert] = []
-    for builder in (
+    alert_builders: list[Any] = [
         lambda: _limit_board_alerts(vt_symbol),
-        lambda: _regulatory_alerts(vt_symbol),
+        lambda: _regulatory_alerts(vt_symbol, daily_bars=daily_bars),
         lambda: _disclosure_alerts(ts_code),
         lambda: _financial_alerts(engine, vt_symbol),
-        lambda: _valuation_alerts(vt_symbol),
-        lambda: _moneyflow_alerts(vt_symbol),
-    ):
+    ]
+    if valuation_profile is not None:
+        alert_builders.append(lambda profile=valuation_profile: _valuation_alerts_from_profile(profile))
+    if moneyflow_profile is not None:
+        alert_builders.append(lambda profile=moneyflow_profile: _moneyflow_alerts_from_profile(profile))
+
+    for builder in alert_builders:
         for alert in builder():
             if len(alerts) >= 5:
                 break

@@ -11,14 +11,6 @@ from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRow
 from vnpy_ashare.quotes.market.moneyflow_kind import enrich_moneyflow_row_with_kind
 from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters
-from vnpy_ashare.screener.preset.presets import (
-    SCREENER_CHANGE_TOP,
-    SCREENER_CUSTOM,
-    SCREENER_STRONG_UP,
-    SCREENER_TURNOVER,
-    SCREENER_VOLUME_RATIO,
-    SCREENER_VOLUME_SURGE,
-)
 
 # Tushare daily_basic.total_mv 单位为万元；50 亿 = 500000 万元
 MIN_TOTAL_MV_50YI = 500_000.0

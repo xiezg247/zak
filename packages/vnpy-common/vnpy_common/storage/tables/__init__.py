@@ -1,6 +1,5 @@
 """SQLAlchemy Core 表定义（与 Alembic DDL 对齐，search_path 下无 schema 前缀）。"""
 
-from vnpy_common.storage.tables.auth import user_preferences, users
 from vnpy_common.storage.tables.app import (
     backtest_runs,
     disclosure_calendar,
@@ -36,6 +35,7 @@ from vnpy_common.storage.tables.app import (
     watchlist_groups,
     watchlist_positions,
 )
+from vnpy_common.storage.tables.auth import user_preferences, users
 from vnpy_common.storage.tables.chat import (
     chat_messages,
     chat_sessions,

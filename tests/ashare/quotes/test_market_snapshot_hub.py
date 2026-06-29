@@ -16,7 +16,12 @@ from vnpy_ashare.quotes.core.market_snapshot_hub import (
     get_process_quote_snapshot,
     publish_market_snapshot,
 )
-from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
+from vnpy_ashare.quotes.core.quote_rows import clear_market_quote_rows_cache, get_market_quotes_cache
+from vnpy_ashare.quotes.radar.radar_leader_pool_cache import (
+    peek_leader_candidate_pool,
+    store_leader_candidate_pool,
+)
+from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot_uncached
 
 
 def test_publish_market_snapshot_syncs_row_cache() -> None:
@@ -31,6 +36,38 @@ def test_publish_market_snapshot_syncs_row_cache() -> None:
         publish_market_snapshot(snapshot)
         assert get_process_quote_snapshot() is snapshot
     assert len(get_market_quotes_cache()) == 1
+
+
+def test_uncached_loader_reuses_process_hub() -> None:
+    clear_process_quote_snapshot()
+    clear_market_quote_rows_cache()
+    snapshot = MarketQuotesSnapshot(
+        rows=[{"vt_symbol": "600000.SH", "change_pct": 1.0}],
+        updated_at="2026-06-27",
+        total=1,
+        source="hub",
+    )
+    with (
+        patch("vnpy_ashare.quotes.core.market_snapshot_hub.seq_matches", return_value=True),
+        patch("vnpy_ashare.screener.data.data_source.is_ashare_trading_session", return_value=True),
+        patch("vnpy_ashare.screener.data.quotes_loader.load_market_quote_rows") as load_rows,
+    ):
+        publish_market_snapshot(snapshot)
+        loaded = load_screening_quote_snapshot_uncached()
+    assert loaded is snapshot
+    load_rows.assert_not_called()
+
+
+def test_clear_market_quote_rows_cache_invalidates_leader_pool() -> None:
+    store_leader_candidate_pool(
+        variant="mainline",
+        pool_size=50,
+        candidates=[{"vt_symbol": "600000.SH"}],
+        total=1,
+    )
+    assert peek_leader_candidate_pool(variant="mainline", pool_size=50) is not None
+    clear_market_quote_rows_cache()
+    assert peek_leader_candidate_pool(variant="mainline", pool_size=50) is None
 
 
 def test_external_collect_mode_skips_scheduler_collect() -> None:

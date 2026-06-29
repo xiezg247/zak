@@ -41,11 +41,7 @@ def build_radar_resonance_rows_polars(
     snap_cols = [col for col in snap_df.columns if col not in overlap]
     snap_df = snap_df.select(snap_cols)
 
-    joined = (
-        res_df.join(snap_df, on="vt_symbol", how="inner")
-        .sort(["resonance_score", "resonance_card_count"], descending=[True, True])
-        .head(pool_size)
-    )
+    joined = res_df.join(snap_df, on="vt_symbol", how="inner").sort(["resonance_score", "resonance_card_count"], descending=[True, True]).head(pool_size)
     if joined.is_empty():
         return []
 

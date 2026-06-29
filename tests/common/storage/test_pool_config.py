@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import os
-
 from vnpy_common.storage import pool as pool_module
 
 

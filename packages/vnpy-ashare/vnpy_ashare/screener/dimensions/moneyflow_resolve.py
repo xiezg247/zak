@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike, coerce_quote_row, quote_row_copy
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike, quote_row_copy
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.integrations.mcp.intraday_flow import fetch_intraday_moneyflow_map
 from vnpy_ashare.quotes.core.quote_rows import quote_rows_by_vt_symbol

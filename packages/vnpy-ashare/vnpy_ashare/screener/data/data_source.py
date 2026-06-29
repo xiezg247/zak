@@ -146,6 +146,17 @@ def daily_basic_to_quote_rows(
     return quote_rows
 
 
+def _load_intraday_quote_snapshot(*, enrich_factors: bool = True) -> MarketQuotesSnapshot:
+    """盘中快照：进程 Hub（seq 一致）优先，否则读 Redis/L1。"""
+    from vnpy_ashare.quotes.core.market_snapshot_hub import get_process_quote_snapshot
+    from vnpy_ashare.screener.data.quotes_loader import load_market_quote_rows
+
+    hub = get_process_quote_snapshot()
+    if hub is not None:
+        return hub
+    return load_market_quote_rows(enrich_factors=enrich_factors)
+
+
 def load_screening_quote_snapshot_uncached() -> MarketQuotesSnapshot:
     """
     行情类选股数据源（无 ScreeningContext 缓存）：
@@ -154,9 +165,7 @@ def load_screening_quote_snapshot_uncached() -> MarketQuotesSnapshot:
     - 仍无数据时：尝试 Redis 陈旧快照
     """
     if is_ashare_trading_session():
-        from vnpy_ashare.screener.data.quotes_loader import load_market_quote_rows
-
-        return load_market_quote_rows(enrich_factors=True)
+        return _load_intraday_quote_snapshot(enrich_factors=True)
 
     rows, trade_date = fetch_daily_basic_with_fallback()
     if rows:
@@ -175,9 +184,7 @@ def load_screening_quote_snapshot_uncached() -> MarketQuotesSnapshot:
             source="tushare",
         )
 
-    from vnpy_ashare.screener.data.quotes_loader import load_market_quote_rows
-
-    return load_market_quote_rows(enrich_factors=True)
+    return _load_intraday_quote_snapshot(enrich_factors=True)
 
 
 def fetch_fundamental_screening_rows() -> tuple[list[dict[str, Any]], str, str]:

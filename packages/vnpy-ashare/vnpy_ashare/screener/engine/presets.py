@@ -7,8 +7,8 @@ from typing import Any
 
 import polars as pl
 
-from vnpy_ashare.screener.engine.frame import restore_rows, rows_with_index
 from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
+from vnpy_ashare.screener.engine.frame import restore_rows, rows_with_index
 from vnpy_ashare.screener.preset.presets import (
     SCREENER_CHANGE_TOP,
     SCREENER_CUSTOM,
@@ -21,7 +21,9 @@ from vnpy_ashare.screener.preset.rules import STRONG_UP_MIN_CHANGE_PCT
 
 
 def _ensure_sort_columns(df: pl.DataFrame) -> pl.DataFrame:
-    missing = [name for name in ("change_pct", "turnover_rate", "volume", "amount", "total_mv", "circ_mv", "volume_ratio", "vt_symbol") if name not in df.columns]
+    missing = [
+        name for name in ("change_pct", "turnover_rate", "volume", "amount", "total_mv", "circ_mv", "volume_ratio", "vt_symbol") if name not in df.columns
+    ]
     if not missing:
         return df
     return df.with_columns(pl.lit(None).alias(name) for name in missing)

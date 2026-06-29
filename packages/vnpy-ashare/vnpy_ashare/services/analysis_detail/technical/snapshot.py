@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta
 from typing import Any
 
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
@@ -22,10 +23,14 @@ class TechnicalSnapshotMixin(_TechnicalAnalyzerBase):
             return {"error": f"无法解析代码: {symbol}"}
 
         lookback = max(5, min(int(lookback or 60), 250))
+        end_dt = datetime.now()
+        start_dt = end_dt - timedelta(days=max(lookback * 2, 120))
         bars = self._engine.bar_service.load_bars(
             item.symbol,
             item.exchange,
             scope or "daily",
+            start=start_dt,
+            end=end_dt,
         )
         warnings: list[str] = []
         if len(bars) < 2:
@@ -57,12 +62,27 @@ class TechnicalSnapshotMixin(_TechnicalAnalyzerBase):
         avg_base = sum(base_vol) / len(base_vol) if base_vol else avg_recent
         volume_ratio = round(avg_recent / avg_base, 2) if avg_base else None
 
-        period_return = self._engine.bar_service.get_return(
-            item.symbol,
-            item.exchange,
-            scope or "daily",
-            lookback_days=min(lookback, 60),
-        )
+        period_days = min(lookback, 60)
+        period_tail = tail[-period_days:] if len(tail) >= period_days else tail
+        if len(period_tail) >= 2:
+            first_close = period_tail[0].close_price
+            last_close_period = period_tail[-1].close_price
+            period_return = {
+                "symbol": item.vt_symbol,
+                "scope": scope or "daily",
+                "lookback_days": len(period_tail),
+                "start": period_tail[0].datetime.strftime("%Y-%m-%d"),
+                "end": period_tail[-1].datetime.strftime("%Y-%m-%d"),
+                "return_pct": round((last_close_period - first_close) / first_close * 100, 2) if first_close > 0 else None,
+                "close_start": round(first_close, 2),
+                "close_end": round(last_close_period, 2),
+            }
+        else:
+            period_return = {
+                "symbol": item.vt_symbol,
+                "scope": scope or "daily",
+                "message": "暂无足够 K 线数据",
+            }
 
         return {
             "symbol": item.vt_symbol,

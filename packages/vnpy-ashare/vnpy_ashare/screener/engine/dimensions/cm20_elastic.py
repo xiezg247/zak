@@ -6,7 +6,7 @@ from typing import Any
 
 import polars as pl
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow, quote_row_copy
+from vnpy_ashare.domain.market.quote_row import quote_row_copy
 from vnpy_ashare.screener.data.screening_context import get_stock_industry_l1_map, get_stock_industry_map
 from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row
 from vnpy_ashare.screener.dimensions.cm20_elastic import (

@@ -6,8 +6,9 @@ import os
 import unittest
 from unittest.mock import MagicMock, patch
 
-import tests._bootstrap  # noqa: F401
 from vnpy.trader.constant import Exchange
+
+import tests._bootstrap  # noqa: F401
 from vnpy_ashare.data import pattern_bars
 from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.jobs.quotes.enrich import enrich_market_quotes

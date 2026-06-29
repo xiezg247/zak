@@ -38,9 +38,7 @@ def _strong_sectors_for_leader_pool(pool: list[Any], hot_concepts: list[str]) ->
     if df.is_empty():
         return set(), set(hot_concepts)
     industry_dist = compute_sector_distribution_polars(df, top_n=8, min_stocks=3)
-    strong_industries = (
-        {str(value) for value in industry_dist.head(5)["industry"].to_list()} if not industry_dist.is_empty() else set()
-    )
+    strong_industries = {str(value) for value in industry_dist.head(5)["industry"].to_list()} if not industry_dist.is_empty() else set()
     vt_to_concept, _hot = build_hot_concept_vt_symbol_map()
     strong_concepts: set[str] = set()
     if vt_to_concept:

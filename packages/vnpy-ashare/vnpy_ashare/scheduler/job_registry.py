@@ -116,8 +116,7 @@ def build_scheduler_jobs(runners: SchedulerJobRunners) -> dict[str, SchedulerJob
                 seconds=max(cfg.interval_seconds, ENRICH_MARKET_QUOTES_INTERVAL_SECONDS),
             ),
             schedule_text_builder=lambda cfg: (
-                f"交易时段内每 {max(cfg.interval_seconds, ENRICH_MARKET_QUOTES_INTERVAL_SECONDS)} 秒 enrich 因子"
-                "（需 ZAK_COLLECT_DEFER_ENRICH=1）"
+                f"交易时段内每 {max(cfg.interval_seconds, ENRICH_MARKET_QUOTES_INTERVAL_SECONDS)} 秒 enrich 因子（需 ZAK_COLLECT_DEFER_ENRICH=1）"
             ),
         ),
         "sync_universe": SchedulerJobMeta(

@@ -41,17 +41,8 @@ def run_volume_surge_polars(
     amount = pl.col("amount").cast(pl.Float64, strict=False).fill_null(0.0)
 
     df = df.with_columns(
-        pl.when(ratio > 0)
-        .then(ratio)
-        .alias("volume_ratio"),
-        pl.when(ratio > 0)
-        .then(ratio)
-        .when(volume > 0)
-        .then(volume)
-        .when(amount > 0)
-        .then(amount)
-        .otherwise(pl.lit(0.0))
-        .alias("relative_volume"),
+        pl.when(ratio > 0).then(ratio).alias("volume_ratio"),
+        pl.when(ratio > 0).then(ratio).when(volume > 0).then(volume).when(amount > 0).then(amount).otherwise(pl.lit(0.0)).alias("relative_volume"),
     )
     df = df.filter(pl.col("relative_volume") > 0).sort("relative_volume", descending=True, nulls_last=True)
     if df.is_empty():

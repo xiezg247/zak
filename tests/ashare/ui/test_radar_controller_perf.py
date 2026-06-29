@@ -190,6 +190,75 @@ def test_schedule_sibling_prefetch_queues_other_groups(qapp: QtWidgets.QApplicat
     controller._start_prefetch_group.assert_called_once()
 
 
+def test_group_change_uses_cached_payload(qapp: QtWidgets.QApplication) -> None:
+    from vnpy_ashare.quotes.radar.loaders import RadarCardData
+    from vnpy_ashare.ui.quotes.radar.controller import RadarController
+
+    page = QtWidgets.QWidget()
+    board = MagicMock()
+    board.current_mode.return_value = "statistical"
+    board.current_group.return_value = "discovery"
+
+    with patch.object(RadarController, "_setup_auto_refresh_timers"):
+        controller = RadarController(page, board, resonance_panel=MagicMock())
+
+    controller.refresh_current_group = MagicMock()
+    controller._apply_group_from_cache = MagicMock()
+    controller._start_auto_refresh = MagicMock()
+    controller._last_payload = {
+        "discovery_limit_ladder": RadarCardData(
+            card_id="discovery_limit_ladder",
+            title="发现·连板梯队",
+            subtitle="",
+            rows=(),
+            empty_message="",
+            updated_at="10:00",
+        )
+    }
+
+    with patch(
+        "vnpy_ashare.ui.quotes.radar.controller.list_radar_cards_for_group",
+        return_value=[MagicMock(id="discovery_limit_ladder")],
+    ):
+        controller._on_board_group_changed("statistical", "discovery")
+
+    controller._apply_group_from_cache.assert_called_once_with(["discovery_limit_ladder"])
+    controller.refresh_current_group.assert_not_called()
+
+
+def test_show_cached_cards_staggers_apply(qapp: QtWidgets.QApplication) -> None:
+    from vnpy_ashare.quotes.radar.loaders import RadarCardData
+    from vnpy_ashare.ui.quotes.radar.controller import RadarController
+
+    page = QtWidgets.QWidget()
+    board = MagicMock()
+
+    with patch.object(RadarController, "_setup_auto_refresh_timers"):
+        controller = RadarController(page, board, resonance_panel=MagicMock())
+
+    controller._last_payload = {
+        "market_emotion": RadarCardData(
+            card_id="market_emotion",
+            title="盘面·环境",
+            subtitle="",
+            rows=(),
+            empty_message="无",
+            updated_at="10:00",
+        ),
+        "leader_pick": RadarCardData(
+            card_id="leader_pick",
+            title="选股·龙头",
+            subtitle="",
+            rows=(),
+            empty_message="无",
+            updated_at="10:01",
+        ),
+    }
+    controller._show_cached_cards(["market_emotion", "leader_pick"])
+    board.apply_card.assert_called_once()
+    assert controller._pending_cache_apply_queue == ["leader_pick"]
+
+
 def test_quote_only_load_skips_resonance_panel_sync(qapp: QtWidgets.QApplication) -> None:
     from vnpy_ashare.quotes.radar.loaders import RadarCardData
 

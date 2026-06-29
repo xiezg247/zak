@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy.trader.ui import QtCore, QtWidgets
+from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 IndexType = QtCore.QModelIndex | QtCore.QPersistentModelIndex
 
