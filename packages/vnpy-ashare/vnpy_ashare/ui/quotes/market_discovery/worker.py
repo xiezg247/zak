@@ -5,6 +5,7 @@ from __future__ import annotations
 from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.quotes.radar.loaders import load_radar_card
+from vnpy_ashare.quotes.radar.loaders.cancel import RadarLoadCancelled, bind_radar_load_cancel
 
 
 class MarketDiscoveryLoadWorker(QtCore.QThread):
@@ -23,14 +24,22 @@ class MarketDiscoveryLoadWorker(QtCore.QThread):
     def run(self) -> None:
         if self._cancelled:
             return
+        reset = bind_radar_load_cancel(lambda: self._cancelled)
         try:
-            volume = load_radar_card("discovery_volume_surge")
             if self._cancelled:
                 return
-            moneyflow = load_radar_card("discovery_moneyflow_intraday")
-        except Exception as ex:
-            self.failed.emit(str(ex))
-            return
-        if self._cancelled:
-            return
-        self.finished.emit(volume, moneyflow)
+            try:
+                volume = load_radar_card("discovery_volume_surge")
+                if self._cancelled:
+                    return
+                moneyflow = load_radar_card("discovery_moneyflow_intraday")
+            except RadarLoadCancelled:
+                return
+            except Exception as ex:
+                self.failed.emit(str(ex))
+                return
+            if self._cancelled:
+                return
+            self.finished.emit(volume, moneyflow)
+        finally:
+            reset()

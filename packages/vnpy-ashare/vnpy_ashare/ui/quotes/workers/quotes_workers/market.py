@@ -64,6 +64,9 @@ class MarketPageLoadWorker(QtCore.QThread):
                     offset=offset,
                     board=self.board,
                 )
+                if self._cancel_requested:
+                    self.failed.emit("已取消")
+                    return
                 items = [StockItem(symbol=symbol, exchange=exchange, name=name) for symbol, exchange, name in rows]
                 quotes = provider.get_quotes(items)
                 mode = "search"
@@ -73,6 +76,9 @@ class MarketPageLoadWorker(QtCore.QThread):
                     self.page_size,
                     rank_id=self.rank_id,
                 )
+                if self._cancel_requested:
+                    self.failed.emit("已取消")
+                    return
                 mode = "rank"
             else:
                 if self.cached_total is not None:
@@ -88,6 +94,9 @@ class MarketPageLoadWorker(QtCore.QThread):
                         limit=self.page_size,
                         board=self.board,
                     )
+                if self._cancel_requested:
+                    self.failed.emit("已取消")
+                    return
                 items = [StockItem(symbol=symbol, exchange=exchange, name=name) for symbol, exchange, name in rows]
                 quotes = provider.get_quotes(items)
                 mode = "list"
@@ -145,6 +154,9 @@ class MarketFullLoadWorker(QtCore.QThread):
 
             if spec.scope == "watchlist":
                 tf_symbols, quotes = load_watchlist_rank_catalog(store, spec)
+                if self._cancel_requested:
+                    self.failed.emit("已取消")
+                    return
                 items = build_stock_items_from_rank_symbols(tf_symbols, quotes, name_map=name_map)
             else:
                 tf_symbols, quotes = load_market_rank_catalog(
@@ -152,6 +164,9 @@ class MarketFullLoadWorker(QtCore.QThread):
                     spec,
                     universe_quotes_loader=provider.get_quotes,
                 )
+                if self._cancel_requested:
+                    self.failed.emit("已取消")
+                    return
                 items = build_stock_items_from_rank_symbols(tf_symbols, quotes, name_map=name_map)
 
             if self._cancel_requested:

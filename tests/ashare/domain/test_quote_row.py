@@ -73,6 +73,18 @@ def test_market_quote_rows_cache_roundtrip() -> None:
     set_market_quote_rows_cache([])
 
 
+def test_peek_market_quotes_cache_shares_reference_for_quote_row_list() -> None:
+    from vnpy_ashare.quotes.core.quote_rows import peek_market_quotes_cache
+
+    rows = [QuoteRow(symbol="600000", vt_symbol="600000.SSE", last_price=10.0)]
+    set_market_quote_rows_cache(rows)
+    assert peek_market_quotes_cache() is rows
+    copied = get_market_quotes_cache()
+    assert copied is not rows
+    assert copied == rows
+    set_market_quote_rows_cache([])
+
+
 def test_attach_first_time_fields_on_quote_row() -> None:
     row = quote_row_from_mapping({"vt_symbol": "600000.SSE", "symbol": "600000", "last_price": 11.0, "change_pct": 10.0})
     rows = [row]

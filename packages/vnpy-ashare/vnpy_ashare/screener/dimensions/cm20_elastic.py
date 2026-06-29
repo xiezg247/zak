@@ -9,6 +9,10 @@ from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.dimensions.base import DimensionHit
 from vnpy_ashare.screener.hard_filters import row_symbol
 
+_CM20_SWEET_MV_YI = (20.0, 80.0)
+_CM20_MAX_MV_YI = 150.0
+_CM20_MIN_CHANGE = 0.0
+
 
 def is_cm20_row(row: QuoteRowLike) -> bool:
     symbol = row_symbol(row)

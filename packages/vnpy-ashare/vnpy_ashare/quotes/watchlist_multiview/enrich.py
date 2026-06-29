@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Literal
 from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.domain.trading.position import PositionSnapshot
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
-from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
+from vnpy_ashare.quotes.core.quote_rows import peek_market_quotes_cache
 from vnpy_ashare.quotes.market.market_overview_loaders import SectorRankItem, load_sector_ranks
 from vnpy_ashare.quotes.watchlist_multiview.models import WatchlistMultiRow
 from vnpy_ashare.screener.data.screening_context import get_stock_industry_l1_map, get_stock_industry_map
@@ -36,7 +36,7 @@ def enrich_multiview_rows(
     position_cache = position_cache or {}
     sparklines = sparklines or {}
 
-    sectors = load_sector_ranks(get_market_quotes_cache() or [])
+    sectors = load_sector_ranks(peek_market_quotes_cache() or [])
     sector_lookup = _sector_rank_map(sectors)
 
     industries = industry_map

@@ -80,16 +80,16 @@ def test_load_radar_cards_batch_parallel_buckets() -> None:
 
     with (
         patch.object(radar_load, "_load_radar_cards_in_context", side_effect=_fake_load),
-        patch.object(radar_load, "ThreadPoolExecutor") as pool_cls,
+        patch.object(radar_load, "get_io_executor") as get_pool,
         patch.object(radar_load, "as_completed", side_effect=lambda future_map: list(future_map)),
     ):
         mock_pool = MagicMock()
-        pool_cls.return_value.__enter__.return_value = mock_pool
+        get_pool.return_value = mock_pool
         mock_pool.submit.side_effect = _submit
 
         loaded, errors = radar_load.load_radar_cards_batch(items)
 
-    assert pool_cls.called
+    assert get_pool.called
     assert mock_pool.submit.call_count == 3
     assert errors == {}
     assert set(loaded) == {"leader_pick", "outlook_watch", "market_emotion"}

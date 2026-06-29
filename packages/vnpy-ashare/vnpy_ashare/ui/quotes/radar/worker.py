@@ -5,6 +5,7 @@ from __future__ import annotations
 from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.quotes.radar.loaders import RadarCardData, incremental_refresh_radar_card_quotes, load_radar_cards_batch
+from vnpy_ashare.quotes.radar.loaders.cancel import RadarLoadCancelled, bind_radar_load_cancel
 
 
 class RadarCardLoadWorker(QtCore.QThread):
@@ -49,8 +50,9 @@ class RadarCardLoadWorker(QtCore.QThread):
     def run(self) -> None:
         if self._cancelled:
             return
+        reset_cancel = bind_radar_load_cancel(lambda: self._cancelled)
+        data: RadarCardData | None = None
         try:
-            data: RadarCardData | None
             if self._quote_only and isinstance(self._existing_data, RadarCardData):
                 data = incremental_refresh_radar_card_quotes(self._existing_data)
             else:
@@ -69,9 +71,13 @@ class RadarCardLoadWorker(QtCore.QThread):
                 if data is None:
                     self.failed.emit(self._card_id, f"雷达卡片加载失败：{self._card_id}")
                     return
+        except RadarLoadCancelled:
+            return
         except Exception as ex:
             self.failed.emit(self._card_id, str(ex))
             return
+        finally:
+            reset_cancel()
         if self._cancelled or data is None:
             return
         self.finished.emit(self._card_id, data, self._quote_only)
@@ -113,6 +119,7 @@ class RadarGroupLoadWorker(QtCore.QThread):
     def run(self) -> None:
         if self._cancelled:
             return
+        reset_cancel = bind_radar_load_cancel(lambda: self._cancelled)
         try:
             loaded, errors = load_radar_cards_batch(
                 self._items,
@@ -122,9 +129,13 @@ class RadarGroupLoadWorker(QtCore.QThread):
                 limit_ladder_variant=self._limit_ladder_variant,
                 scenario_variant=self._scenario_variant,
             )
+        except RadarLoadCancelled:
+            return
         except Exception as ex:
             self.failed.emit(str(ex))
             return
+        finally:
+            reset_cancel()
         if self._cancelled:
             return
         self.finished.emit(loaded, errors)

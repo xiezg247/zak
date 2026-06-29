@@ -9,7 +9,7 @@ from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.symbols.stock import StockItem, parse_stock_symbol
 from vnpy_ashare.integrations.tickflow.quotes import fetch_quotes_from_tickflow
 from vnpy_ashare.quotes.core.enrich import fill_missing_tushare_factors
-from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
+from vnpy_ashare.quotes.core.quote_rows import peek_market_quotes_cache
 from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore, get_redis_quote_store
 from vnpy_ashare.quotes.core.screening_snapshot_router import load_screening_quote_snapshot
 from vnpy_ashare.quotes.rank.rank_catalog import get_rank_definition
@@ -292,7 +292,7 @@ def _resolve_quote_snapshot_impl(
         pass
 
     try:
-        for row in get_market_quotes_cache():
+        for row in peek_market_quotes_cache():
             vt = str(row.get("vt_symbol") or "").strip()
             sym = str(row.get("symbol") or "").strip()
             if vt == item.vt_symbol or sym == item.symbol:

@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import os
-from concurrent.futures import ThreadPoolExecutor
 
+from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.domain.market.indices import MARKET_INDICES
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.symbols.stock import StockItem
@@ -93,9 +93,8 @@ def fetch_quotes_from_tickflow(
             result.update(_quotes_from_dataframe(df))
         return result
 
-    with ThreadPoolExecutor(max_workers=workers) as pool:
-        for part in pool.map(_fetch_quote_batch, batches):
-            result.update(part)
+    for part in run_parallel_map(batches, _fetch_quote_batch, max_workers=workers):
+        result.update(part)
     return result
 
 

@@ -21,11 +21,21 @@ _lock = threading.Lock()
 _rows: list[QuoteRow] = []
 
 
+def _is_quote_row_list(rows: QuoteRowsLike) -> bool:
+    return isinstance(rows, list) and (not rows or all(isinstance(row, QuoteRow) for row in rows))
+
+
 def set_market_quote_rows_cache(rows: QuoteRowsLike) -> None:
     global _rows
     with _lock:
-        _rows = coerce_quote_rows(rows)
+        _rows = rows if _is_quote_row_list(rows) else coerce_quote_rows(rows)
     on_market_quotes_updated()
+
+
+def peek_market_quotes_cache() -> list[QuoteRow]:
+    """返回缓存行列表引用（只读；调用方不得原地修改）。"""
+    with _lock:
+        return _rows
 
 
 def get_market_quotes_cache() -> list[QuoteRow]:
@@ -79,7 +89,7 @@ def set_market_quotes_cache(items: Sequence[StockItem | Any], quotes: Mapping[st
 def quote_rows_by_vt_symbol(rows: QuoteRowsLike | None = None) -> dict[str, QuoteRow]:
     if rows is None:
         with _lock:
-            source = list(_rows)
+            source: QuoteRowsLike = _rows
     else:
-        source = coerce_quote_rows(rows)
+        source = rows
     return quote_rows_by_vt(source)

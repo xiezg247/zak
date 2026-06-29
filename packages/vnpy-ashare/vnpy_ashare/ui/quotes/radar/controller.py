@@ -270,6 +270,7 @@ class RadarController(QtCore.QObject):
         self._session_timer.stop()
         self._stop_auto_refresh()
         self._cancel_all_workers()
+        self._clear_all_card_loading()
         self._deferred_group_items.clear()
         self._prefetch_siblings.clear()
         self._prefetch_mode = None
@@ -444,6 +445,9 @@ class RadarController(QtCore.QObject):
             self._enqueue_refresh(card_id, force_recompute=True)
 
     def _on_board_mode_changed(self, mode: str) -> None:
+        self._cancel_prefetch_worker()
+        self._prefetch_siblings.clear()
+        self._prefetch_mode = None
         self._sync_resonance_tab_from_board(mode)
         self._start_auto_refresh()
         if self._try_apply_current_group_from_cache():
@@ -453,6 +457,9 @@ class RadarController(QtCore.QObject):
     def _on_board_group_changed(self, mode: str, _group_key: str) -> None:
         if mode != self._board.current_mode():
             return
+        self._cancel_prefetch_worker()
+        self._prefetch_siblings.clear()
+        self._prefetch_mode = None
         self._start_auto_refresh()
         if self._try_apply_current_group_from_cache():
             return
@@ -519,7 +526,7 @@ class RadarController(QtCore.QObject):
             parent=self._page,
         )
         self._card_workers[card_id] = worker
-        worker.finished.connect(self._on_card_loaded)
+        worker.finished.connect(lambda cid, data, quote_only, w=worker: self._on_card_loaded(cid, data, quote_only, worker=w))
         worker.failed.connect(self._on_card_failed)
         worker.finished.connect(lambda _card_id, _data, _quote_only, w=worker: self._release_worker(w))
         worker.failed.connect(lambda _card_id, _msg, w=worker: self._release_worker(w))
@@ -739,6 +746,12 @@ class RadarController(QtCore.QObject):
             if widget is not None:
                 widget.set_loading(loading)
 
+    def _clear_all_card_loading(self) -> None:
+        for spec in list_radar_cards():
+            widget = self._board.card(spec.id)
+            if widget is not None:
+                widget.set_loading(False)
+
     def _start_group_load(
         self,
         items: list[tuple[str, dict[str, object]]],
@@ -774,13 +787,21 @@ class RadarController(QtCore.QObject):
             **self._card_load_variants(),
         )
         self._group_worker = worker
-        worker.finished.connect(self._on_group_loaded)
+        worker.finished.connect(lambda loaded, errors, w=worker: self._on_group_loaded(loaded, errors, worker=w))
         worker.failed.connect(self._on_group_failed)
         worker.finished.connect(lambda _loaded, _errors, w=worker: self._release_group_worker(w))
         worker.failed.connect(lambda _msg, w=worker: self._release_group_worker(w))
         worker.start()
 
-    def _on_group_loaded(self, loaded: dict[str, RadarCardData], errors: dict[str, str]) -> None:
+    def _on_group_loaded(
+        self,
+        loaded: dict[str, RadarCardData],
+        errors: dict[str, str],
+        *,
+        worker: RadarGroupLoadWorker,
+    ) -> None:
+        if self._group_worker is not worker:
+            return
         visible_ids = set(self._board.visible_card_ids_for_current_group())
         self._pending_apply_queue = sorted(
             loaded.items(),
@@ -843,12 +864,20 @@ class RadarController(QtCore.QObject):
             **self._card_load_variants(),
         )
         self._prefetch_worker = worker
-        worker.finished.connect(self._on_prefetch_loaded)
+        worker.finished.connect(lambda loaded, errors, w=worker: self._on_prefetch_loaded(loaded, errors, worker=w))
         worker.failed.connect(lambda _msg, w=worker: self._release_prefetch_worker(w))
         worker.finished.connect(lambda _loaded, _errors, w=worker: self._release_prefetch_worker(w))
         worker.start()
 
-    def _on_prefetch_loaded(self, loaded: dict[str, RadarCardData], errors: dict[str, str]) -> None:
+    def _on_prefetch_loaded(
+        self,
+        loaded: dict[str, RadarCardData],
+        errors: dict[str, str],
+        *,
+        worker: RadarGroupLoadWorker,
+    ) -> None:
+        if self._prefetch_worker is not worker:
+            return
         for card_id, data in loaded.items():
             self._last_payload[card_id] = data
         for card_id in errors:
@@ -883,7 +912,16 @@ class RadarController(QtCore.QObject):
             self._card_workers.pop(card_id, None)
         release_thread(self._retired_workers, worker)
 
-    def _on_card_loaded(self, card_id: str, data: RadarCardData, quote_only: bool = False) -> None:
+    def _on_card_loaded(
+        self,
+        card_id: str,
+        data: RadarCardData,
+        quote_only: bool = False,
+        *,
+        worker: RadarCardLoadWorker | None = None,
+    ) -> None:
+        if worker is not None and self._card_workers.get(card_id) is not worker:
+            return
         if quote_only:
             self._last_payload[card_id] = data
             self._board.apply_quote_update(card_id, data.rows)

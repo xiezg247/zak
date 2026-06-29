@@ -164,5 +164,12 @@ def quote_row_to_dict(row: QuoteRowLike) -> dict[str, Any]:
 
 
 def quote_rows_by_vt(rows: QuoteRowsLike | None = None) -> dict[str, QuoteRow]:
-    source = coerce_quote_rows(rows) if rows is not None else []
-    return {row.vt_symbol.strip(): row for row in source if row.vt_symbol.strip()}
+    if rows is None:
+        return {}
+    result: dict[str, QuoteRow] = {}
+    for row in rows:
+        item = coerce_quote_row(row)
+        key = item.vt_symbol.strip()
+        if key:
+            result[key] = item
+    return result

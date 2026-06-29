@@ -10,7 +10,7 @@ from vnpy_ashare.domain.trading.signal_benchmark import (
     resolve_benchmark_return_pct,
 )
 from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_l1_map, fetch_stock_industry_map
-from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
+from vnpy_ashare.quotes.core.quote_rows import peek_market_quotes_cache
 from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
 from vnpy_ashare.quotes.market.market_overview_loaders import SectorRankItem, load_sector_ranks
 from vnpy_ashare.services.analysis_detail.risk_metrics import fetch_market_sentiment
@@ -53,7 +53,7 @@ def _lookup_industry_l1(ts_code: str) -> str | None:
 
 
 def _load_sector_ranks() -> list[SectorRankItem]:
-    cached = get_market_quotes_cache()
+    cached = peek_market_quotes_cache()
     if cached:
         return load_sector_ranks(cached)
     return []

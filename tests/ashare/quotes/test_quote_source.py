@@ -32,15 +32,15 @@ class QuoteSourceTests(unittest.TestCase):
                 return_value=True,
             ),
             patch(
-                "vnpy_ashare.quotes.market.quote_source.get_market_quotes_cache",
+                "vnpy_ashare.quotes.core.quote_rows.peek_market_quotes_cache",
                 return_value=[{"change_pct": 2.0}],
             ),
             patch(
-                "vnpy_ashare.quotes.market.quote_source.load_market_quote_rows",
-            ) as load_rows,
+                "vnpy_ashare.quotes.market.quote_source.load_screening_quote_snapshot",
+            ) as load_snapshot,
         ):
-            rows, updated_at = load_quote_rows_for_market()
-        load_rows.assert_not_called()
+            rows, updated_at = load_quote_rows_for_market(allow_network=False)
+        load_snapshot.assert_not_called()
         self.assertEqual(len(rows), 1)
         self.assertIsNone(updated_at)
 
@@ -51,11 +51,11 @@ class QuoteSourceTests(unittest.TestCase):
                 return_value=[{"change_pct": 1.0}, {"change_pct": 2.0}],
             ),
             patch(
-                "vnpy_ashare.quotes.market.quote_source.load_market_quote_rows",
-            ) as load_rows,
+                "vnpy_ashare.quotes.market.quote_source.load_intraday_market_snapshot",
+            ) as load_snapshot,
         ):
             rows, updated_at, total, error = resolve_intraday_quote_rows(min_cached_rows=2)
-        load_rows.assert_not_called()
+        load_snapshot.assert_not_called()
         self.assertEqual(total, 2)
         self.assertIsNone(error)
         self.assertIsNone(updated_at)

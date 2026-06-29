@@ -78,6 +78,9 @@ class MarketOverviewController(QtCore.QObject):
         self._session_timer.stop()
         worker = self._worker
         self._worker = None
+        if worker is not None and hasattr(worker, "request_cancel"):
+            worker.request_cancel()
+        self._panel.set_overview_refreshing(False)
         release_thread(self._retired_workers, worker, timeout_ms=0)
 
     def _on_session_tick(self) -> None:

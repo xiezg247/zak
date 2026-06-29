@@ -21,9 +21,20 @@ class MarketOverviewLoadWorker(QtCore.QThread):
         super().__init__(parent)
         self._intraday = intraday
         self._force = force
+        self._cancel_requested = False
+
+    def request_cancel(self) -> None:
+        self._cancel_requested = True
 
     def run(self) -> None:
         try:
-            self.finished.emit(load_market_overview(intraday=self._intraday, force=self._force))
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
+            data = load_market_overview(intraday=self._intraday, force=self._force)
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
+            self.finished.emit(data)
         except Exception as ex:
             self.failed.emit(str(ex))

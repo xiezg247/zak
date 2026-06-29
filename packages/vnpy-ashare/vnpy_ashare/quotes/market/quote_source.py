@@ -54,9 +54,9 @@ def load_quote_rows_for_market(*, allow_network: bool = True, force: bool = Fals
     if not is_ashare_trading_session():
         return quote_rows_from_tushare_fallback()
     if not allow_network and not force:
-        from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
+        from vnpy_ashare.quotes.core.quote_rows import peek_market_quotes_cache
 
-        cached = get_market_quotes_cache()
+        cached = peek_market_quotes_cache()
         if cached:
             return cached, None
         return [], None
@@ -68,9 +68,9 @@ def load_quote_rows_for_market(*, allow_network: bool = True, force: bool = Fals
 
 
 def peek_market_quote_rows(*, min_rows: int = 0) -> QuoteRowsLike | None:
-    from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
+    from vnpy_ashare.quotes.core.quote_rows import peek_market_quotes_cache
 
-    cached = get_market_quotes_cache()
+    cached = peek_market_quotes_cache()
     if cached and len(cached) >= min_rows:
         return cached
     return None

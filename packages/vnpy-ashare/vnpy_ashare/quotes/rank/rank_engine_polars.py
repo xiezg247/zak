@@ -13,7 +13,7 @@ def finalize_rank_catalog_polars(
     tf_symbols: list[str],
     quotes: dict[str, QuoteSnapshot],
     spec: RankDefinition,
-) -> list[str] | None:
+) -> list[str]:
     rows: list[dict[str, float | str]] = []
     sort_col = spec.sort_column or spec.redis_field
     for tf_symbol in tf_symbols:

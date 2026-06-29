@@ -23,6 +23,12 @@ from vnpy_ashare.ui.quotes.workers.quotes_workers import (
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
 
+_WORKER_CANCELLED_MESSAGE = "已取消"
+
+
+def _worker_cancelled(msg: str) -> bool:
+    return msg == _WORKER_CANCELLED_MESSAGE
+
 
 class DataLoaderController:
     """QuotesPage 股票列表、市场榜分页与 A 股 universe 同步。"""
@@ -204,6 +210,11 @@ class DataLoaderController:
             try:
                 if generation != page._load_generation or not page._active:
                     return
+                if _worker_cancelled(msg):
+                    if not quiet:
+                        page._finish_cancellable_task(cancelled_message="加载已取消")
+                        page._hide_market_loading()
+                    return
                 if not quiet:
                     if page._finish_cancellable_task(cancelled_message="加载已取消"):
                         page._hide_market_loading()
@@ -310,6 +321,14 @@ class DataLoaderController:
                 page._market_worker = None
             try:
                 if generation != page._load_generation or not page._active:
+                    return
+                if _worker_cancelled(msg):
+                    if append:
+                        page._market_loading_more = False
+                        page._market_page = max(page._market_page - 1, 0)
+                    elif not quiet:
+                        page._finish_cancellable_task(cancelled_message="加载已取消")
+                        page._hide_market_loading()
                     return
                 if append:
                     page._market_loading_more = False

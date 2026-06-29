@@ -322,6 +322,19 @@ TickFlow → collect_quotes → Redis (~5k HASH + 10× ZSET 全量重建)
 
 **预期**：整体体感 ~2×；collect 与市场刷新明显改善。
 
+### Phase 1b — Hub / 协作式取消 / 少拷贝（衔接）
+
+- [x] 进程级 `MarketSnapshotHub`（`get_process_quote_snapshot` / `publish_market_snapshot`）  
+- [x] 行情 Pub/Sub 清缓存联动情绪周期 / 龙头池 / 雷达卡片失效  
+- [x] 全局 I/O 线程池（`ZAK_GLOBAL_IO_MAX_WORKERS` + `vnpy_common/concurrency/io_pool.py`）  
+- [x] 雷达 / 市场 / 异动带 Worker 协作式取消（`request_cancel` + `bind_radar_load_cancel`）  
+- [x] `wait_worker_release` 释放前统一 `request_cancel`  
+- [x] 行情行缓存 `peek_market_quotes_cache`（热路径零拷贝读；`get_market_quotes_cache` 仍返回防御性副本）  
+- [x] 雷达多 bucket 顺序加载（避免与 `run_parallel_map` 嵌套抢占全局 I/O 池）  
+- [x] 部署拓扑文档（`docs/deployment-profiles.md`：client / leader / 单机）  
+
+**预期**：切 Tab 后后台任务快速退出；全市场行读取少一次 ~5k 列表拷贝。
+
 ### Phase 2 — 列存选股引擎（约 3–5 周）
 
 - [x] Polars 引入（边界：`screener/`、`quotes/rank/`）  

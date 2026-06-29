@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
-
 from vnpy_ashare.data.download_concurrency import radar_board_max_workers, run_parallel_map
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
+from vnpy_ashare.quotes.radar.loaders.cancel import RadarLoadCancelled, raise_if_radar_load_cancelled
 from vnpy_ashare.quotes.radar.loaders.discovery import load_discovery_moneyflow_intraday, load_discovery_volume_surge
 from vnpy_ashare.quotes.radar.radar_card_snapshot_cache import (
     peek_radar_card_snapshot,
@@ -208,6 +207,7 @@ def _load_radar_cards_in_context(
     variants: dict[str, str],
 ) -> tuple[dict[str, RadarCardData], dict[str, str]]:
     """在单一 ScreeningContext 内并行加载多张卡。"""
+    raise_if_radar_load_cancelled()
     if not items:
         return {}, {}
 
@@ -240,6 +240,7 @@ def _load_radar_cards_in_context(
     else:
         _run_batch()
 
+    raise_if_radar_load_cancelled()
     return loaded, errors
 
 
@@ -255,30 +256,32 @@ def load_radar_cards_batch(
 ) -> tuple[dict[str, RadarCardData], dict[str, str]]:
     """批量加载雷达卡片：按上下文类型分组，组内共享快照并并行计算。"""
     card_ids = ",".join(card_id for card_id, _ in items)
-    with tracer.trace(f"radar.load_cards[{card_ids}]"):
-        variants = _radar_load_variants(
-            screen_task_variant=screen_task_variant,
-            sector_variant=sector_variant,
-            sector_flow_hot_variant=sector_flow_hot_variant,
-            leader_pick_variant=leader_pick_variant,
-            limit_ladder_variant=limit_ladder_variant,
-            scenario_variant=scenario_variant,
-        )
-        buckets: dict[str, list[tuple[str, dict[str, object]]]] = {"full": [], "quote": [], "none": []}
-        for item in items:
-            card_id, _kwargs = item
-            if card_id in RADAR_FULL_CONTEXT_CARD_IDS:
-                buckets["full"].append(item)
-            elif card_id in RADAR_QUOTE_CONTEXT_CARD_IDS:
-                buckets["quote"].append(item)
-            else:
-                buckets["none"].append(item)
+    try:
+        with tracer.trace(f"radar.load_cards[{card_ids}]"):
+            raise_if_radar_load_cancelled()
+            variants = _radar_load_variants(
+                screen_task_variant=screen_task_variant,
+                sector_variant=sector_variant,
+                sector_flow_hot_variant=sector_flow_hot_variant,
+                leader_pick_variant=leader_pick_variant,
+                limit_ladder_variant=limit_ladder_variant,
+                scenario_variant=scenario_variant,
+            )
+            buckets: dict[str, list[tuple[str, dict[str, object]]]] = {"full": [], "quote": [], "none": []}
+            for item in items:
+                card_id, _kwargs = item
+                if card_id in RADAR_FULL_CONTEXT_CARD_IDS:
+                    buckets["full"].append(item)
+                elif card_id in RADAR_QUOTE_CONTEXT_CARD_IDS:
+                    buckets["quote"].append(item)
+                else:
+                    buckets["none"].append(item)
 
-        loaded: dict[str, RadarCardData] = {}
-        errors: dict[str, str] = {}
-        bucket_modes = [(mode, buckets[mode]) for mode in ("full", "quote", "none") if buckets[mode]]
-        if len(bucket_modes) <= 1:
+            loaded: dict[str, RadarCardData] = {}
+            errors: dict[str, str] = {}
+            bucket_modes = [(mode, buckets[mode]) for mode in ("full", "quote", "none") if buckets[mode]]
             for mode, batch_items in bucket_modes:
+                raise_if_radar_load_cancelled()
                 batch_loaded, batch_errors = _load_radar_cards_in_context(
                     batch_items,
                     context_mode=mode,
@@ -286,22 +289,9 @@ def load_radar_cards_batch(
                 )
                 loaded.update(batch_loaded)
                 errors.update(batch_errors)
-        else:
-            with ThreadPoolExecutor(max_workers=len(bucket_modes)) as pool:
-                future_map = {
-                    pool.submit(
-                        _load_radar_cards_in_context,
-                        batch_items,
-                        context_mode=mode,
-                        variants=variants,
-                    ): mode
-                    for mode, batch_items in bucket_modes
-                }
-                for future in as_completed(future_map):
-                    batch_loaded, batch_errors = future.result()
-                    loaded.update(batch_loaded)
-                    errors.update(batch_errors)
-    return loaded, errors
+            return loaded, errors
+    except RadarLoadCancelled:
+        return {}, {}
 
 
 def load_radar_card(

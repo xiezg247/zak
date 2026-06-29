@@ -110,17 +110,18 @@ def run_recipe_object(
             base["source"] = "recipe"
             merged_payloads.append(base)
 
-        merged_rows = enrich_recipe_rows(merged_payloads)
+        enriched_rows = enrich_recipe_rows(merged_payloads)
         from vnpy_ashare.screener.engine.recipe_sort import sort_recipe_payloads_polars
 
-        merged_rows = sort_recipe_payloads_polars(merged_rows)
-        filtered_rows = apply_recipe_filters(merged_rows)
+        sorted_payloads = sort_recipe_payloads_polars([row.to_dict() for row in enriched_rows])
+        filtered_payloads = apply_recipe_filters(sorted_payloads)
+        merged_rows = [ScreenerResultRow.from_mapping(row) for row in filtered_payloads]
         use_sentiment = sentiment_gate_enabled() and (
             recipe.trigger_kind == "intraday"
             or any(spec.dimension_id == "sentiment_gate" for spec in recipe.dimensions)
             or recipe.recipe_id == RECIPE_EMOTION_GATE_ONLY
         )
-        gated_rows, _sentiment_meta = apply_sentiment_modulation(filtered_rows, enabled=use_sentiment)
+        gated_rows, _sentiment_meta = apply_sentiment_modulation(merged_rows, enabled=use_sentiment)
 
         gate_meta: dict[str, Any] | None = None
         if recipe.recipe_id == RECIPE_EMOTION_GATE_ONLY:

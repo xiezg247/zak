@@ -41,6 +41,8 @@ def wait_worker_release(page: Any, attr: str, *, timeout_ms: int = 3000) -> None
     if worker is None:
         return
     setattr(page, attr, None)
+    if hasattr(worker, "request_cancel"):
+        worker.request_cancel()
     release_thread(page._retired_workers, worker, timeout_ms=timeout_ms)
 
 

@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import os
+import threading
 import time
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import as_completed
 from contextvars import copy_context
 from typing import TypeVar
 
@@ -50,6 +51,7 @@ from vnpy_ashare.config.constants.concurrency import (
     ENV_TUSHARE_ANCHOR_PREFETCH_MAX_WORKERS,
     ENV_TUSHARE_PREFETCH_STAGE_MAX_WORKERS,
 )
+from vnpy_common.concurrency.io_pool import get_io_executor
 
 T = TypeVar("T")
 R = TypeVar("R")
@@ -269,14 +271,24 @@ def run_parallel_map(
         return results
 
     ordered: list[R | _Unset] = [_UNSET] * len(items)
-    with ThreadPoolExecutor(max_workers=workers) as pool:
-        future_map = {pool.submit(copy_context().run, run_with_retry, lambda item=item: worker(item)): (index, item) for index, item in enumerate(items)}
-        for future in as_completed(future_map):
-            index, item = future_map[future]
-            result = future.result()
-            ordered[index] = result
-            if on_complete is not None:
-                on_complete(index, item, result)
+    pool = get_io_executor()
+    sem = threading.Semaphore(workers)
+
+    def _run_item(item: T) -> R:
+        with sem:
+
+            def _invoke() -> R:
+                return worker(item)
+
+            return run_with_retry(_invoke)
+
+    future_map = {pool.submit(copy_context().run, _run_item, item): (index, item) for index, item in enumerate(items)}
+    for future in as_completed(future_map):
+        index, item = future_map[future]
+        result = future.result()
+        ordered[index] = result
+        if on_complete is not None:
+            on_complete(index, item, result)
     if _UNSET in ordered:
         raise RuntimeError("parallel map missing results")
     return ordered  # type: ignore[return-value]
