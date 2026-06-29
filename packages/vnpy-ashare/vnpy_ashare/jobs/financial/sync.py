@@ -8,7 +8,7 @@ from vnpy_ashare.services.financial import sync_watchlist_financials
 
 
 def sync_watchlist_financials_job(*, force: bool = False, years: int = 5) -> JobResult:
-    """定时/CLI：同步自选池三表财报到 zak.db。"""
+    """定时/CLI：同步自选池三表财报到 PG `app` schema。"""
     try:
         ok, skipped, messages = sync_watchlist_financials(years=years, force=force)
     except TushareNotConfiguredError as ex:

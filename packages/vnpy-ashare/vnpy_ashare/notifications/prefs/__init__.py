@@ -1,1 +1,1 @@
-"""通知 QSettings 偏好。"""
+"""通知偏好（user_preferences）。"""

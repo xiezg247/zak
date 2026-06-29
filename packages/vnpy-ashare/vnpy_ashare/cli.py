@@ -20,12 +20,16 @@ def bootstrap_runtime() -> None:
         sys.path.insert(0, str(root))
     os.chdir(root)
     load_dotenv(ENV_FILE)
+    from vnpy_common.perf_profile import apply_perf_profile_from_env
+
+    apply_perf_profile_from_env()
 
 
 bootstrap_runtime()
 
 
 import vnpy_ashare.commands.data as data_commands
+import vnpy_ashare.commands.db as db_commands
 import vnpy_ashare.commands.diagnose as diagnose_commands
 import vnpy_ashare.commands.jobs as jobs_commands
 import vnpy_ashare.commands.meta as meta_commands
@@ -35,6 +39,7 @@ import vnpy_ashare.commands.recipe as recipe_commands
 import vnpy_ashare.commands.screener as screener_commands
 import vnpy_ashare.commands.skills as skills_commands
 import vnpy_ashare.commands.tools as tools_commands
+import vnpy_ashare.commands.users as users_commands
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -42,6 +47,7 @@ def _build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     jobs_commands.register(subparsers)
+    db_commands.register(subparsers)
     screener_commands.register(subparsers)
     recipe_commands.register(subparsers)
     data_commands.register(subparsers)
@@ -51,6 +57,7 @@ def _build_parser() -> argparse.ArgumentParser:
     tools_commands.register(subparsers)
     skills_commands.register(subparsers)
     diagnose_commands.register(subparsers)
+    users_commands.register(subparsers)
 
     return parser
 

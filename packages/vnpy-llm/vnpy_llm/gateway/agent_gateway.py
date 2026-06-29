@@ -18,7 +18,7 @@ from vnpy_common.ai.access import (
 from vnpy_common.ai.protocol import AiContextData
 from vnpy_llm.chat.client import LlmClientError, StreamCancelled
 from vnpy_llm.chat.session_surface import SessionSurfaceStore, Surface
-from vnpy_llm.chat.store import ChatMessage, ChatSession, ChatStore
+from vnpy_llm.chat.store import ChatMessage, ChatRepository, ChatSession
 from vnpy_llm.config.settings import LlmConfig, load_llm_config
 from vnpy_llm.gateway.agent_runtime import AgentRuntime
 from vnpy_llm.gateway.context_assembler import ContextAssembler
@@ -69,7 +69,7 @@ class AgentGateway:
         return self._sessions
 
     @property
-    def store(self) -> ChatStore:
+    def store(self) -> ChatRepository:
         return self._sessions.store
 
     @property

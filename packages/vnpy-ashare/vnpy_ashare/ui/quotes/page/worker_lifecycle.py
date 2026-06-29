@@ -16,6 +16,7 @@ _CANCEL_WORKER_ATTRS = (
     "_download_worker",
     "_batch_fill_worker",
     "_batch_gap_fill_worker",
+    "_quotes_worker",
 )
 
 _RELEASE_WORKER_ATTRS = (
@@ -40,6 +41,8 @@ def wait_worker_release(page: Any, attr: str, *, timeout_ms: int = 3000) -> None
     if worker is None:
         return
     setattr(page, attr, None)
+    if hasattr(worker, "request_cancel"):
+        worker.request_cancel()
     release_thread(page._retired_workers, worker, timeout_ms=timeout_ms)
 
 
@@ -64,5 +67,9 @@ def teardown_quotes_page_workers(page: Any) -> None:
     """页面 deactivate 时取消并释放后台 Worker。"""
     cancel_quotes_page_workers(page)
     page._task_guard.end()
-    page._set_busy(False, lock_table=page._task_lock_table)
+    page._set_busy(
+        False,
+        lock_table=page._task_lock_table,
+        lock_search=getattr(page, "_task_lock_search", True),
+    )
     release_quotes_page_workers(page, timeout_ms=0)

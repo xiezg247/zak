@@ -18,6 +18,7 @@ from vnpy_ashare.ui.quotes.features.watchlist.toolbar_policy import (
     watchlist_toolbar_policy,
 )
 from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_chip import EmotionCycleChip
+from vnpy_ashare.ui.quotes.page.roles import is_strategy_monitor_page
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist.pool_host import WatchlistPoolHost
 from vnpy_ashare.ui.styles.vnpy_page import apply_toolbar_combo_style
@@ -41,23 +42,12 @@ def append_watchlist_pool_toolbar_actions(
     more_actions: list[tuple[str, QtWidgets.QPushButton]],
     *,
     policy: WatchlistToolbarPolicy | None,
-    show_move_in_toolbar: bool,
 ) -> None:
-    """自选池相关：加入/移出/排序/下载。"""
+    """自选池相关：加入/移出/下载。"""
     if page.config.show_add_watchlist_button:
         toolbar.addWidget(page.add_watchlist_button)
     if page.config.show_remove_watchlist_button:
-        if policy is not None:
-            page.remove_watchlist_button.hide()
-        else:
-            toolbar.addWidget(page.remove_watchlist_button)
-    if show_move_in_toolbar:
-        more_actions.extend(
-            [
-                ("上移", page.move_watchlist_up_button),
-                ("下移", page.move_watchlist_down_button),
-            ]
-        )
+        toolbar.addWidget(page.remove_watchlist_button)
     if page.config.show_download_button and policy is None:
         toolbar.addWidget(page.download_button)
 
@@ -72,6 +62,9 @@ def append_watchlist_strategy_toolbar_actions(
     show_diagnose_in_toolbar: bool,
 ) -> None:
     """信号/持仓/笔记/诊断等自选页策略区动作。"""
+    strategy_page = is_strategy_monitor_page(page.page_name)
+    show_signal_toolbar = page.config.show_watchlist_signals and not strategy_page
+    show_emotion_toolbar = (page.config.show_watchlist_signals or page.config.show_watchlist_positions) and not strategy_page
     if show_backtest_in_toolbar:
         toolbar.addWidget(page.backtest_button)
     if page.config.show_batch_backtest_button:
@@ -79,15 +72,15 @@ def append_watchlist_strategy_toolbar_actions(
     has_strategy_workspace = policy is not None and (page.config.show_watchlist_signals or page.config.show_watchlist_positions)
     if has_strategy_workspace:
         toolbar.addWidget(create_strategy_workspace_toolbar(page))
-        if page.config.show_watchlist_signals or page.config.show_watchlist_positions:
+        if show_emotion_toolbar:
             parent = as_qwidget(page)
             page.emotion_cycle_chip = EmotionCycleChip(parent)
             toolbar.addWidget(page.emotion_cycle_chip)
         append_strategy_workspace_more_actions(page, more_actions)
     else:
-        if page.config.show_watchlist_signals:
+        if show_signal_toolbar:
             toolbar.addWidget(page.add_signal_panel_button)
-        if page.config.show_watchlist_signals or page.config.show_watchlist_positions:
+        if show_emotion_toolbar:
             parent = as_qwidget(page)
             page.emotion_cycle_chip = EmotionCycleChip(parent)
             toolbar.addWidget(page.emotion_cycle_chip)

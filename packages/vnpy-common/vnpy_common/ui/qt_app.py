@@ -47,9 +47,7 @@ def create_zak_qapp(app_name: str = "zak") -> QtWidgets.QApplication:
 
     def threading_excepthook(args: threading.ExceptHookArgs) -> None:
         if args.exc_value and args.exc_traceback:
-            logger.opt(exception=(args.exc_type, args.exc_value, args.exc_traceback)).critical(
-                "Background thread exception"
-            )
+            logger.opt(exception=(args.exc_type, args.exc_value, args.exc_traceback)).critical("Background thread exception")
             sys.__excepthook__(args.exc_type, args.exc_value, args.exc_traceback)
         msg = "".join(traceback.format_exception(args.exc_type, args.exc_value, args.exc_traceback))
         exception_widget.signal.emit(msg)

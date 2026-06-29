@@ -4,30 +4,25 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_common.paths import QSETTINGS_ORG
+from vnpy_ashare.config.preferences._settings import (
+    coerce_settings_bool,
+    read_setting_value,
+    write_setting_value,
+)
 from vnpy_common.ui.theme.manager import theme_manager
-
-_SETTINGS_ORG = QSETTINGS_ORG
-_SETTINGS_APP = "screener_ui"
 
 
 def _settings_key(section_id: str) -> str:
-    return f"config_section_{section_id}_expanded"
+    return f"screener/config_section_{section_id}_expanded"
 
 
 def load_config_section_expanded(section_id: str, default: bool) -> bool:
-    settings = QtCore.QSettings(_SETTINGS_ORG, _SETTINGS_APP)
-    value = settings.value(_settings_key(section_id))
-    if value is None:
-        return default
-    if isinstance(value, str):
-        return value.lower() in ("1", "true", "yes")
-    return bool(value)
+    raw = read_setting_value(_settings_key(section_id), default)
+    return coerce_settings_bool(raw, default=default)
 
 
 def save_config_section_expanded(section_id: str, expanded: bool) -> None:
-    settings = QtCore.QSettings(_SETTINGS_ORG, _SETTINGS_APP)
-    settings.setValue(_settings_key(section_id), expanded)
+    write_setting_value(_settings_key(section_id), expanded)
 
 
 class ScreenerConfigSection(QtWidgets.QWidget):

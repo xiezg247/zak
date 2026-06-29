@@ -14,6 +14,10 @@ from vnpy_ashare.quotes.radar.loaders.rows import (
     radar_source_payload,
     row_from_dict,
 )
+from vnpy_ashare.quotes.radar.loaders.scheduled_intraday import (
+    peek_fresh_intraday_screen_run,
+    volume_hits_from_intraday_run,
+)
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
 from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, merge_row_quotes
 from vnpy_ashare.quotes.radar.radar_pool import name_map_for_symbols
@@ -138,8 +142,46 @@ def volume_liquidity_proxy(pool_size: int, total: int):
     return hits, snapshot.total
 
 
+def _volume_discovery_metric(row: dict[str, Any], hit) -> tuple[str, str, str, str]:
+    if hit.dimension_id == "volume_ratio":
+        merged = merge_row_quotes(row)
+        ratio = float(merged.get("volume_ratio") or row.get("volume_ratio") or 0)
+        change = float_or_none(merged.get("change_pct"))
+        return "量比", f"{ratio:.2f}", "涨幅", format_pct(change)
+    return liquidity_metric(row)
+
+
 def load_discovery_volume_surge(spec: RadarCardSpec) -> RadarCardData:
     pool_size = discovery_pool_size(spec.top_n)
+    intraday_run = peek_fresh_intraday_screen_run()
+    if intraday_run is not None:
+        hits, total = volume_hits_from_intraday_run(intraday_run, pool_size)
+        if hits:
+            subtitle_suffix = build_volume_discovery_subtitle(hits)
+            data = discovery_hits_card(
+                spec,
+                hits,
+                total,
+                metric_builder=_volume_discovery_metric,
+                empty_no_data="暂无行情数据，请先采集行情或打开「市场」页。",
+            )
+            if data.rows:
+                subtitle = data.subtitle + subtitle_suffix if subtitle_suffix else data.subtitle
+                subtitle = f"定时快照 · {subtitle}" if subtitle else "定时快照"
+                return RadarCardData(
+                    card_id=data.card_id,
+                    title=data.title,
+                    subtitle=subtitle,
+                    rows=data.rows,
+                    empty_message=data.empty_message,
+                    updated_at=intraday_run.created_at,
+                    run_id=intraday_run.id,
+                    detail_page_key="auto_screener",
+                    total_count=data.total_count,
+                    ai_hint=data.ai_hint,
+                    sector_names=data.sector_names,
+                )
+
     hits, total = run_volume_surge(pool_size, weight=1.0)
 
     if volume_surge_needs_ratio_fallback(hits):
@@ -151,20 +193,12 @@ def load_discovery_volume_surge(spec: RadarCardSpec) -> RadarCardData:
     if not hits and total > 0:
         hits, total = volume_liquidity_proxy(pool_size, total)
 
-    def _volume_metric(row: dict[str, Any], hit) -> tuple[str, str, str, str]:
-        if hit.dimension_id == "volume_ratio":
-            merged = merge_row_quotes(row)
-            ratio = float(merged.get("volume_ratio") or row.get("volume_ratio") or 0)
-            change = float_or_none(merged.get("change_pct"))
-            return "量比", f"{ratio:.2f}", "涨幅", format_pct(change)
-        return liquidity_metric(row)
-
     subtitle_suffix = build_volume_discovery_subtitle(hits)
     data = discovery_hits_card(
         spec,
         hits,
         total,
-        metric_builder=_volume_metric,
+        metric_builder=_volume_discovery_metric,
         empty_no_data="暂无行情数据，请先采集行情或打开「市场」页。",
     )
     if data.rows and subtitle_suffix:

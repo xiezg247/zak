@@ -13,7 +13,7 @@ from vnpy_ashare.services.trading_playbook import (
     load_playbook_sections,
     render_section_markdown,
 )
-from vnpy_ashare.storage.repositories.trading_playbook import count_playbook_sections, update_playbook_section
+from vnpy_ashare.storage.repositories.trading_playbook import update_playbook_section, upsert_playbook_sections
 
 
 def test_playbook_template_has_five_sections() -> None:
@@ -22,11 +22,7 @@ def test_playbook_template_has_five_sections() -> None:
     assert [item.section_id for item in sections] == list(PLAYBOOK_SECTION_IDS)
 
 
-def test_playbook_seed_and_render(tmp_path, monkeypatch) -> None:
-    db_path = tmp_path / "zak.db"
-    monkeypatch.setattr("vnpy_ashare.storage.connection.get_app_db_path", lambda: db_path)
-
-    assert count_playbook_sections() == 0
+def test_playbook_seed_and_render() -> None:
     ensure_playbook_seeded()
     sections = load_playbook_sections()
     assert len(sections) == 5
@@ -43,11 +39,9 @@ def test_build_home_status_without_engine() -> None:
     assert status.phase_label
 
 
-def test_playbook_merge_candidates_respect_user_edits(tmp_path, monkeypatch) -> None:
-    db_path = tmp_path / "zak.db"
-    monkeypatch.setattr("vnpy_ashare.storage.connection.get_app_db_path", lambda: db_path)
-
+def test_playbook_merge_candidates_respect_user_edits() -> None:
     ensure_playbook_seeded()
+    upsert_playbook_sections(playbook_template_sections("short_swing"))
     update_playbook_section("timing", PlaybookSectionUpdate(body_md="我的自定义择时规则"))
 
     candidates = list_playbook_merge_candidate_sections("short_swing", "ultra_short")

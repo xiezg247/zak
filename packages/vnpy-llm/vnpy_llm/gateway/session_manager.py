@@ -8,7 +8,7 @@ from pydantic import Field
 
 from vnpy_common.domain.base import FrozenModel
 from vnpy_llm.chat.session_surface import SessionSurfaceStore, Surface
-from vnpy_llm.chat.store import ChatMessage, ChatSession, ChatStore
+from vnpy_llm.chat.store import ChatMessage, ChatRepository, ChatSession
 
 SessionNotify = Callable[["SessionNotification"], None]
 
@@ -24,16 +24,16 @@ class SessionNotification(FrozenModel):
 
 
 class SessionManager:
-    """ChatStore + SessionSurfaceStore 的统一会话控制。"""
+    """ChatRepository + SessionSurfaceStore 的统一会话控制。"""
 
     def __init__(
         self,
         *,
-        store: ChatStore | None = None,
+        store: ChatRepository | None = None,
         surface_store: SessionSurfaceStore | None = None,
         on_notify: SessionNotify | None = None,
     ) -> None:
-        self.store = store or ChatStore()
+        self.store = store or ChatRepository()
         self._surface_store = surface_store or SessionSurfaceStore()
         self._on_notify = on_notify
         self._active_surface: Surface = "assistant"

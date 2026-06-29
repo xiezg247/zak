@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.data.bar_access import load_universe_page, load_universe_rows, load_universe_slice, search_universe
@@ -14,6 +16,8 @@ from vnpy_ashare.quotes.rank.rank_scope import (
     load_watchlist_rank_catalog,
 )
 from vnpy_ashare.ui.quotes.workers.quotes_workers.models import MarketFullResult, MarketPageResult
+
+logger = logging.getLogger(__name__)
 
 
 class MarketPageLoadWorker(QtCore.QThread):
@@ -60,6 +64,9 @@ class MarketPageLoadWorker(QtCore.QThread):
                     offset=offset,
                     board=self.board,
                 )
+                if self._cancel_requested:
+                    self.failed.emit("已取消")
+                    return
                 items = [StockItem(symbol=symbol, exchange=exchange, name=name) for symbol, exchange, name in rows]
                 quotes = provider.get_quotes(items)
                 mode = "search"
@@ -69,6 +76,9 @@ class MarketPageLoadWorker(QtCore.QThread):
                     self.page_size,
                     rank_id=self.rank_id,
                 )
+                if self._cancel_requested:
+                    self.failed.emit("已取消")
+                    return
                 mode = "rank"
             else:
                 if self.cached_total is not None:
@@ -84,6 +94,9 @@ class MarketPageLoadWorker(QtCore.QThread):
                         limit=self.page_size,
                         board=self.board,
                     )
+                if self._cancel_requested:
+                    self.failed.emit("已取消")
+                    return
                 items = [StockItem(symbol=symbol, exchange=exchange, name=name) for symbol, exchange, name in rows]
                 quotes = provider.get_quotes(items)
                 mode = "list"
@@ -104,6 +117,13 @@ class MarketPageLoadWorker(QtCore.QThread):
                 )
             )
         except Exception as ex:
+            logger.exception(
+                "市场页分页加载失败 rank_id=%s board=%s page=%s keyword=%r",
+                self.rank_id,
+                self.board,
+                self.page,
+                self.keyword,
+            )
             self.failed.emit(str(ex))
 
 
@@ -134,6 +154,9 @@ class MarketFullLoadWorker(QtCore.QThread):
 
             if spec.scope == "watchlist":
                 tf_symbols, quotes = load_watchlist_rank_catalog(store, spec)
+                if self._cancel_requested:
+                    self.failed.emit("已取消")
+                    return
                 items = build_stock_items_from_rank_symbols(tf_symbols, quotes, name_map=name_map)
             else:
                 tf_symbols, quotes = load_market_rank_catalog(
@@ -141,6 +164,9 @@ class MarketFullLoadWorker(QtCore.QThread):
                     spec,
                     universe_quotes_loader=provider.get_quotes,
                 )
+                if self._cancel_requested:
+                    self.failed.emit("已取消")
+                    return
                 items = build_stock_items_from_rank_symbols(tf_symbols, quotes, name_map=name_map)
 
             if self._cancel_requested:
@@ -154,4 +180,5 @@ class MarketFullLoadWorker(QtCore.QThread):
                 )
             )
         except Exception as ex:
+            logger.exception("市场页全量榜单加载失败 rank_id=%s", self.rank_id)
             self.failed.emit(str(ex))

@@ -134,19 +134,43 @@ QTableView#BatchCompareTable QHeaderView::section {{
 }}
 QTableWidget#MarketTable::item:selected,
 QTableView#MarketTable::item:selected,
+QTableWidget#MarketTable::item:selected:active,
+QTableView#MarketTable::item:selected:active,
+QTableWidget#MarketTable::item:selected:!active,
+QTableView#MarketTable::item:selected:!active,
 QTableWidget#ScreenerResultsTable::item:selected,
 QTableView#ScreenerResultsTable::item:selected,
+QTableWidget#ScreenerResultsTable::item:selected:active,
+QTableView#ScreenerResultsTable::item:selected:active,
+QTableWidget#ScreenerResultsTable::item:selected:!active,
+QTableView#ScreenerResultsTable::item:selected:!active,
 QTableWidget#BatchCompareTable::item:selected,
-QTableView#BatchCompareTable::item:selected {{
+QTableView#BatchCompareTable::item:selected,
+QTableWidget#BatchCompareTable::item:selected:active,
+QTableView#BatchCompareTable::item:selected:active,
+QTableWidget#BatchCompareTable::item:selected:!active,
+QTableView#BatchCompareTable::item:selected:!active {{
     background-color: {t.table_selected};
     color: {t.text_primary};
 }}
 QTableWidget#MarketTable::item:alternate:selected,
 QTableView#MarketTable::item:alternate:selected,
+QTableWidget#MarketTable::item:alternate:selected:active,
+QTableView#MarketTable::item:alternate:selected:active,
+QTableWidget#MarketTable::item:alternate:selected:!active,
+QTableView#MarketTable::item:alternate:selected:!active,
 QTableWidget#ScreenerResultsTable::item:alternate:selected,
 QTableView#ScreenerResultsTable::item:alternate:selected,
+QTableWidget#ScreenerResultsTable::item:alternate:selected:active,
+QTableView#ScreenerResultsTable::item:alternate:selected:active,
+QTableWidget#ScreenerResultsTable::item:alternate:selected:!active,
+QTableView#ScreenerResultsTable::item:alternate:selected:!active,
 QTableWidget#BatchCompareTable::item:alternate:selected,
-QTableView#BatchCompareTable::item:alternate:selected {{
+QTableView#BatchCompareTable::item:alternate:selected,
+QTableWidget#BatchCompareTable::item:alternate:selected:active,
+QTableView#BatchCompareTable::item:alternate:selected:active,
+QTableWidget#BatchCompareTable::item:alternate:selected:!active,
+QTableView#BatchCompareTable::item:alternate:selected:!active {{
     background-color: {t.table_selected};
     color: {t.text_primary};
 }}

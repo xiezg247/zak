@@ -8,14 +8,18 @@ from vnpy_ashare.jobs.feed.sync_bilibili import BILIBILI_SYNC_INTERVAL_SECONDS
 
 COLLECT_QUOTES_JOB_ID = "collect_quotes"
 COLLECT_QUOTES_INTERVAL_SECONDS = 5
+ENRICH_MARKET_QUOTES_JOB_ID = "enrich_market_quotes"
+ENRICH_MARKET_QUOTES_INTERVAL_SECONDS = 60
 
 MANUAL_FORCE_JOB_IDS = frozenset(
     {
         COLLECT_QUOTES_JOB_ID,
+        ENRICH_MARKET_QUOTES_JOB_ID,
         "screen_intraday",
         "screen_post_close",
         "scan_horizon_outlook",
         "warm_watchlist_strategy_cache",
+        "warm_radar_card_snapshots",
         "sync_bilibili_feed",
     },
 )
@@ -45,9 +49,16 @@ JOB_SPECS: tuple[JobSpec, ...] = (
         config_attr="collect_quotes",
     ),
     JobSpec(
+        job_id=ENRICH_MARKET_QUOTES_JOB_ID,
+        name="行情因子 enrich",
+        description="异步合并 Tushare 量比/主力/连板等因子到 Redis（需 ZAK_COLLECT_DEFER_ENRICH=1）",
+        cli_description="异步 enrich 全市场行情 Tushare 因子",
+        config_attr="enrich_market_quotes",
+    ),
+    JobSpec(
         job_id="sync_universe",
         name="同步 A 股列表",
-        description="从 TickFlow 更新全市场标的到本地 SQLite",
+        description="从 TickFlow 更新全市场标的到 PostgreSQL app.universe",
         config_attr="sync_universe",
     ),
     JobSpec(
@@ -60,7 +71,7 @@ JOB_SPECS: tuple[JobSpec, ...] = (
     JobSpec(
         job_id="sync_trade_calendar",
         name="同步交易日历",
-        description="从 Tushare 更新 A 股交易日历到本地 SQLite",
+        description="从 Tushare 更新 A 股交易日历到 PostgreSQL app.trade_calendar",
         config_attr="sync_trade_calendar",
     ),
     JobSpec(
@@ -168,24 +179,38 @@ JOB_SPECS: tuple[JobSpec, ...] = (
         config_attr="scan_horizon_outlook",
     ),
     JobSpec(
+        job_id="warm_radar_card_snapshots",
+        name="雷达卡片预热",
+        description="交易时段批量重算雷达统计/发现重卡并写入本地快照，供 UI 冷读",
+        cli_description="重算雷达统计/发现卡片并写入本地快照",
+        config_attr="warm_radar_card_snapshots",
+    ),
+    JobSpec(
         job_id="sync_bilibili_feed",
         name="B站订阅同步",
         description="拉取已订阅 UP 主的最新视频与动态，写入信息流",
         cli_description="拉取已订阅 UP 主视频与动态写入信息流",
         config_attr="sync_bilibili_feed",
     ),
+    JobSpec(
+        job_id="purge_stale_cache",
+        name="清理过期缓存",
+        description="删除 cache schema 中过期 LLM/雷达 hint 与过旧自选策略磁盘缓存",
+        cli_description="清理 cache schema 过期行（可重建缓存）",
+        config_attr="purge_stale_cache",
+    ),
 )
 
 JOBS_BY_ID: dict[str, JobSpec] = {spec.job_id: spec for spec in JOB_SPECS}
 
-JOB_CATALOG: dict[str, tuple[str, str]] = {
-    spec.job_id: (spec.name, spec.cli_text) for spec in JOB_SPECS
-}
+JOB_CATALOG: dict[str, tuple[str, str]] = {spec.job_id: (spec.name, spec.cli_text) for spec in JOB_SPECS}
 
 __all__ = [
     "BILIBILI_SYNC_INTERVAL_SECONDS",
     "COLLECT_QUOTES_INTERVAL_SECONDS",
     "COLLECT_QUOTES_JOB_ID",
+    "ENRICH_MARKET_QUOTES_INTERVAL_SECONDS",
+    "ENRICH_MARKET_QUOTES_JOB_ID",
     "JOB_CATALOG",
     "JOBS_BY_ID",
     "JOB_SPECS",

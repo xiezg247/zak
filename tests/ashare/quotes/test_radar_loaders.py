@@ -2,8 +2,7 @@
 
 import pytest
 
-from vnpy_ashare.quotes.radar.radar_catalog import RADAR_CARD_BY_ID
-from vnpy_ashare.quotes.radar.radar_loaders import (
+from vnpy_ashare.quotes.radar.loaders import (
     RadarCardData,
     RadarRow,
     build_radar_resonance_list,
@@ -14,6 +13,7 @@ from vnpy_ashare.quotes.radar.radar_loaders import (
     load_radar_card,
     load_screen_task,
 )
+from vnpy_ashare.quotes.radar.radar_catalog import RADAR_CARD_BY_ID
 
 
 def _sample_row(vt_symbol: str, *, name: str = "测试") -> RadarRow:
@@ -204,6 +204,7 @@ def test_enrich_radar_rows_from_screening_snapshot(monkeypatch) -> None:
     from vnpy_ashare.quotes.radar.radar_models import enrich_radar_rows
 
     monkeypatch.setattr("vnpy_ashare.quotes.radar.radar_models.quote_map", lambda: {})
+    monkeypatch.setattr("vnpy_ashare.quotes.radar.radar_models.is_ashare_trading_session", lambda: False)
     monkeypatch.setattr(
         "vnpy_ashare.quotes.radar.radar_models.load_screening_quote_snapshot",
         lambda: SimpleNamespace(
@@ -245,7 +246,7 @@ def test_incremental_refresh_radar_card_quotes(monkeypatch) -> None:
         rows=(original_row,),
     )
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar.loaders.load.enrich_radar_rows",
+        "vnpy_ashare.quotes.radar.radar_models.refresh_radar_rows_live_quotes",
         lambda rows: tuple(
             RadarRow(
                 vt_symbol=row.vt_symbol,
@@ -260,10 +261,6 @@ def test_incremental_refresh_radar_card_quotes(monkeypatch) -> None:
             )
             for row in rows
         ),
-    )
-    monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar.loaders.load.preload_screening_context_quotes",
-        lambda _ctx: None,
     )
     refreshed = incremental_refresh_radar_card_quotes(data)
     assert refreshed.subtitle == "Top 8"

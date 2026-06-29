@@ -2,36 +2,18 @@
 
 from __future__ import annotations
 
-import tempfile
 import unittest
 from datetime import datetime, timedelta
-from pathlib import Path
 from unittest.mock import patch
 
+from tests.ashare.pg_unittest import PgAppStorageTestCase
 from vnpy_ashare.services.financial import sync_symbol_financials
 from vnpy_ashare.services.stock.profile import build_valuation_profile
 from vnpy_ashare.storage.repositories.disclosure import upsert_disclosure_rows
 from vnpy_ashare.storage.repositories.valuation import upsert_valuation_rows
 
 
-class StockProfileServiceTests(unittest.TestCase):
-    def setUp(self) -> None:
-        self._tmpdir = tempfile.TemporaryDirectory()
-        db_path = Path(self._tmpdir.name) / "test.db"
-        self._patches = [
-            patch("vnpy_ashare.storage.connection._db_path", return_value=db_path),
-        ]
-        for item in self._patches:
-            item.start()
-        from vnpy_ashare.storage.connection import init_app_db
-
-        init_app_db()
-
-    def tearDown(self) -> None:
-        for item in self._patches:
-            item.stop()
-        self._tmpdir.cleanup()
-
+class StockProfileServiceTests(PgAppStorageTestCase):
     def test_valuation_percentile(self) -> None:
         ts_code = "600519.SH"
         rows = [{"trade_date": f"2024010{i}", "pe_ttm": float(i), "pb": float(i) / 10} for i in range(1, 6)]

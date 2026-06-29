@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
+from vnpy_ashare.config.preferences.watchlist_signal import load_signal_panel_symbols
+from vnpy_ashare.ui.quotes._host_widget import as_qwidget
 from vnpy_ashare.ui.quotes.features.watchlist.pool_context_summary import format_pool_context_summary
+from vnpy_ashare.ui.quotes.page.strategy_bridge import navigate_to_strategy_monitor
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
-from vnpy_ashare.ui.quotes.watchlist_signals.splitter import apply_center_splitter_sizes
 
 __all__ = [
     "WatchlistPoolContextBar",
@@ -40,7 +42,7 @@ class WatchlistPoolContextBar(QtWidgets.QWidget):
         page = self._page
         pool_count = len(page.watchlist_pool_stocks or page.all_stocks)
         signal_panel = getattr(page, "signal_panel", None)
-        signal_count = len(signal_panel.symbols) if signal_panel is not None else 0
+        signal_count = len(signal_panel.symbols) if signal_panel is not None else len(load_signal_panel_symbols())
         position_service = page._get_position_service()
         position_count = position_service.count() if position_service is not None else 0
         text = format_pool_context_summary(
@@ -84,29 +86,20 @@ class WatchlistPoolContextBar(QtWidgets.QWidget):
 
     def _focus_segment(self, key: str) -> None:
         page = self._page
-        feature = getattr(page, "_watchlist_feature", None)
         if key == "pool":
             groups = page._watchlist_groups
             if groups is not None:
                 groups.select_all_tab()
             return
         if key == "signal":
-            if feature is not None:
-                from vnpy_ashare.ui.quotes.features.watchlist.strategy_workspace import open_strategy_workspace
-
-                open_strategy_workspace(page)
-                feature.apply_layout_preset("intraday")
-            else:
-                panel = getattr(page, "signal_panel", None)
-                if panel is not None:
-                    panel.set_expanded(True)
-                    apply_center_splitter_sizes(page)
+            navigate_to_strategy_monitor(as_qwidget(page))
+            monitor = getattr(page, "_strategy_monitor_feature", None)
+            if monitor is not None:
+                monitor.apply_layout_preset("intraday")
             return
         if key == "position":
-            if feature is not None:
-                feature.apply_position_focus()
-            else:
-                from vnpy_ashare.ui.quotes.features.watchlist.layout_preset import apply_position_focus
-
-                apply_position_focus(page)
+            navigate_to_strategy_monitor(as_qwidget(page))
+            monitor = getattr(page, "_strategy_monitor_feature", None)
+            if monitor is not None:
+                monitor.apply_position_focus()
             return

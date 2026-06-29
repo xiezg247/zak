@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 
+from vnpy_ashare.data.download_concurrency import moneyflow_prefetch_max_workers, run_parallel_map
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError, get_tushare_pro
 from vnpy_ashare.integrations.tushare.factors import fetch_moneyflow
 from vnpy_ashare.jobs.core.progress import job_log
@@ -28,11 +29,17 @@ def prefetch_moneyflow() -> JobResult:
 
     lookback = _prefetch_lookback_days()
     job_log(f"拉取近 {lookback} 日 moneyflow（含分档买卖额字段）…")
-    fetched: list[str] = []
-    for trade_date in iter_trade_date_strs(max_lookback=lookback):
+    trade_dates = list(iter_trade_date_strs(max_lookback=lookback))
+
+    def _fetch_day(trade_date: str) -> str | None:
         rows, _ = fetch_moneyflow(trade_date=trade_date)
         if rows:
-            fetched.append(f"{trade_date}:{len(rows)}")
+            return f"{trade_date}:{len(rows)}"
+        return None
+
+    workers = moneyflow_prefetch_max_workers(item_count=len(trade_dates))
+    day_results = run_parallel_map(trade_dates, _fetch_day, max_workers=workers)
+    fetched = [item for item in day_results if item]
     if not fetched:
         return JobResult(
             success=False,

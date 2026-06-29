@@ -5,6 +5,9 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import TYPE_CHECKING, Any, cast
 
+from vnpy.trader.constant import Exchange
+from vnpy.trader.object import BarData
+
 from strategies.registry import get_strategy_meta
 from strategies.signals import (
     SUPPORTED_SIGNAL_STRATEGIES,
@@ -16,8 +19,9 @@ from strategies.signals import (
     summarize_trend_ma_state,
 )
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
-from vnpy_ashare.data.download_concurrency import run_parallel_map
-from vnpy_ashare.data.pattern_bars import pattern_load_max_workers
+from vnpy_ashare.config.preferences.watchlist_signal import SIGNAL_LOOKBACK_BARS
+from vnpy_ashare.data.download_concurrency import relative_index_enrich_max_workers, run_parallel_map
+from vnpy_ashare.data.pattern_bars import load_daily_bars_batch, load_daily_bars_tail, pattern_load_max_workers
 from vnpy_ashare.domain.trading.signal_benchmark import compute_relative_index_excess, resolve_benchmark_return_pct
 from vnpy_ashare.domain.trading.signal_snapshot import (
     SIGNAL_BENCHMARK_LOOKBACK,
@@ -39,7 +43,7 @@ class TechnicalSignalsMixin(_TechnicalAnalyzerBase):
         symbol: str,
         *,
         class_name: str = "AshareDoubleMaStrategy",
-        lookback: int = 120,
+        lookback: int = SIGNAL_LOOKBACK_BARS,
         fast_window: int = 10,
         slow_window: int = 20,
         scope: str = "daily",
@@ -56,15 +60,11 @@ class TechnicalSignalsMixin(_TechnicalAnalyzerBase):
                 "supported": list_supported_signal_strategies(),
             }
 
-        lookback = max(30, min(int(lookback or 120), 250))
+        lookback = max(30, min(int(lookback or SIGNAL_LOOKBACK_BARS), 250))
         fast_window = max(2, int(fast_window or 10))
         slow_window = max(fast_window + 1, int(slow_window or 20))
 
-        bars = self._engine.bar_service.load_bars(
-            item.symbol,
-            item.exchange,
-            scope or "daily",
-        )
+        bars = self._load_strategy_bars(item.symbol, item.exchange, scope=scope or "daily", lookback=lookback)
         warnings: list[str] = []
         if len(bars) < slow_window + 5:
             return {
@@ -163,7 +163,7 @@ class TechnicalSignalsMixin(_TechnicalAnalyzerBase):
         symbol: str,
         *,
         class_name: str = "AshareDoubleMaStrategy",
-        lookback: int = 120,
+        lookback: int = SIGNAL_LOOKBACK_BARS,
         fast_window: int = 10,
         slow_window: int = 20,
         scope: str = "daily",
@@ -186,7 +186,7 @@ class TechnicalSignalsMixin(_TechnicalAnalyzerBase):
         symbols: list[str],
         *,
         class_name: str = "AshareDoubleMaStrategy",
-        lookback: int = 120,
+        lookback: int = SIGNAL_LOOKBACK_BARS,
         fast_window: int = 10,
         slow_window: int = 20,
         scope: str = "daily",
@@ -197,6 +197,7 @@ class TechnicalSignalsMixin(_TechnicalAnalyzerBase):
             return {}
 
         self.reset_benchmark_cache()
+        lookback = max(30, min(int(lookback or SIGNAL_LOOKBACK_BARS), 250))
         payload_kwargs: dict[str, Any] = {
             "class_name": class_name,
             "lookback": lookback,
@@ -205,9 +206,30 @@ class TechnicalSignalsMixin(_TechnicalAnalyzerBase):
             "scope": scope,
         }
 
+        bars_by_key: dict[tuple[str, Exchange], list[BarData]] = {}
+        if (scope or "daily") == "daily":
+            items = []
+            for symbol in symbols:
+                parsed = parse_stock_symbol(symbol)
+                if parsed is not None:
+                    items.append(parsed)
+            if items:
+                bar_workers = pattern_load_max_workers(item_count=len(items)) if max_workers is None else max(1, min(int(max_workers), len(items)))
+                bars_by_key = load_daily_bars_batch(
+                    items,
+                    lookback_bars=lookback,
+                    max_workers=bar_workers,
+                )
+
         def worker(symbol: str) -> tuple[str, SignalSnapshot] | None:
             try:
-                payload = self._build_signal_payload(symbol, **payload_kwargs)
+                item = parse_stock_symbol(symbol)
+                preloaded = bars_by_key.get((item.symbol, item.exchange)) if item is not None else None
+                payload = self._build_signal_payload(
+                    symbol,
+                    bars=preloaded,
+                    **payload_kwargs,
+                )
             except Exception:
                 return None
             if payload is None:
@@ -222,21 +244,21 @@ class TechnicalSignalsMixin(_TechnicalAnalyzerBase):
         if workers <= 1:
             results: dict[str, SignalSnapshot] = {}
             for symbol in symbols:
-                item = worker(symbol)
-                if item is None:
+                pair = worker(symbol)
+                if pair is None:
                     continue
-                vt_symbol, snapshot = item
+                vt_symbol, snapshot = pair
                 results[vt_symbol] = snapshot
             return results
 
         pairs = run_parallel_map(symbols, worker, max_workers=workers)
-        results = {}
-        for item in pairs:
-            if item is None:
+        parallel_results: dict[str, SignalSnapshot] = {}
+        for pair in pairs:
+            if pair is None:
                 continue
-            vt_symbol, snapshot = item
-            results[vt_symbol] = snapshot
-        return results
+            vt_symbol, snapshot = pair
+            parallel_results[vt_symbol] = snapshot
+        return parallel_results
 
     def _benchmark_return_pct(self, lookback: int = SIGNAL_BENCHMARK_LOOKBACK) -> float | None:
         if self._benchmark_return_cache_key == lookback:
@@ -282,10 +304,32 @@ class TechnicalSignalsMixin(_TechnicalAnalyzerBase):
         if not snapshots:
             return snapshots
         self.reset_benchmark_cache()
-        enriched: dict[str, SignalSnapshot] = {}
-        for vt_symbol, snapshot in snapshots.items():
-            enriched[vt_symbol] = self.enrich_relative_index(snapshot)
-        return enriched
+        self._benchmark_return_pct(SIGNAL_BENCHMARK_LOOKBACK)
+        items = list(snapshots.items())
+        if len(items) <= 1:
+            return {vt_symbol: self.enrich_relative_index(snapshot) for vt_symbol, snapshot in items}
+
+        workers = relative_index_enrich_max_workers(item_count=len(items))
+
+        def _enrich_item(item: tuple[str, SignalSnapshot]) -> tuple[str, SignalSnapshot]:
+            vt_symbol, snapshot = item
+            return vt_symbol, self.enrich_relative_index(snapshot)
+
+        pairs = run_parallel_map(items, _enrich_item, max_workers=workers)
+        return dict(pairs)
+
+    def _load_strategy_bars(
+        self,
+        symbol: str,
+        exchange: Exchange,
+        *,
+        scope: str,
+        lookback: int,
+    ) -> list[BarData]:
+        """策略信号仅需尾部 K 线，避免从 1990 全量扫库。"""
+        if (scope or "daily") == "daily":
+            return load_daily_bars_tail(symbol, exchange, lookback_bars=lookback)
+        return self._engine.bar_service.load_bars(symbol, exchange, scope or "daily")
 
     def _build_signal_payload(
         self,
@@ -296,6 +340,7 @@ class TechnicalSignalsMixin(_TechnicalAnalyzerBase):
         fast_window: int,
         slow_window: int,
         scope: str,
+        bars: list[BarData] | None = None,
     ) -> dict[str, Any] | None:
         item = parse_stock_symbol(symbol)
         if item is None:
@@ -303,15 +348,17 @@ class TechnicalSignalsMixin(_TechnicalAnalyzerBase):
         if class_name not in SUPPORTED_SIGNAL_STRATEGIES:
             return None
 
-        lookback = max(30, min(int(lookback or 120), 250))
+        lookback = max(30, min(int(lookback or SIGNAL_LOOKBACK_BARS), 250))
         fast_window = max(2, int(fast_window or 10))
         slow_window = max(fast_window + 1, int(slow_window or 20))
 
-        bars = self._engine.bar_service.load_bars(
-            item.symbol,
-            item.exchange,
-            scope or "daily",
-        )
+        if bars is None:
+            bars = self._load_strategy_bars(
+                item.symbol,
+                item.exchange,
+                scope=scope or "daily",
+                lookback=lookback,
+            )
         if len(bars) < slow_window + 5:
             return {
                 "vt_symbol": item.vt_symbol,

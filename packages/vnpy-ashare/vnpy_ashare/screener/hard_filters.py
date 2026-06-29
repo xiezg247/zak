@@ -271,6 +271,30 @@ def passes_market_board_filter(row: ScreeningFilterRow, allowed: frozenset[str])
     return any(matches_board(symbol, board) for board in allowed)
 
 
+def passes_recipe_market_board_vt_symbol(vt_symbol: str) -> bool:
+    """标的是否落在有效板块白名单内；未配置板块过滤时恒为 True。"""
+    board_filter = resolve_market_board_filter()
+    if not board_filter.active:
+        return True
+    from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
+
+    item = parse_stock_symbol(vt_symbol)
+    if item is None:
+        return False
+    return passes_market_board_filter(
+        {"symbol": item.symbol, "vt_symbol": vt_symbol},
+        board_filter.boards,
+    )
+
+
+def filter_vt_symbols_by_recipe_market_board(vt_symbols: Sequence[str]) -> list[str]:
+    """按配方/账户板块白名单过滤 vt_symbol 列表。"""
+    board_filter = resolve_market_board_filter()
+    if not board_filter.active:
+        return list(vt_symbols)
+    return [vt for vt in vt_symbols if passes_recipe_market_board_vt_symbol(vt)]
+
+
 def row_industry(row: ScreeningFilterRow, industry_map: dict[str, str] | None = None) -> str:
     industry = str(row.get("industry") or "").strip()
     if industry:
@@ -430,22 +454,6 @@ def passes_screening_hard_filter(
 
 def apply_recipe_filters(rows: Sequence[T_ScreeningRow]) -> list[T_ScreeningRow]:
     """排除 ST、停牌与流动性 / 小市值不达标的标的。"""
-    allowed_industries = recipe_allowed_industries()
-    suspended_keys = _suspended_keys_for_screening() if recipe_exclude_suspended_enabled() else frozenset()
-    name_map = _screening_vt_name_map() if recipe_exclude_st_enabled() else None
-    list_date_map = _list_date_map_for_screening() if recipe_exclude_new_listing_enabled() else None
-    market_board_map = _market_board_map_for_screening() if recipe_exclude_limit_board_enabled() or recipe_exclude_one_word_enabled() else None
-    industry_map = _industry_map_for_screening() if allowed_industries else None
-    return [
-        row
-        for row in rows
-        if passes_screening_hard_filter(
-            row,
-            suspended_keys=suspended_keys,
-            name_map=name_map,
-            list_date_map=list_date_map,
-            market_board_map=market_board_map,
-            industry_map=industry_map,
-            allowed_industries=allowed_industries,
-        )
-    ]
+    from vnpy_ashare.screener.engine.hard_filter import apply_recipe_filters_polars
+
+    return apply_recipe_filters_polars(rows)

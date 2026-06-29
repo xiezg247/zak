@@ -18,7 +18,6 @@ from vnpy_ashare.screener.run.runner import (
     resolve_preset_input,
     run_screener,
 )
-from vnpy_ashare.storage.connection import init_app_db
 from vnpy_ashare.storage.repositories.watchlist import add_watchlist_item
 
 
@@ -45,8 +44,6 @@ def _cmd_screener_list(_args: argparse.Namespace) -> int:
 
 
 def _cmd_screener_run(args: argparse.Namespace) -> int:
-    init_app_db()
-
     if args.scheme_id:
         request = ScreenerRequest(preset="", top_n=args.top_n, scheme_id=args.scheme_id)
     elif args.preset:

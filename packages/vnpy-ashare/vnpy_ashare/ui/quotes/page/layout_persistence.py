@@ -24,6 +24,16 @@ def save_splitter(page: QuotesPage) -> None:
     settings.setValue(splitter_settings_key(page), page._splitter.saveState())
 
 
+def schedule_save_layout(page: QuotesPage) -> None:
+    """异步写入 splitter / 列配置，避免切页阻塞导航。"""
+    QtCore.QTimer.singleShot(0, lambda: _save_layout_now(page))
+
+
+def _save_layout_now(page: QuotesPage) -> None:
+    save_splitter(page)
+    page._save_column_config()
+
+
 def restore_splitter(page: QuotesPage) -> None:
     if page._splitter is None:
         return

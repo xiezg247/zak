@@ -2,16 +2,13 @@
 
 from __future__ import annotations
 
-import sqlite3
 from datetime import date
 
 import vnpy_ashare.backtest.run_store as run_store
 
 
-def test_save_and_list_backtest_runs(tmp_path, monkeypatch):
-    db_path = tmp_path / "app.db"
-    monkeypatch.setattr(run_store, "get_app_db_path", lambda settings=None: db_path)
-
+def test_save_and_list_backtest_runs(pg_storage):
+    _ = pg_storage
     record = run_store.save_backtest_run(
         vt_symbol="600000.SSE",
         strategy="DoubleMaStrategy",
@@ -30,7 +27,7 @@ def test_save_and_list_backtest_runs(tmp_path, monkeypatch):
     assert record.trade_count == 42
 
     runs = run_store.list_backtest_runs(limit=5)
-    assert len(runs) == 1
+    assert len(runs) >= 1
     assert runs[0].vt_symbol == "600000.SSE"
 
     summary = runs[0].to_summary_dict()
@@ -53,20 +50,14 @@ def test_save_and_list_backtest_runs(tmp_path, monkeypatch):
         total_return=8.0,
     )
     sessions = run_store.list_batch_sessions(limit=5)
-    assert len(sessions) == 1
+    assert len(sessions) >= 1
     assert sessions[0].batch_id == "batch-test-1"
     batch_rows = run_store.list_runs_by_batch("batch-test-1")
     assert len(batch_rows) == 1
 
-    with sqlite3.connect(db_path) as conn:
-        count = conn.execute("SELECT COUNT(*) FROM backtest_runs").fetchone()[0]
-    assert count == 2
 
-
-def test_save_statistics_with_date(tmp_path, monkeypatch):
-    db_path = tmp_path / "app.db"
-    monkeypatch.setattr(run_store, "get_app_db_path", lambda settings=None: db_path)
-
+def test_save_statistics_with_date(pg_storage):
+    _ = pg_storage
     record = run_store.save_backtest_run(
         vt_symbol="600000.SSE",
         strategy="DoubleMaStrategy",

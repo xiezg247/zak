@@ -50,6 +50,7 @@ class QuotesPageControllerAttrs:
     _market_rank: MarketRankFeature
     _watchlist_panels: WatchlistPanelsFeature
     _watchlist_feature: WatchlistPageFeature | None
+    _watchlist_lazy: Any
     _watchlist_bootstrap: WatchlistBootstrapCoordinator | None
     _stock_notes: StockNotesFeature
     _watchlist_groups: WatchlistGroupController | None

@@ -79,6 +79,7 @@ from vnpy_ashare.ui.quotes.page.quote_refresh import (
 from vnpy_ashare.ui.quotes.page.quote_refresh import (
     quote_auto_refresh_paused_for_hours as page_quote_auto_refresh_paused_for_hours,
 )
+from vnpy_ashare.ui.quotes.page.roles import RADAR_PAGE, STRATEGY_MONITOR_PAGE, WATCHLIST_PAGE
 from vnpy_ashare.ui.quotes.page.service_access import (
     get_analysis_service_for_page,
     get_bar_service_for_page,
@@ -100,6 +101,7 @@ from vnpy_ashare.ui.quotes.page.task_busy import (
     set_busy,
 )
 from vnpy_ashare.ui.quotes.page.worker_lifecycle import release_worker, wait_worker_release
+from vnpy_common.ui.loading_overlay import ContentLoadingOverlay
 from vnpy_common.ui.qt_helpers import thread_is_active
 
 
@@ -275,15 +277,37 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QuotesPageStat
             self._loader.try_load_more_market()
 
     def _schedule_market_cache_sync(self) -> None:
-        if self.config.use_market_rank:
-            self._market_cache_sync_timer.start()
+        if not self.config.use_market_rank or self._market_background_sync_paused():
+            return
+        self._market_cache_sync_timer.start()
 
     def _market_quote_refresh_paused(self) -> bool:
         """滚动加载中暂停定时行情刷新，避免与追加渲染争抢主线程。"""
-        return self._market_scroll_blocked or self._market_loading_more or self._market_scroll_timer.isActive() or self._thread_active(self._market_worker)
+        return (
+            self._market_scroll_blocked
+            or self._market_loading_more
+            or self._market_scroll_timer.isActive()
+            or self._thread_active(self._market_worker)
+            or self._thread_active(self._quotes_worker)
+        )
 
     def load_market_full(self, *, quiet: bool = False) -> None:
         self._loader.load_market_full(quiet=quiet)
+
+    def _tab_switch_loading_host(self) -> QtWidgets.QWidget | None:
+        if self._market_table_host is not None:
+            return self._market_table_host
+        board = getattr(self, "radar_board", None)
+        if board is not None:
+            return cast(QtWidgets.QWidget, board)
+        return getattr(self, "_center_splitter", None)
+
+    def _ensure_tab_switch_loading_overlay(self, host: QtWidgets.QWidget) -> ContentLoadingOverlay:
+        overlay = getattr(self, "_tab_switch_loading_overlay", None)
+        if overlay is None or overlay.parentWidget() is not host:
+            overlay = ContentLoadingOverlay(host)
+            self._tab_switch_loading_overlay = overlay
+        return overlay
 
     def _show_market_loading(self, text: str) -> None:
         host = self._market_table_host
@@ -294,6 +318,41 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QuotesPageStat
         host = self._market_table_host
         if host is not None:
             host.hide_loading()
+
+    def _show_tab_switch_loading(self, text: str) -> None:
+        market_host = self._market_table_host
+        if market_host is not None:
+            market_host.show_loading(text)
+            return
+        host = self._tab_switch_loading_host()
+        if host is None:
+            return
+        self._ensure_tab_switch_loading_overlay(host).show_loading(text)
+
+    def _hide_tab_switch_loading(self) -> None:
+        market_host = self._market_table_host
+        if market_host is not None:
+            market_host.hide_loading()
+        overlay = getattr(self, "_tab_switch_loading_overlay", None)
+        if overlay is not None:
+            overlay.hide_loading()
+
+    def begin_tab_switch_loading(self) -> None:
+        if self.page_name == RADAR_PAGE:
+            self._tab_switch_loading = True
+            self._show_tab_switch_loading("正在加载雷达…")
+            return
+        if self.page_name not in (WATCHLIST_PAGE, STRATEGY_MONITOR_PAGE):
+            return
+        self._tab_switch_loading = True
+        text = "正在加载自选…" if self.page_name == WATCHLIST_PAGE else "正在加载策略监控…"
+        self._show_tab_switch_loading(text)
+
+    def end_tab_switch_loading(self) -> None:
+        if not getattr(self, "_tab_switch_loading", False):
+            return
+        self._tab_switch_loading = False
+        self._hide_tab_switch_loading()
 
     def load_stock_list(self) -> None:
         self._loader.load_stock_list()
@@ -572,8 +631,8 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QuotesPageStat
     def add_to_watchlist(self) -> None:
         self._watchlist.add_selected()
 
-    def remove_from_watchlist(self) -> None:
-        self._watchlist.remove_selected()
+    def remove_from_watchlist(self, item: StockItem | None = None) -> None:
+        self._watchlist.remove_items(item)
 
     def _on_context_menu(self, pos: QtCore.QPoint) -> None:
         self._actions.show_context_menu(pos)
@@ -654,8 +713,13 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QuotesPageStat
     def _run_download(self, *, mode: Literal["full", "incremental"], action_label: str) -> None:
         self._local.run_download(mode=cast(Literal["full", "incremental"], mode), action_label=action_label)
 
-    def _collect_busy_widgets(self, *, lock_table: bool = True) -> list[QtWidgets.QWidget]:
-        return collect_busy_widgets(self, lock_table=lock_table)
+    def _collect_busy_widgets(
+        self,
+        *,
+        lock_table: bool = True,
+        lock_search: bool = True,
+    ) -> list[QtWidgets.QWidget]:
+        return collect_busy_widgets(self, lock_table=lock_table, lock_search=lock_search)
 
     def _begin_cancellable_task(
         self,
@@ -666,6 +730,7 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QuotesPageStat
         primary_text: str = "",
         primary_handler=None,
         lock_table: bool = True,
+        lock_search: bool = True,
     ) -> None:
         begin_cancellable_task(
             self,
@@ -675,6 +740,7 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QuotesPageStat
             primary_text=primary_text,
             primary_handler=primary_handler,
             lock_table=lock_table,
+            lock_search=lock_search,
         )
 
     def _end_cancellable_task(self) -> bool:
@@ -683,5 +749,39 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QuotesPageStat
     def _finish_cancellable_task(self, *, cancelled_message: str = "任务已取消") -> bool:
         return finish_cancellable_task(self, cancelled_message=cancelled_message)
 
-    def _set_busy(self, busy: bool, *, lock_table: bool = True) -> None:
-        set_busy(self, busy, lock_table=lock_table)
+    def _set_busy(
+        self,
+        busy: bool,
+        *,
+        lock_table: bool = True,
+        lock_search: bool = True,
+    ) -> None:
+        set_busy(self, busy, lock_table=lock_table, lock_search=lock_search)
+
+    def _market_background_sync_paused(self) -> bool:
+        """滚动分页加载或与行情刷新争抢主线程时，延后缓存同步。"""
+        return self._market_quote_refresh_paused()
+
+    def _defer_when_market_idle(
+        self,
+        callback,
+        *,
+        retry_ms: int = 150,
+        attempt: int = 0,
+        max_attempts: int = 25,
+    ) -> None:
+        """市场页滚动/加载期间延后 UI 更新，避免与 append 渲染争抢。"""
+        if not self.config.market_scroll_paging or not self._market_background_sync_paused() or attempt >= max_attempts:
+            callback()
+            return
+
+        def _retry() -> None:
+            QuotesPage._defer_when_market_idle(
+                self,
+                callback,
+                retry_ms=retry_ms,
+                attempt=attempt + 1,
+                max_attempts=max_attempts,
+            )
+
+        QtCore.QTimer.singleShot(retry_ms, _retry)

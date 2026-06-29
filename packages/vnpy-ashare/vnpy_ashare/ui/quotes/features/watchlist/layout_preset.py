@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from vnpy.trader.ui import QtCore
+
 from vnpy_ashare.config.preferences.watchlist_position import save_position_panel_expanded
 from vnpy_ashare.config.preferences.watchlist_signal import save_signal_panel_expanded
 from vnpy_ashare.ui.quotes.features.watchlist.prefs import LayoutPresetId, save_watchlist_layout_preset
@@ -12,6 +14,7 @@ from vnpy_ashare.ui.quotes.features.watchlist.strategy_workspace import (
     sync_strategy_workspace_from_preset,
 )
 from vnpy_ashare.ui.quotes.features.watchlist.toolbar_preset import apply_toolbar_for_preset
+from vnpy_ashare.ui.quotes.page.roles import is_strategy_monitor_page
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist_signals.splitter import apply_center_splitter_sizes
 
@@ -36,22 +39,32 @@ def _apply_view_mode(page: WatchlistHost, preset_id: LayoutPresetId) -> None:
     page._multiview.set_view_mode("table")
 
 
-def apply_layout_preset(page: WatchlistHost, preset_id: LayoutPresetId, *, persist: bool = True) -> None:
+def apply_layout_preset(
+    page: WatchlistHost,
+    preset_id: LayoutPresetId,
+    *,
+    persist: bool = True,
+    apply_splitter: bool = True,
+) -> None:
     page._watchlist_table_ratio_override = None
-    if is_strategy_workspace_open(page):
+    if is_strategy_monitor_page(page.page_name):
+        sync_strategy_workspace_from_preset(page, preset_id)
+    elif is_strategy_workspace_open(page):
         sync_strategy_workspace_from_preset(page, preset_id)
     _apply_group_tab(page, preset_id)
     _apply_view_mode(page, preset_id)
     apply_toolbar_for_preset(page, preset_id)
     if persist:
         save_watchlist_layout_preset(preset_id)
-    apply_center_splitter_sizes(page)
+    if apply_splitter:
+        QtCore.QTimer.singleShot(0, lambda: apply_center_splitter_sizes(page))
 
 
 def apply_position_focus(page: WatchlistHost) -> None:
-    """持仓专注：折叠信号区、展开持仓区，主表缩至最小比例（不切换布局预设）。"""
-    open_strategy_workspace(page, persist=True)
-    page._watchlist_table_ratio_override = POSITION_FOCUS_TABLE_RATIO
+    """持仓专注：折叠信号区、展开持仓区；自选页另缩主表比例。"""
+    if not is_strategy_monitor_page(page.page_name):
+        open_strategy_workspace(page, persist=True)
+        page._watchlist_table_ratio_override = POSITION_FOCUS_TABLE_RATIO
     signal_panel = getattr(page, "signal_panel", None)
     if signal_panel is not None:
         signal_panel.set_expanded(False, emit=True)

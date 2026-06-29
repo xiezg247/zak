@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.object import BarData
 
+from vnpy_ashare.config.runtime import format_vt_symbol_cn
 from vnpy_ashare.domain.data.bar_health import BarGapResult, BarHealthStatus
 from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.domain.time.calendar import last_trading_day
@@ -35,7 +36,7 @@ class LocalDataChartMixin(LocalDataControllerBase):
         page.load_stock_list()
         if page.current_item is not None:
             page.show_kline(page.current_item)
-            if self.is_daily_scope():
+            if self.should_auto_check_gaps():
                 self.check_bar_gaps(page.current_item)
             elif page.chart_hint is not None:
                 self.update_coverage_hint(page.current_item)
@@ -84,7 +85,7 @@ class LocalDataChartMixin(LocalDataControllerBase):
             return
 
         if page._thread_active(page._gap_worker):
-            page._wait_worker_release("_gap_worker")
+            page._wait_worker_release("_gap_worker", timeout_ms=0)
 
         page._gap_generation += 1
         generation = page._gap_generation
@@ -184,7 +185,8 @@ class LocalDataChartMixin(LocalDataControllerBase):
         target_key = (item.symbol, item.exchange)
         target_scope = page._local_scope
 
-        page._wait_worker_release("_bars_worker")
+        self.abandon_bars_worker()
+        self.set_kline_loading_status(item)
         self.clear_chart()
 
         if self.is_daily_scope():
@@ -218,6 +220,7 @@ class LocalDataChartMixin(LocalDataControllerBase):
             try:
                 if not _should_apply(result):
                     return
+                self.restore_list_status()
                 scope_label = self.scope_label()
                 if result is None:
                     self.clear_chart()
@@ -244,10 +247,19 @@ class LocalDataChartMixin(LocalDataControllerBase):
             finally:
                 page._release_worker(worker)
 
-        def on_failed(_msg: str) -> None:
+        def on_failed(msg: str) -> None:
             if page._bars_worker is worker:
                 page._bars_worker = None
-            page._release_worker(worker)
+            try:
+                if generation != page._bars_generation:
+                    return
+                if page.current_item is None or (page.current_item.symbol, page.current_item.exchange) != target_key:
+                    return
+                label = format_vt_symbol_cn(item.symbol, item.exchange)
+                page.status_label.setText(f"加载 {label} 失败: {msg}")
+                self.set_chart_hint("K 线加载失败")
+            finally:
+                page._release_worker(worker)
 
         worker.finished.connect(on_finished)
         worker.failed.connect(on_failed)

@@ -32,6 +32,35 @@ class QuotesLoaderRedisTests(unittest.TestCase):
 
         self.assertIn("Redis 行情读取失败", str(ctx.exception))
 
+    @patch("vnpy_ashare.screener.data.quotes_loader._load_from_l1", return_value=None)
+    @patch("vnpy_ashare.screener.data.quotes_loader.RedisQuoteStore")
+    def test_loads_rows_from_redis(self, store_cls: MagicMock, _l1: MagicMock) -> None:
+        from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
+
+        store = store_cls.return_value
+        store.list_all_rank_symbols.return_value = ["000001.SZ"]
+        store.get_quotes.return_value = {
+            "000001.SZ": QuoteSnapshot(
+                symbol="000001",
+                name="平安",
+                last_price=10.0,
+                prev_close=9.9,
+                open_price=9.9,
+                high_price=10.1,
+                low_price=9.8,
+                change_amount=0.1,
+                change_pct=1.0,
+                turnover_rate=1.0,
+                volume=1000.0,
+            ),
+        }
+        store.get_updated_at.return_value = "2026-06-26 10:00:00"
+
+        snapshot = load_market_quote_rows(enrich_factors=False)
+        self.assertEqual(snapshot.total, 1)
+        self.assertEqual(snapshot.source, "quote")
+        self.assertEqual(snapshot.rows[0]["symbol"], "000001")
+
 
 if __name__ == "__main__":
     unittest.main()

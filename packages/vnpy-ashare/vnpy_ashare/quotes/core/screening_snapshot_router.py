@@ -19,6 +19,11 @@ def load_screening_quote_snapshot() -> MarketQuotesSnapshot:
     cached = read_cached_quote_snapshot()
     if cached is not None:
         return cached
+    from vnpy_ashare.quotes.core.market_snapshot_hub import get_process_quote_snapshot
+
+    process_cached = get_process_quote_snapshot()
+    if process_cached is not None:
+        return process_cached
     if _uncached_loader is None:
         raise RuntimeError("选股行情快照未注册 uncached loader")
     return _uncached_loader()

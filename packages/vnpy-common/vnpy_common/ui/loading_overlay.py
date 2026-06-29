@@ -66,6 +66,7 @@ class ContentLoadingOverlay(QtWidgets.QWidget):
         parent = self.parentWidget()
         if parent is not None:
             self.setGeometry(parent.rect())
+        self.setCursor(QtCore.Qt.CursorShape.ArrowCursor)
         self.raise_()
         self.show()
 

@@ -98,7 +98,6 @@ class TestEnrichment(unittest.TestCase):
         self.assertEqual(ids[0], "radar_insight")
         self.assertEqual(ids[1:4], ["quick_analysis", "technical_trend", "peer_ops"])
 
-
     def test_sector_flow_page_actions(self) -> None:
         data = enrich_context_with_actions(AiContextData(page="板块资金", extra="板块资金监控页"))
         self.assertEqual(data.badge, "板块资金")
@@ -109,9 +108,7 @@ class TestEnrichment(unittest.TestCase):
         )
 
     def test_backtest_page_actions(self) -> None:
-        data = enrich_context_with_actions(
-            AiContextData(page="策略回测", symbol="600519", exchange="SSE", extra="回测摘要")
-        )
+        data = enrich_context_with_actions(AiContextData(page="策略回测", symbol="600519", exchange="SSE", extra="回测摘要"))
         self.assertEqual(data.badge, "策略回测")
         ids = [a.id for a in data.actions]
         self.assertEqual(ids, ["interpret_backtest", "backtest_param_hint", "backtest_risk_review"])
@@ -128,19 +125,12 @@ class TestEnrichment(unittest.TestCase):
         self.assertIn("未选中个股", data.chip_text)
 
     def test_sector_flow_chip_text(self) -> None:
-        extra = (
-            "板块资金监控页\n"
-            "行业·盘中估算\n"
-            "净流入 半导体 +12.3亿；净流出 银行 -8.1亿"
-        )
+        extra = "板块资金监控页\n行业·盘中估算\n净流入 半导体 +12.3亿；净流出 银行 -8.1亿"
         data = enrich_context_with_actions(AiContextData(page="板块资金", extra=extra))
         self.assertIn("流入 半导体", data.chip_text)
 
     def test_backtest_chip_text(self) -> None:
-        extra = (
-            "你正在协助用户解读 A 股策略回测结果；请基于回测摘要与工具数据回答，禁止编造指标。\n"
-            "当前表单：策略 双均线 · 标的 600519.SSE · 周期 日线"
-        )
+        extra = "你正在协助用户解读 A 股策略回测结果；请基于回测摘要与工具数据回答，禁止编造指标。\n当前表单：策略 双均线 · 标的 600519.SSE · 周期 日线"
         data = enrich_context_with_actions(AiContextData(page="策略回测", extra=extra))
         self.assertIn("双均线", data.chip_text)
         self.assertIn("600519", data.chip_text)

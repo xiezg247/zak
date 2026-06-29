@@ -16,6 +16,7 @@ class QuoteCell(MutableModel):
     text: str = Field(default="", description="文本内容")
     sort_key: float | str = Field(default="", description="排序键")
     color: str | None = Field(default=None, description="单元格文字颜色")
+    bg_color: str | None = Field(default=None, description="单元格背景颜色")
     stock_item: StockItem | None = Field(default=None, description="关联标的")
     tooltip: str | None = Field(default=None, description="悬停提示")
 
@@ -144,6 +145,7 @@ class QuoteTableModel(QtCore.QAbstractTableModel):
                 incoming.text,
                 sort_key=incoming.sort_key if sortable else None,
                 color=incoming.color,
+                bg_color=incoming.bg_color,
                 stock_item=incoming.stock_item,
                 tooltip=incoming.tooltip,
             )
@@ -165,6 +167,7 @@ class QuoteTableModel(QtCore.QAbstractTableModel):
         *,
         sort_key: float | str | None = None,
         color: str | None = None,
+        bg_color: str | None = None,
         stock_item: StockItem | None = None,
         tooltip: str | None = None,
         replace: bool = False,
@@ -187,6 +190,9 @@ class QuoteTableModel(QtCore.QAbstractTableModel):
         if color != cell.color:
             cell.color = color
             changed_roles.append(QtCore.Qt.ItemDataRole.ForegroundRole)
+        if bg_color != cell.bg_color:
+            cell.bg_color = bg_color
+            changed_roles.append(QtCore.Qt.ItemDataRole.BackgroundRole)
         if stock_item is not None and cell.stock_item is not stock_item:
             cell.stock_item = stock_item
             changed_roles.append(self.StockItemRole)
@@ -250,6 +256,8 @@ class QuoteTableModel(QtCore.QAbstractTableModel):
             return int(QtCore.Qt.AlignmentFlag.AlignCenter)
         if role == QtCore.Qt.ItemDataRole.ForegroundRole and cell.color:
             return QtGui.QColor(cell.color)
+        if role == QtCore.Qt.ItemDataRole.BackgroundRole and cell.bg_color:
+            return QtGui.QColor(cell.bg_color)
         if role == self.StockItemRole:
             return cell.stock_item
         if role == self.SortKeyRole:

@@ -48,7 +48,7 @@ def _toolbar_separator() -> QtWidgets.QFrame:
 
 
 class BatchBacktestPageWidget(QtWidgets.QWidget):
-    """左侧导航「回测对比」页。"""
+    """批量回测对比（菜单栏弹窗内容）。"""
 
     def __init__(self, main_engine: MainEngine, event_engine: EventEngine) -> None:
         super().__init__()

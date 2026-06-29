@@ -19,6 +19,7 @@ from vnpy_ashare.config.fonts import resolve_font_family
 from vnpy_ashare.config.runtime import ensure_runtime_config
 from vnpy_ashare.config.vt_settings import ensure_vt_settings_from_env, reload_vnpy_settings
 from vnpy_ashare.integrations.tickflow.stream import shutdown_all_tickflow_streams
+from vnpy_ashare.ui.shell.login_dialog import ensure_logged_in
 from vnpy_ashare.ui.shell.main_window import AshareMainWindow
 from vnpy_common.paths import PROJECT_ROOT
 from vnpy_common.platform.macos_gui import bootstrap_macos_gui_runtime
@@ -62,6 +63,15 @@ def main() -> None:
         qapp = create_zak_qapp(QAPP_NAME)
         bootstrap_macos_gui_runtime(before_qt=False)
         qapp.setStyle("Fusion")
+
+    with profiler.phase("database"):
+        from vnpy_common.storage.config import require_database_url
+
+        require_database_url()
+
+    with profiler.phase("login"):
+        if not ensure_logged_in():
+            raise SystemExit(0)
 
     qapp.aboutToQuit.connect(shutdown_all_tickflow_streams)
 

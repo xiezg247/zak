@@ -6,7 +6,7 @@ from typing import cast
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.quotes.radar.radar_loaders import RadarCardData, RadarRow
+from vnpy_ashare.quotes.radar.loaders import RadarCardData, RadarRow
 from vnpy_common.ui.theme.manager import theme_manager
 
 DISPLAY_TOP_N = 5

@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 
 class EmotionSettingsSection(QtWidgets.QWidget):
-    """情绪周期五阶段判定阈值（QSettings 即时生效）。"""
+    """情绪周期五阶段判定阈值（user_preferences，即时生效）。"""
 
     def __init__(self, dialog: SettingsDialog) -> None:
         super().__init__(dialog)

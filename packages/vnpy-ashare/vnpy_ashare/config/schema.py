@@ -54,12 +54,21 @@ ENV_CONFIG_SPECS: tuple[ConfigFieldSpec, ...] = (
         choices=("tickflow", "tushare"),
     ),
     ConfigFieldSpec(
+        key="DATABASE_URL",
+        label="PostgreSQL 连接串",
+        group="数据库",
+        default="",
+        sensitive=True,
+        description="可选；未设置时使用下方 POSTGRES_* 连接 App / Chat / Cache",
+    ),
+    ConfigFieldSpec(
         key="DATABASE_NAME",
         label="K 线数据库类型",
         group="数据库",
-        default="sqlite",
+        default="postgresql",
         kind="choice",
-        choices=("sqlite", "postgresql"),
+        choices=("postgresql",),
+        description="VeighNa K 线存储；与上方 POSTGRES_* 共用实例",
     ),
     ConfigFieldSpec(
         key="REDIS_URL",
@@ -69,6 +78,24 @@ ENV_CONFIG_SPECS: tuple[ConfigFieldSpec, ...] = (
         description="例：redis://127.0.0.1:6379/0 或 redis://:password@host:6379/0",
     ),
     ConfigFieldSpec(key="QUOTE_COLLECT_INTERVAL", label="行情采集间隔（秒）", group="Redis 行情", default="15", kind="int"),
+    ConfigFieldSpec(
+        key="ZAK_QUOTE_COLLECT_MODE",
+        label="行情采集部署",
+        group="Redis 行情",
+        default="embedded",
+        kind="choice",
+        choices=("embedded", "external"),
+        description="embedded=Scheduler 内 collect；external=独立进程采集，Scheduler 不调度 collect_quotes",
+    ),
+    ConfigFieldSpec(
+        key="ZAK_PERF_PROFILE",
+        label="性能预设",
+        group="性能优化",
+        default="off",
+        kind="choice",
+        choices=("off", "client", "leader"),
+        description="client=GUI 读优化；leader=采集+读写全开；未显式设置的 ZAK_* 由预设填充",
+    ),
     ConfigFieldSpec(key="LLM_API_BASE", label="LLM API Base", group="大模型", default=DEFAULT_BASE_URL),
     ConfigFieldSpec(key="LLM_API_KEY", label="LLM API Key", group="大模型", default="", sensitive=True),
     ConfigFieldSpec(key="LLM_MODEL", label="LLM Model", group="大模型", default=DEFAULT_MODEL),
@@ -127,21 +154,15 @@ VT_CONFIG_SPECS: tuple[ConfigFieldSpec, ...] = (
         key="database.name",
         label="K 线数据库类型",
         group="K 线",
-        default="sqlite",
+        default="postgresql",
         kind="choice",
-        choices=("sqlite", "postgresql"),
+        choices=("postgresql",),
     ),
     ConfigFieldSpec(key="database.host", label="PostgreSQL 主机", group="K 线", default=""),
     ConfigFieldSpec(key="database.port", label="PostgreSQL 端口", group="K 线", default="0", kind="int"),
     ConfigFieldSpec(key="database.user", label="PostgreSQL 用户名", group="K 线", default=""),
     ConfigFieldSpec(key="database.password", label="PostgreSQL 密码", group="K 线", default="", sensitive=True),
-    ConfigFieldSpec(key="database.database", label="K 线 SQLite 文件", group="K 线", default="database.db"),
-    ConfigFieldSpec(
-        key="database.meta.app", label="元数据 SQLite 文件", group="元数据", default="zak.db", description="相对 ~/.vntrader/；自选、universe、回测/选股历史"
-    ),
-    ConfigFieldSpec(
-        key="database.meta.chat", label="AI 对话 SQLite 文件", group="元数据", default="llm_chat.db", description="相对 ~/.vntrader/；不受 database.name 影响"
-    ),
+    ConfigFieldSpec(key="database.database", label="PostgreSQL 库名", group="K 线", default="zak"),
     ConfigFieldSpec(key="font.family", label="字体", group="界面与日志", default=default_font_family()),
     ConfigFieldSpec(key="font.size", label="字号", group="界面与日志", default="12", kind="int"),
     ConfigFieldSpec(key="log.active", label="启用日志", group="界面与日志", default="true", kind="bool"),
@@ -188,15 +209,13 @@ ENV_SPEC_BY_KEY: dict[str, ConfigFieldSpec] = {spec.key: spec for spec in ENV_CO
 ENV_GENERAL_SPECS: tuple[ConfigFieldSpec, ...] = tuple(spec for spec in ENV_CONFIG_SPECS if spec.key not in ENV_DB_KEYS and spec.key not in ENV_NOTIFY_KEYS)
 ENV_NOTIFY_SPECS: tuple[ConfigFieldSpec, ...] = tuple(spec for spec in ENV_CONFIG_SPECS if spec.key in ENV_NOTIFY_KEYS)
 
-VT_META_DB_SPECS: tuple[ConfigFieldSpec, ...] = tuple(spec for spec in VT_CONFIG_SPECS if spec.key.startswith("database.meta."))
-VT_DB_SPECS: tuple[ConfigFieldSpec, ...] = tuple(
-    spec for spec in VT_CONFIG_SPECS if spec.key.startswith("database.") and not spec.key.startswith("database.meta.")
-)
+VT_DB_SPECS: tuple[ConfigFieldSpec, ...] = tuple(spec for spec in VT_CONFIG_SPECS if spec.key.startswith("database."))
 VT_NON_DB_SPECS: tuple[ConfigFieldSpec, ...] = tuple(spec for spec in VT_CONFIG_SPECS if not spec.key.startswith("database."))
-VT_POSTGRES_KEYS: frozenset[str] = frozenset(spec.key for spec in VT_DB_SPECS if spec.key not in {"database.name", "database.database"})
-VT_SQLITE_KEYS: frozenset[str] = frozenset({"database.name", "database.database"})
+VT_POSTGRES_KEYS: frozenset[str] = frozenset(spec.key for spec in VT_DB_SPECS if spec.key != "database.name")
 
 
 def normalize_database_name(name: str) -> str:
     text = name.strip().lower()
-    return text if text in {"sqlite", "postgresql"} else "sqlite"
+    if text in {"postgresql", "postgres", "pg"}:
+        return "postgresql"
+    return "postgresql"

@@ -19,6 +19,7 @@ from vnpy_ashare.domain.trading.stock_continuation import StockContinuationSnaps
 from vnpy_ashare.services.bar import format_meta_date
 from vnpy_ashare.services.watchlist import get_signal_disk_cache_standalone
 from vnpy_ashare.ui.quotes._host_widget import as_qwidget
+from vnpy_ashare.ui.quotes.page.roles import is_strategy_monitor_page
 from vnpy_ashare.ui.quotes.page.run_log import append_run_log
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist_signals.panel import WatchlistSignalPanel
@@ -59,17 +60,12 @@ class WatchlistSignalController:
         self._disk_cache_override = value
 
     def _compute_enabled(self) -> bool:
-        """是否允许自动策略 Worker（关闭时仍展示已有 cache）。"""
-        if not self._page.config.show_watchlist_signals or self._page.page_name != "自选":
-            return False
-        panel = getattr(self._page, "signal_panel", None)
-        return panel is not None and panel.enabled
+        """信号区是否参与运行时（展示 cache、行情联动等）。"""
+        return self._page.config.show_watchlist_signals
 
     def _should_submit_worker(self, *, force: bool) -> bool:
-        """手动刷新 / 新加入名单必须算；自动巡检才受「启用信号」约束。"""
-        if force:
-            return True
-        return self._compute_enabled()
+        """仅用户点击「刷新」时提交策略 Worker。"""
+        return force
 
     def _enabled(self) -> bool:
         return self._compute_enabled()
@@ -189,7 +185,9 @@ class WatchlistSignalController:
             if panel is not None:
                 panel.apply_config(normalized)
             self.invalidate_cache()
-            self.refresh(force=True)
+            panel = getattr(self._page, "signal_panel", None)
+            if panel is not None:
+                panel.render_panel()
         self._page._positions.on_signal_config_changed(normalized, changed=changed)
 
     def _normalize_cache_keys(self, updates: Mapping[str, object]) -> dict[str, object]:
@@ -366,6 +364,10 @@ class WatchlistSignalController:
             self._page.continuation_cache.update(self._normalize_continuation_updates(built))
 
     def _ensure_bar_meta(self, symbols: list[str]) -> None:
+        from vnpy_ashare.data.bar_store import is_overview_cache_warmed
+
+        if not is_overview_cache_warmed():
+            return
         items = []
         for vt in symbols:
             item = self._page.find_stock_item(vt)
@@ -373,6 +375,19 @@ class WatchlistSignalController:
                 items.append(item)
         if items:
             self._page._local.ensure_meta_for_items(items)
+
+    def cache_covers_panel(self) -> bool:
+        symbols = self._panel_symbols()
+        if not symbols:
+            return True
+        return self._cache_covers(symbols)
+
+    def render_on_resume(self) -> None:
+        """Tab 复进且 cache 仍有效：仅同步名单并重绘，不提交策略 Worker。"""
+        if not self._page._active:
+            return
+        self._sync_panel_with_pool()
+        self._apply_refresh_result()
 
     def _rekey_signal_cache(self, symbols: list[str]) -> None:
         cache = self._page.signal_cache
@@ -461,16 +476,55 @@ class WatchlistSignalController:
     def _symbols_missing_cache(self, symbols: list[str]) -> bool:
         return any(lookup_by_vt_symbol(self._page.signal_cache, vt) is None for vt in symbols)
 
+    def _sync_panel_with_pool(self, *, render: bool = True) -> list[str]:
+        """对齐信号区名单与自选池，不触发策略 Worker。"""
+        panel = getattr(self._page, "signal_panel", None)
+        if panel is None:
+            return []
+
+        known = self._watchlist_pool_vt_symbols()
+        if known:
+            kept = self._canonicalize_symbols([vt for vt in panel.symbols if vt in known or (canonical_vt_symbol(vt) or "") in known])
+        else:
+            kept = self._canonicalize_symbols(panel.symbols)
+
+        if kept != panel.symbols:
+            panel.set_symbols(kept, save=False)
+        else:
+            self._rekey_signal_cache(kept)
+            kept_canon = {canonical_vt_symbol(vt) or vt for vt in kept}
+            stale = [vt for vt in list(self._page.signal_cache) if vt not in kept and (canonical_vt_symbol(vt) or vt) not in kept_canon]
+            for vt in stale:
+                self._page.signal_cache.pop(vt, None)
+                self._page.continuation_cache.pop(vt, None)
+
+        self._last_panel_symbols = set(kept)
+        if render:
+            panel.schedule_render_panel()
+        return kept
+
     def on_stock_list_loaded(self) -> None:
         """自选列表加载完成后：校验名单、预热磁盘缓存、增量刷新。"""
         if not self._page.config.show_watchlist_signals:
             return
-        symbols = self._panel_symbols()
-        self._ensure_bar_meta(symbols)
-        self.on_symbols_changed()
+        QtCore.QTimer.singleShot(0, self._complete_stock_list_loaded)
+
+    def _complete_stock_list_loaded(self) -> None:
+        if not self._page._active:
+            return
+        if is_strategy_monitor_page(self._page.page_name):
+            self._hydrate_and_render_only()
+            return
+        symbols = self._sync_panel_with_pool()
         self.hydrate_from_disk()
-        missing = self._symbols_missing_cache(symbols)
-        self.refresh(force=missing)
+        if symbols:
+            self._ensure_bar_meta(symbols)
+
+    def _hydrate_and_render_only(self) -> None:
+        """策略页进页：同步名单、读磁盘 cache 并重绘（不自动提交 Worker）。"""
+        self._sync_panel_with_pool()
+        self.hydrate_from_disk()
+        self._apply_refresh_result()
 
     def refresh(self, *, force: bool = False, symbols: list[str] | None = None) -> None:
         if not self._page.config.show_watchlist_signals or not self._page._active:
@@ -627,7 +681,9 @@ class WatchlistSignalController:
         for vt in affected:
             self._page.signal_cache.pop(vt, None)
             self._page.continuation_cache.pop(vt, None)
-        self.refresh(symbols=affected)
+        panel = getattr(self._page, "signal_panel", None)
+        if panel is not None:
+            panel.render_panel()
 
     def on_symbols_changed(self) -> None:
         panel = getattr(self._page, "signal_panel", None)
@@ -649,30 +705,4 @@ class WatchlistSignalController:
             self._page.signal_cache.pop(vt, None)
             self._page.continuation_cache.pop(vt, None)
         panel.render_panel()
-
-        previous = self._last_panel_symbols
-        current = set(kept)
-        added = current - previous
-        self._last_panel_symbols = current
-
-        if not kept:
-            return
-
-        if added:
-            self._ensure_bar_meta(list(added))
-            self.refresh(symbols=list(added), force=True)
-            return
-
-        missing = self._symbols_needing_refresh(kept)
-        if missing:
-            self._ensure_bar_meta(missing)
-            self.refresh(symbols=missing, force=False)
-        elif not known:
-            self.refresh(force=True)
-
-    def on_panel_enabled_changed(self, enabled: bool) -> None:
-        if enabled:
-            symbols = self._panel_symbols()
-            self.refresh(force=bool(symbols) and not self._cache_covers(symbols))
-        else:
-            self._apply_refresh_result()
+        self._last_panel_symbols = set(kept)

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -29,6 +31,57 @@ from vnpy_ashare.storage.repositories.watchlist import load_watchlist_rows
 
 _VALUATION_TTL_DAYS = 7
 _PEER_TOP_N = 10
+_SECTOR_MARKET_TTL_SEC = 300.0
+
+_sector_market_cache: tuple[float, SectorMarketSnapshot] | None = None
+
+
+@dataclass(frozen=True)
+class SectorMarketSnapshot:
+    """板块 Tab 共用的全市场因子快照（进程内短 TTL）。"""
+
+    industry_map: dict[str, str]
+    fund_rows: list[dict[str, Any]]
+    trade_date: str
+    pct_map: dict[str, float]
+
+
+def load_sector_market_snapshot(*, force: bool = False) -> SectorMarketSnapshot:
+    """加载行业 / daily_basic / 涨跌幅；同会话内复用，避免板块 Tab 重复拉全市场。"""
+    global _sector_market_cache
+    now = time.monotonic()
+    if not force and _sector_market_cache is not None:
+        cached_at, snapshot = _sector_market_cache
+        if now - cached_at < _SECTOR_MARKET_TTL_SEC:
+            return snapshot
+
+    industry_map = fetch_stock_industry_map()
+    try:
+        fund_rows, trade_date = fetch_daily_basic_with_fallback()
+    except Exception:
+        fund_rows, trade_date = [], ""
+
+    pct_map: dict[str, float] = {}
+    if trade_date:
+        try:
+            pct_map = fetch_daily_pct_map(trade_date)
+        except Exception:
+            pct_map = {}
+
+    snapshot = SectorMarketSnapshot(
+        industry_map=industry_map,
+        fund_rows=fund_rows,
+        trade_date=trade_date,
+        pct_map=pct_map,
+    )
+    _sector_market_cache = (now, snapshot)
+    return snapshot
+
+
+def invalidate_sector_market_snapshot() -> None:
+    """清空板块市场快照缓存（测试用）。"""
+    global _sector_market_cache
+    _sector_market_cache = None
 
 
 def _percentile_rank(values: list[float], current: float | None) -> float | None:
@@ -59,17 +112,22 @@ def sync_valuation_history(
     *,
     days: int = 750,
     force: bool = False,
+    market: SectorMarketSnapshot | None = None,
 ) -> ValuationProfile:
     item = parse_stock_symbol(vt_symbol)
     if item is None:
         return ValuationProfile(ts_code="", vt_symbol=vt_symbol, message=f"无法解析代码: {vt_symbol}")
 
     ts_code = item.ts_code
-    profile = build_valuation_profile(vt_symbol)
+    if market is None:
+        market = load_sector_market_snapshot()
+
     if not _valuation_needs_sync(ts_code, force=force):
+        profile = build_valuation_profile(vt_symbol, market=market)
         profile.message = "估值历史仍有效，跳过同步"
         return profile
 
+    profile = build_valuation_profile(vt_symbol, live=False)
     try:
         rows = fetch_valuation_history(ts_code, days=days)
     except TushareNotConfiguredError as ex:
@@ -80,13 +138,18 @@ def sync_valuation_history(
         return profile
 
     count = upsert_valuation_rows(ts_code, rows)
-    refreshed = build_valuation_profile(vt_symbol)
+    refreshed = build_valuation_profile(vt_symbol, market=market)
     refreshed.synced = count > 0
     refreshed.message = f"已同步 {count} 条估值历史" if count else "Tushare 未返回估值历史"
     return refreshed
 
 
-def build_valuation_profile(vt_symbol: str) -> ValuationProfile:
+def build_valuation_profile(
+    vt_symbol: str,
+    *,
+    live: bool = True,
+    market: SectorMarketSnapshot | None = None,
+) -> ValuationProfile:
     item = parse_stock_symbol(vt_symbol)
     if item is None:
         return ValuationProfile(ts_code="", vt_symbol=vt_symbol)
@@ -96,10 +159,17 @@ def build_valuation_profile(vt_symbol: str) -> ValuationProfile:
     pe_hist = [row.pe_ttm for row in history if row.pe_ttm is not None]
     pb_hist = [row.pb for row in history if row.pb is not None]
 
-    try:
-        fund_rows, trade_date = fetch_daily_basic_with_fallback()
-    except Exception:
-        fund_rows, trade_date = [], ""
+    fund_rows: list[dict[str, Any]] = []
+    trade_date = ""
+    if live:
+        if market is not None:
+            fund_rows = list(market.fund_rows)
+            trade_date = market.trade_date
+        else:
+            try:
+                fund_rows, trade_date = fetch_daily_basic_with_fallback()
+            except Exception:
+                fund_rows, trade_date = [], ""
 
     current = next((row for row in fund_rows if row.get("ts_code") == ts_code), None)
     pe = current.get("pe_ttm") if current else None
@@ -123,10 +193,12 @@ def build_valuation_profile(vt_symbol: str) -> ValuationProfile:
     )
 
 
-def sync_disclosure_calendar(vt_symbol: str) -> tuple[int, str]:
+def sync_disclosure_calendar(vt_symbol: str, *, force: bool = False) -> tuple[int, str]:
     item = parse_stock_symbol(vt_symbol)
     if item is None:
         return 0, f"无法解析代码: {vt_symbol}"
+    if not force and list_disclosure_calendar(item.ts_code, limit=1):
+        return 0, ""
     try:
         rows = fetch_disclosure_dates(item.ts_code)
     except TushareNotConfiguredError as ex:
@@ -153,26 +225,25 @@ def sync_watchlist_disclosure() -> tuple[int, list[str]]:
     return total, [summary, *messages[:8]]
 
 
-def build_sector_profile(vt_symbol: str, *, name: str = "") -> SectorProfile:
+def build_sector_profile(
+    vt_symbol: str,
+    *,
+    name: str = "",
+    market: SectorMarketSnapshot | None = None,
+) -> SectorProfile:
     item = parse_stock_symbol(vt_symbol)
     if item is None:
         return SectorProfile(ts_code="", vt_symbol=vt_symbol, name=name)
 
     ts_code = item.ts_code
-    industry_map = fetch_stock_industry_map()
+    if market is None:
+        market = load_sector_market_snapshot()
+
+    industry_map = market.industry_map
     industry = industry_map.get(ts_code, "").strip()
-
-    try:
-        fund_rows, trade_date = fetch_daily_basic_with_fallback()
-    except Exception:
-        fund_rows, trade_date = [], ""
-
-    pct_map: dict[str, float] = {}
-    if trade_date:
-        try:
-            pct_map = fetch_daily_pct_map(trade_date)
-        except Exception:
-            pct_map = {}
+    fund_rows = market.fund_rows
+    trade_date = market.trade_date
+    pct_map = market.pct_map
 
     raw_rows: list[dict[str, Any]] = []
     for row in fund_rows:

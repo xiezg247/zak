@@ -7,8 +7,8 @@ from typing import Any
 from vnpy_ashare.domain.market.quote_row import QuoteRowsLike
 from vnpy_ashare.domain.screener.quotes_snapshot import MarketQuotesSnapshot
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
-from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
-from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, load_market_quote_rows
+from vnpy_ashare.quotes.core.screening_snapshot_router import load_screening_quote_snapshot
+from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 
 __all__ = [
     "load_intraday_market_snapshot",
@@ -43,32 +43,41 @@ def quote_rows_from_tushare_fallback() -> tuple[QuoteRowsLike, str | None]:
     return rows, updated_at
 
 
+def _intraday_snapshot(*, enrich_factors: bool = True) -> MarketQuotesSnapshot:
+    """盘中统一入口：ScreeningContext → 进程 Hub → Redis。"""
+    _ = enrich_factors  # enrich 在 loader / uncached 路径内处理
+    return load_screening_quote_snapshot()
+
+
 def load_quote_rows_for_market(*, allow_network: bool = True, force: bool = False) -> tuple[QuoteRowsLike, str | None]:
     """市场页/情绪周期等共用的行情行加载入口。"""
     if not is_ashare_trading_session():
         return quote_rows_from_tushare_fallback()
-    if not force:
-        cached = get_market_quotes_cache()
+    if not allow_network and not force:
+        from vnpy_ashare.quotes.core.quote_rows import peek_market_quotes_cache
+
+        cached = peek_market_quotes_cache()
         if cached:
             return cached, None
-    if not allow_network:
         return [], None
     try:
-        snapshot = load_market_quote_rows()
-    except MarketQuotesLoadError:
+        snapshot = _intraday_snapshot()
+    except (MarketQuotesLoadError, RuntimeError):
         return [], None
     return snapshot.rows, snapshot.updated_at
 
 
 def peek_market_quote_rows(*, min_rows: int = 0) -> QuoteRowsLike | None:
-    cached = get_market_quotes_cache()
+    from vnpy_ashare.quotes.core.quote_rows import peek_market_quotes_cache
+
+    cached = peek_market_quotes_cache()
     if cached and len(cached) >= min_rows:
         return cached
     return None
 
 
 def load_intraday_market_snapshot(*, enrich_factors: bool = True) -> MarketQuotesSnapshot:
-    return load_market_quote_rows(enrich_factors=enrich_factors)
+    return _intraday_snapshot(enrich_factors=enrich_factors)
 
 
 def probe_intraday_market_quotes(*, enrich_factors: bool = False) -> None:
@@ -81,12 +90,12 @@ def resolve_intraday_quote_rows(
     min_cached_rows: int = 0,
     enrich_factors: bool = True,
 ) -> tuple[QuoteRowsLike, str | None, int, str | None]:
-    """盘中优先 Redis 缓存，否则拉全市场快照（不做盘外 Tushare 回退）。"""
+    """盘中优先缓存，否则拉全市场快照（不做盘外 Tushare 回退）。"""
     cached = peek_market_quote_rows(min_rows=min_cached_rows)
     if cached is not None:
         return cached, None, len(cached), None
     try:
-        market = load_market_quote_rows(enrich_factors=enrich_factors)
+        market = _intraday_snapshot(enrich_factors=enrich_factors)
     except MarketQuotesLoadError as ex:
         return [], None, 0, str(ex)
     return market.rows, market.updated_at, market.total, None

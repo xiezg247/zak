@@ -57,6 +57,7 @@ ignore = [
 "cli.py" = ["E402"]
 "tests/_bootstrap.py" = ["E402"]
 "tests/**" = ["F841", "PLC0415"]
+"bench/**" = ["PLC0415"]
 "skills/**" = ["PLC0415"]
 "strategies/**" = ["PLC0415"]
 "packages/vnpy-llm/**" = ["PLC0415"]

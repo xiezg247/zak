@@ -26,10 +26,20 @@ class QuotesRefreshWorker(QtCore.QThread):
         super().__init__()
         self.items = items
         self.quote_source = quote_source
+        self._cancel_requested = False
+
+    def request_cancel(self) -> None:
+        self._cancel_requested = True
 
     def run(self) -> None:
         try:
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
             quotes = fetch_quotes(self.items, self.quote_source)
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
             self.finished.emit(quotes)
         except Exception as ex:
             self.failed.emit(str(ex))

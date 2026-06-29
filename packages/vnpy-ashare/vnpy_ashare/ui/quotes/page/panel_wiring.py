@@ -44,27 +44,11 @@ def find_stock_item(page: QuotesPage, vt_symbol: str) -> StockItem | None:
 def apply_strategy_profile_for_page(page: QuotesPage, profile_id: str) -> None:
     typed_id = cast(StrategyProfileId, profile_id)
     from_profile_id = cast(StrategyProfileId, load_strategy_profile_id())
+    page.signal_config = apply_strategy_profile(typed_id)
     if from_profile_id != typed_id:
-        from vnpy_ashare.services.trading_playbook import (
-            apply_playbook_template_merge,
-            list_playbook_merge_candidate_sections,
-            touch_playbook_seeded_profile,
-        )
-        from vnpy_ashare.ui.home.playbook_merge_dialog import prompt_playbook_template_merge
+        from vnpy_ashare.services.trading_playbook import sync_playbook_from_template
 
-        candidates = list_playbook_merge_candidate_sections(from_profile_id, typed_id)
-        page.signal_config = apply_strategy_profile(typed_id)
-        if candidates and prompt_playbook_template_merge(
-            page,
-            from_profile_id=from_profile_id,
-            to_profile_id=typed_id,
-            section_ids=candidates,
-        ):
-            apply_playbook_template_merge(typed_id, candidates)
-        else:
-            touch_playbook_seeded_profile(typed_id)
-    else:
-        page.signal_config = apply_strategy_profile(typed_id)
+        sync_playbook_from_template(typed_id)
     signal_panel = page.signal_panel
     if signal_panel is not None:
         signal_panel.apply_config(page.signal_config)
@@ -72,7 +56,10 @@ def apply_strategy_profile_for_page(page: QuotesPage, profile_id: str) -> None:
     position_panel = page.position_panel
     if position_panel is not None:
         position_panel.sync_strategy_profile_combo(profile_id)
-    refresh_watchlist_signals(page)
+    page._signals.invalidate_memory_cache()
+    signal_panel = page.signal_panel
+    if signal_panel is not None:
+        signal_panel.render_panel()
 
 
 def refresh_watchlist_signals(page: QuotesPage) -> None:

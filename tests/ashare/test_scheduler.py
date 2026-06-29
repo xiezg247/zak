@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import tempfile
 import unittest
 from datetime import datetime
@@ -147,7 +148,8 @@ class TestSchedulerConfig(unittest.TestCase):
         manager = TaskSchedulerManager()
         manager._config.collect_quotes.enabled = True
         manager._config.collect_quotes.interval_seconds = 12
-        manager.start()
+        with patch.dict(os.environ, {"ZAK_RUN_SCHEDULER": "true"}, clear=False):
+            manager.start()
 
         with patch(
             "vnpy_ashare.scheduler.manager.is_ashare_trading_session",

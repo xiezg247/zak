@@ -1,4 +1,4 @@
-"""定时任务上次执行状态持久化（SQLite meta）。"""
+"""定时任务上次执行状态持久化（PG app.meta）。"""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import json
 
 from pydantic import Field
 
-from vnpy_ashare.storage.connection import connect, get_meta, set_meta
+from vnpy_ashare.storage.meta import delete_meta, get_meta, set_meta
 from vnpy_common.domain.base import FrozenModel
 
 _META_PREFIX = "scheduler/job_last_run/"
@@ -70,5 +70,4 @@ def save_job_run_meta(
 
 def clear_job_run_meta(job_id: str) -> None:
     """测试用：清除指定任务的上次执行记录。"""
-    with connect() as conn:
-        conn.execute("DELETE FROM meta WHERE key = ?", (_meta_key(job_id),))
+    delete_meta(_meta_key(job_id))

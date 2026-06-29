@@ -17,7 +17,7 @@
 
 ### 1.3 守则 Playbook（默认首屏）
 
-**Ctrl+1**：规则 Markdown + 对照条（情绪/风控/日盈亏/计划/持仓/纪律）+ checklist。§1–§5 用户可编辑，§2/§4 底部镜像 Profile/风控。`ui/home/`、`trading_playbook.py`。
+**Ctrl+1**：规则 Markdown + 对照条（情绪/风控/日盈亏/计划/持仓/纪律）+ checklist。§1–§5 **只读**（正文由 `config/playbook_templates/` 维护，随 Strategy Profile 切换刷新）；§2/§4 底部镜像 Profile/风控。每日 checklist 仍可按用户勾选。`ui/home/`、`trading_playbook.py`。
 
 ---
 

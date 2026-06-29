@@ -22,14 +22,20 @@ from vnpy_ashare.data.minute_periods import (
     DEFAULT_MINUTE_DOWNLOAD_MONTHS,
     normalize_period,
 )
+from vnpy_ashare.domain.data.bar import PeriodBarOverview
 from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.integrations.tushare.bars import download_daily_bars_tushare, download_minute_bars_tushare
+from vnpy_ashare.storage.repositories.bar_overview import (
+    count_scope_bar_overviews,
+    page_scope_bar_overviews,
+    search_scope_bar_overviews_page,
+)
 from vnpy_ashare.storage.repositories.universe import load_universe_names_for_keys
 from vnpy_ashare.storage.repositories.watchlist import import_watchlist_csv, load_watchlist_rows
 
 
 def load_watchlist(path: Path | None = None, ashare_only: bool = True) -> list[StockItem]:
-    """从 SQLite 读取自选池；若指定 path 则从 CSV 导入后返回。"""
+    """从 PostgreSQL app.watchlist 读取自选池；若指定 path 则从 CSV 导入后返回。"""
     if path is not None:
         import_watchlist_csv(path)
 
@@ -117,8 +123,8 @@ def load_downloaded_stocks(*, scope: str = "daily") -> list[StockItem]:
 
 
 def count_downloaded_stocks(*, scope: str = "daily") -> int:
-    """本地已下载标的总数。"""
-    return len(iter_bar_overviews(scope=scope))
+    """本地已下载标的总数（数据库 COUNT，不加载全量概览）。"""
+    return count_scope_bar_overviews(scope)
 
 
 def load_downloaded_stocks_page(
@@ -128,15 +134,15 @@ def load_downloaded_stocks_page(
     limit: int | None = 50,
 ) -> list[StockItem]:
     """分页读取本地已下载 K 线列表；limit 为 None 时返回全部。"""
-    rows = iter_bar_overviews(scope=scope)
     if limit is None:
+        rows = iter_bar_overviews(scope=scope)
         page_rows = rows[offset:]
     else:
-        page_rows = rows[offset : offset + max(limit, 0)]
+        page_rows = page_scope_bar_overviews(scope, offset=offset, limit=limit)
     return _overview_rows_to_items(page_rows)
 
 
-def _overview_rows_to_items(rows) -> list[StockItem]:
+def _overview_rows_to_items(rows: list[PeriodBarOverview]) -> list[StockItem]:
     name_map = load_universe_names_for_keys([(row.symbol, row.exchange) for row in rows])
     items: list[StockItem] = []
     for row in rows:
@@ -152,21 +158,11 @@ def search_downloaded_stocks_page(
     offset: int = 0,
     limit: int = 50,
 ) -> tuple[list[StockItem], int]:
-    """在本地已下载列表中按代码/名称搜索并分页。"""
-    keyword = keyword.strip().lower()
-    if not keyword:
-        total = count_downloaded_stocks(scope=scope)
-        items = load_downloaded_stocks_page(scope=scope, offset=offset, limit=limit)
-        return items, total
-
-    rows = iter_bar_overviews(scope=scope)
-    name_map = load_universe_names_for_keys([(row.symbol, row.exchange) for row in rows])
-    matched: list[StockItem] = []
-    for row in rows:
-        name = name_map.get((row.symbol, row.exchange), "")
-        item = StockItem(symbol=row.symbol, exchange=row.exchange, name=name)
-        if keyword in item.search_key:
-            matched.append(item)
-    total = len(matched)
-    page_size = max(limit, 0)
-    return matched[offset : offset + page_size], total
+    """在本地已下载列表中按代码/名称搜索并分页（数据库 LIMIT/OFFSET）。"""
+    rows, total = search_scope_bar_overviews_page(
+        scope,
+        keyword,
+        offset=offset,
+        limit=limit,
+    )
+    return _overview_rows_to_items(rows), total

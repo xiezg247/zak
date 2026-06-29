@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Any, Protocol
 
 from strategies.ultra_short_signals import calc_limit_price
+from vnpy_ashare.data.download_concurrency import intraday_seal_time_max_workers, run_parallel_map
 from vnpy_ashare.domain.market.quote_row import QuoteRowLike, QuoteRowsLike
 from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ, is_ashare_trading_session
@@ -126,10 +127,22 @@ def build_first_time_map(
             continue
         pending.append((vt_symbol, prev_close))
 
-    for vt_symbol, prev_close in pending[:max_intraday_fetch]:
+    pending_slice = pending[:max_intraday_fetch]
+    if not pending_slice:
+        return result
+
+    def _fetch_seal_time(item: tuple[str, float]) -> tuple[str, str] | None:
+        vt_symbol, prev_close = item
         intraday = fetch_intraday_seal_time(vt_symbol, prev_close=prev_close)
         if intraday and parse_clock_minutes(intraday) is not None:
-            result[vt_symbol] = intraday
+            return vt_symbol, intraday
+        return None
+
+    workers = intraday_seal_time_max_workers(item_count=len(pending_slice))
+    pairs = run_parallel_map(pending_slice, _fetch_seal_time, max_workers=workers)
+    for pair in pairs:
+        if pair is not None:
+            result[pair[0]] = pair[1]
     return result
 
 

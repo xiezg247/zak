@@ -70,7 +70,6 @@ class WatchlistSignalWorker(QtCore.QThread):
                 class_name=self.class_name,
                 fast_window=self.fast_window,
                 slow_window=self.slow_window,
-                max_workers=1,
             )
             if cache:
                 try:

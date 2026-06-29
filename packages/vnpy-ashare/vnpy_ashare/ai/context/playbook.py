@@ -43,16 +43,12 @@ def build_discipline_one_liner_prompt() -> str:
 
 def build_plan_review_prompt() -> str:
     return (
-        "基于终端已注入的交易体系 Playbook 与今日对照（计划、持仓、情绪），"
-        "检查今日操作是否偏离计划并给出应对建议；须结合 get_emotion_cycle，不要编造行情数据。"
+        "基于终端已注入的交易体系 Playbook 与今日对照（计划、持仓、情绪），检查今日操作是否偏离计划并给出应对建议；须结合 get_emotion_cycle，不要编造行情数据。"
     )
 
 
 def build_position_discipline_prompt() -> str:
-    return (
-        "基于 Playbook 纪律规则与今日持仓对照，检查是否存在计划外持仓、"
-        "退潮期违规开仓等纪律风险；可结合持仓记账核对，不要编造。"
-    )
+    return "基于 Playbook 纪律规则与今日持仓对照，检查是否存在计划外持仓、退潮期违规开仓等纪律风险；可结合持仓记账核对，不要编造。"
 
 
 def build_playbook_page_quick_actions() -> list[QuickAction]:

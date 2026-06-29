@@ -70,7 +70,6 @@ LOCAL_TABLE_HEADERS: list[str] = [
     "起始",
     "结束",
     "K线数",
-    "状态",
 ]
 
 
@@ -81,7 +80,6 @@ def build_local_data_row(
     start: str,
     end: str,
     count: str,
-    status: str,
 ) -> list[str]:
     return [
         index_text,
@@ -91,7 +89,6 @@ def build_local_data_row(
         start,
         end,
         count,
-        status,
     ]
 
 
@@ -135,7 +132,7 @@ def build_quote_row(
             "index": index_text,
             "symbol": item.symbol,
             "exchange": exchange_to_cn(item.exchange),
-            "name": quote.name or item.name,
+            "name": item.name or quote.name,
             "last_price": f"{quote.last_price:.2f}",
             "change_pct": f"{quote.change_pct:+.2f}",
             "limit_times": format_limit_times(quote.limit_times),

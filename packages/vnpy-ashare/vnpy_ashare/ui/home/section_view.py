@@ -44,15 +44,9 @@ class PlaybookSectionCard(QtWidgets.QFrame):
         self._title = QtWidgets.QLabel("")
         self._title.setObjectName("HomeCardTitle")
 
-        self._edit = QtWidgets.QToolButton()
-        self._edit.setText("编辑")
-        self._edit.setObjectName("HomeCardAction")
-        self._edit.clicked.connect(lambda: self.edit_requested.emit(self._section_id))
-
         header.addWidget(self._toggle)
         header.addWidget(self._num)
         header.addWidget(self._title, stretch=1)
-        header.addWidget(self._edit)
 
         self._body = QtWidgets.QTextBrowser()
         self._body.setObjectName("HomeCardBody")

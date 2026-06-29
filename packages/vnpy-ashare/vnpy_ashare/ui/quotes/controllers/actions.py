@@ -29,7 +29,10 @@ from vnpy_ashare.services.bar import list_status
 from vnpy_ashare.services.signals.stock_continuation import format_signal_panel_context_extra
 from vnpy_ashare.ui.features.stock_analysis.open import show_stock_analysis_from_quotes_page
 from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
-from vnpy_ashare.ui.quotes.page.config import AI_CONTEXT_DEBOUNCE_MS
+from vnpy_ashare.ui.quotes.page.config import AI_CONTEXT_DEBOUNCE_MS, QUOTE_REFRESH_DEBOUNCE_MS
+from vnpy_ashare.ui.quotes.page.quote_refresh import quote_refresh_stock_items
+from vnpy_ashare.ui.quotes.page.roles import WATCHLIST_PAGE
+from vnpy_ashare.ui.quotes.watchlist.quote_status import begin_watchlist_quotes_fetch, end_watchlist_quotes_fetch
 from vnpy_ashare.ui.quotes.workers.quotes_workers import DepthRefreshWorker, DiagnoseWorker, QuotesRefreshWorker
 from vnpy_ashare.ui.screener.dialogs.reference_peer_dialog import show_reference_peer_dialog
 from vnpy_ashare.ui.styles.colors import NAV_MUTED_COLOR
@@ -49,10 +52,25 @@ class ActionsController:
         self._ai_context_timer.setSingleShot(True)
         self._ai_context_timer.setInterval(AI_CONTEXT_DEBOUNCE_MS)
         self._ai_context_timer.timeout.connect(self._publish_ai_context)
+        self._quote_rest_timer = QtCore.QTimer(page)
+        self._quote_rest_timer.setSingleShot(True)
+        self._quote_rest_timer.setInterval(QUOTE_REFRESH_DEBOUNCE_MS)
+        self._quote_rest_timer.timeout.connect(self._do_refresh_quotes_rest)
 
     @property
     def _p(self) -> QuotesPage:
         return self._page
+
+    def _flush_pending_quote_refresh(self) -> None:
+        """合并定时刷新：Worker 进行中时记 pending，结束后补跑一轮。"""
+        page = self._page
+        if not page._pending_quote_refresh:
+            return
+        if not page._active:
+            page._pending_quote_refresh = False
+            return
+        page._pending_quote_refresh = False
+        QtCore.QTimer.singleShot(0, self.refresh_quotes_rest)
 
     def update_action_buttons(self) -> None:
         page = self._p
@@ -85,7 +103,7 @@ class ActionsController:
                 else:
                     key = (item.symbol, item.exchange)
                     button.setEnabled(key in page.bar_meta)
-        if page.config.show_add_watchlist_button or page.config.show_remove_watchlist_button or page.config.show_watchlist_move_buttons:
+        if page.config.show_add_watchlist_button or page.config.show_remove_watchlist_button:
             page._watchlist.update_action_buttons(item)
         if page.config.show_backtest_button:
             page.backtest_button.setEnabled(item is not None)
@@ -182,7 +200,7 @@ class ActionsController:
         if item is None:
             return ""
         panel = getattr(page, "signal_panel", None)
-        if panel is None or not panel.enabled:
+        if panel is None:
             return ""
         if item.vt_symbol not in panel.symbols:
             return ""
@@ -311,7 +329,7 @@ class ActionsController:
                 return
             self.refresh_quotes_rest()
             return
-        if not page.display_stocks:
+        if not quote_refresh_stock_items(page):
             page.schedule_quote_auto_refresh()
             return
         if page._use_quote_stream():
@@ -325,20 +343,32 @@ class ActionsController:
         page = self._p
         if not page.config.quote_source:
             return
-        if not page.display_stocks:
+        if not quote_refresh_stock_items(page):
             page._toast.info("列表为空，无可刷新标的")
             return
         if page._thread_active(page._quotes_worker):
             page._toast.info("行情刷新进行中，请稍候")
             return
-        self.refresh_quotes_rest()
+        if page.config.market_scroll_paging and page._market_quote_refresh_paused():
+            page._toast.info("列表加载中，请稍候再刷新")
+            return
+        self._quote_rest_timer.stop()
+        self._do_refresh_quotes_rest()
 
     def refresh_quotes_rest(self) -> None:
+        self._quote_rest_timer.start()
+
+    def _do_refresh_quotes_rest(self) -> None:
         page = self._p
-        if not page.display_stocks:
+        if not page._active or not page.config.quote_source:
+            return
+        refresh_items = quote_refresh_stock_items(page)
+        if not refresh_items:
             return
         if page._thread_active(page._quotes_worker):
+            page._pending_quote_refresh = True
             return
+        page._pending_quote_refresh = False
         if page.config.market_scroll_paging and page._market_quote_refresh_paused():
             return
 
@@ -346,44 +376,46 @@ class ActionsController:
             self.refresh_depth()
 
         refresh_source = page.config.quote_refresh_source or page.config.quote_source or "watchlist"
-        if page.config.use_market_rank and page.config.market_full_list and page._market_catalog_loaded and page.market_auto_refresh_enabled():
-            refresh_items = list(page._market_catalog)
-        elif page.config.market_scroll_paging:
-            refresh_items = page._table.visible_market_items()
-        else:
-            refresh_items = list(page.display_stocks)
-        if not refresh_items:
-            return
         worker = QuotesRefreshWorker(refresh_items, refresh_source)
         page._quotes_worker = worker
         current = page.current_item
+        if page.page_name == WATCHLIST_PAGE:
+            begin_watchlist_quotes_fetch(page)
 
         def on_finished(quotes: dict) -> None:
             if page._quotes_worker is worker:
                 page._quotes_worker = None
             try:
                 if not page._active:
+                    if page.page_name == WATCHLIST_PAGE:
+                        end_watchlist_quotes_fetch(page)
                     return
 
-                merge_quote_maps_into(page.quote_map, quotes)
-                if page.config.market_full_list and page._market_catalog_loaded:
-                    merge_quote_maps_into(page._market_catalog_quotes, quotes)
-                if page.config.use_market_rank and page.config.market_full_list and page._market_catalog_loaded:
-                    page._table.apply_market_display()
-                elif page.config.market_scroll_paging:
-                    page._table.refresh_visible_table_quotes()
-                else:
-                    page._refresh_table_quotes()
-                page._update_quote_source_label()
-                if current:
-                    self.update_quote_header(current)
-                    if page.chart_panel is not None:
-                        page.chart_panel.update_quote(quotes.get(current.tickflow_symbol))
-                        page.chart_panel.refresh_active()
-                if page.quote_auto_refresh_enabled():
-                    page.schedule_quote_auto_refresh()
+                def _apply_quotes() -> None:
+                    merge_quote_maps_into(page.quote_map, quotes)
+                    if page.config.market_full_list and page._market_catalog_loaded:
+                        merge_quote_maps_into(page._market_catalog_quotes, quotes)
+                    if page.config.use_market_rank and page.config.market_full_list and page._market_catalog_loaded:
+                        page._table.apply_market_display()
+                    elif page.config.market_scroll_paging:
+                        page._table.refresh_visible_table_quotes()
+                    else:
+                        page._refresh_table_quotes()
+                    page._update_quote_source_label()
+                    if current:
+                        self.update_quote_header(current)
+                        if page.chart_panel is not None:
+                            page.chart_panel.update_quote(quotes.get(current.tickflow_symbol))
+                            page.chart_panel.refresh_active()
+                    if page.quote_auto_refresh_enabled():
+                        page.schedule_quote_auto_refresh()
+                    if page.page_name == WATCHLIST_PAGE:
+                        end_watchlist_quotes_fetch(page)
+
+                page._defer_when_market_idle(_apply_quotes)
             finally:
                 page._release_worker(worker)
+                self._flush_pending_quote_refresh()
 
         def on_failed(_msg: str) -> None:
             if page._quotes_worker is worker:
@@ -391,8 +423,11 @@ class ActionsController:
             try:
                 if page.quote_auto_refresh_enabled():
                     page.schedule_quote_auto_refresh()
+                if page.page_name == WATCHLIST_PAGE:
+                    end_watchlist_quotes_fetch(page)
             finally:
                 page._release_worker(worker)
+                self._flush_pending_quote_refresh()
 
         worker.finished.connect(on_finished)
         worker.failed.connect(on_failed)
@@ -519,8 +554,8 @@ class ActionsController:
         """信号区「AI 扫区」：批量解读名单内全部标的。"""
         page = self._p
         panel = getattr(page, "signal_panel", None)
-        if panel is None or not panel.enabled:
-            page._toast.warning("请先启用策略信号区")
+        if panel is None:
+            page._toast.warning("信号区不可用")
             return
         if not panel.symbols:
             page._toast.warning("信号区暂无监控标的")
@@ -539,8 +574,8 @@ class ActionsController:
         """信号区「AI 解读」：优先选中行，否则主表当前行（须在信号区名单内）。"""
         page = self._p
         panel = getattr(page, "signal_panel", None)
-        if panel is None or not panel.enabled:
-            page._toast.warning("请先启用策略信号区")
+        if panel is None:
+            page._toast.warning("信号区不可用")
             return
 
         target = (vt_symbol or "").strip()
@@ -669,6 +704,8 @@ class ActionsController:
             item = page._stock_at_row(row)
             if item is None:
                 return
+            page.current_item = item
+            page._update_action_buttons()
         menu = self._build_stock_context_menu(item)
         popup_at = global_pos if global_pos is not None else page.market_table.viewport().mapToGlobal(pos)
         menu.popup(popup_at)
@@ -707,13 +744,13 @@ class ActionsController:
         elif page.config.show_add_watchlist_button:
             if page._watchlist.contains(item):
                 action = menu.addAction("移出自选")
-                action.triggered.connect(page.remove_from_watchlist)
+                action.triggered.connect(lambda _checked=False, it=item: page.remove_from_watchlist(it))
             else:
                 action = menu.addAction("加入自选")
                 action.triggered.connect(page.add_to_watchlist)
         elif page.config.show_remove_watchlist_button and page._watchlist.contains(item):
             action = menu.addAction("移出自选")
-            action.triggered.connect(page.remove_from_watchlist)
+            action.triggered.connect(lambda _checked=False, it=item: page.remove_from_watchlist(it))
 
         if page.config.show_download_button:
             action = menu.addAction("下载日K到本地")
@@ -722,19 +759,6 @@ class ActionsController:
         if page.config.show_backtest_button:
             action = menu.addAction("策略回测")
             action.triggered.connect(self.open_backtest_for_selected)
-
-        if page.config.show_watchlist_move_buttons:
-            if page._watchlist.contains(item):
-                menu.addSeparator()
-                index = page._watchlist.index_of(item)
-                total = len(page.all_stocks)
-                can_move = page._watchlist_groups is None or not page._watchlist_groups.is_filtering()
-                if can_move and index is not None and index > 0:
-                    action = menu.addAction("上移")
-                    action.triggered.connect(lambda: page._watchlist.move_selected("up"))
-                if can_move and index is not None and index + 1 < total:
-                    action = menu.addAction("下移")
-                    action.triggered.connect(lambda: page._watchlist.move_selected("down"))
 
         if page.page_name == "自选" and page.config.show_watchlist_groups and page._watchlist_groups is not None:
             selected = [it for it in page._table.selected_items() if page._watchlist.contains(it)]
@@ -749,13 +773,15 @@ class ActionsController:
         """自选页：池操作放右键（多选加入信号区 / 移出 / 刷新行情）。"""
         page = self._p
         added = False
-        if page.config.show_watchlist_signals:
+        if page.page_name == WATCHLIST_PAGE or page.config.show_watchlist_signals:
             action = menu.addAction("加入信号区")
             action.triggered.connect(page.add_selection_to_signal_panel)
             added = True
         if page.config.show_remove_watchlist_button and page._watchlist.contains(item):
-            action = menu.addAction("移出自选")
-            action.triggered.connect(page.remove_from_watchlist)
+            selected = page._table.selected_items()
+            label = f"移出 {len(selected)} 只" if len(selected) > 1 else "移出自选"
+            action = menu.addAction(label)
+            action.triggered.connect(lambda _checked=False: page.remove_from_watchlist())
             added = True
         if page.config.show_refresh_quotes_button and not page.config.use_market_rank:
             action = menu.addAction("刷新行情")

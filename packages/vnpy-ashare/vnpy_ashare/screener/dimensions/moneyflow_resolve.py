@@ -4,16 +4,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike, coerce_quote_row, quote_row_copy
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike, quote_row_copy
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.integrations.mcp.intraday_flow import fetch_intraday_moneyflow_map
-from vnpy_ashare.integrations.tushare.factors import DATASET_MONEYFLOW, get_cached_rows
 from vnpy_ashare.quotes.core.quote_rows import quote_rows_by_vt_symbol
 from vnpy_ashare.quotes.market.moneyflow_kind import enrich_moneyflow_row_with_kind
-from vnpy_ashare.screener.data.data_source import fetch_moneyflow_with_fallback, iter_trade_date_strs, load_screening_quote_snapshot
+from vnpy_ashare.screener.data.data_source import fetch_moneyflow_with_fallback, load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, MarketQuotesSnapshot
 from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row, rank_score
-from vnpy_ashare.screener.preset.rules import apply_moneyflow_in
 
 _INTRADAY_DIMENSION_ID = "moneyflow_intraday"
 _INTRADAY_LABEL = "盘中资金"
@@ -23,14 +21,6 @@ _STREAK_BONUS_PER_DAY = 0.05
 _MAX_STREAK_BONUS = 0.2
 _STREAK_TIER_3_BONUS = 0.08
 _STREAK_TIER_5_BONUS = 0.15
-
-
-def _tier_net_amount(row: QuoteRowLike) -> float:
-    """特大单净流入优先，用于排序与分档。"""
-    elg = float(row.get("buy_elg_amount") or 0) - float(row.get("sell_elg_amount") or 0)
-    if elg != 0:
-        return elg
-    return float(row.get("net_mf_amount") or 0)
 
 
 def _moneyflow_score_adjustment(row: dict[str, Any], base_score: float) -> float:
@@ -51,20 +41,12 @@ def _moneyflow_score_adjustment(row: dict[str, Any], base_score: float) -> float
 
 def count_positive_moneyflow_streak(vt_symbol: str, *, max_days: int = 5) -> int:
     """连续净流入天数（仅读本地 Tushare 缓存，无缓存则跳过）。"""
+    from vnpy_ashare.screener.engine.dimensions.moneyflow_streak import build_positive_moneyflow_streak_map
 
-    streak = 0
-    for trade_date in iter_trade_date_strs(max_lookback=max_days):
-        cached = get_cached_rows(DATASET_MONEYFLOW, trade_date)
-        if cached is None:
-            continue
-        row = next((item for item in cached if str(item.get("vt_symbol") or "") == vt_symbol), None)
-        if row is None:
-            break
-        if float(row.get("net_mf_amount") or 0) > 0:
-            streak += 1
-        else:
-            break
-    return streak
+    vt = str(vt_symbol or "").strip()
+    if not vt:
+        return 0
+    return build_positive_moneyflow_streak_map({vt}, max_days=max_days).get(vt, 0)
 
 
 def resolve_moneyflow_hits(
@@ -142,9 +124,14 @@ def _post_close_tushare_hits(
     if not raw_rows:
         return [], total, ""
 
-    ranked = apply_moneyflow_in(raw_rows, top_n=pool_size * 2)
-    ranked.sort(key=lambda row: _tier_net_amount(row), reverse=True)
-    ranked = ranked[:pool_size]
+    from vnpy_ashare.screener.engine.dimensions.moneyflow_post import (
+        post_close_streak_map_for_rows,
+        rank_post_close_moneyflow_rows_polars,
+    )
+
+    ranked = rank_post_close_moneyflow_rows_polars(raw_rows, pool_size=pool_size)
+    streak_map = post_close_streak_map_for_rows(ranked)
+
     hits: list[DimensionHit] = []
     for index, row in enumerate(ranked, start=1):
         vt_symbol = str(row.get("vt_symbol") or "")
@@ -153,7 +140,7 @@ def _post_close_tushare_hits(
         amount = float(row.get("net_mf_amount") or 0)
         merged = _merge_quote_fields(row, quote_map.get(vt_symbol))
         merged["moneyflow_source"] = row.get("moneyflow_source", "tushare")
-        streak = count_positive_moneyflow_streak(vt_symbol)
+        streak = streak_map.get(vt_symbol, 0)
         if streak:
             merged["moneyflow_streak_days"] = streak
         base_score = rank_score(index, len(ranked))
@@ -228,52 +215,15 @@ def _hits_from_mcp_map(
     return hits
 
 
-def _proxy_liquidity_score(row: QuoteRowLike) -> float:
-    change = float(row.get("change_pct") or 0)
-    if change <= 0:
-        return 0.0
-    amount = float(row.get("amount") or 0)
-    if amount > 0:
-        return change * amount
-    turnover = float(row.get("turnover_rate") or 0)
-    price = float(row.get("last_price") or row.get("close") or 0)
-    if turnover > 0 and price > 0:
-        return change * turnover * price
-    return 0.0
-
-
 def _hits_from_proxy(
     rows: QuoteRowsLike,
     pool_size: int,
     *,
     weight: float,
 ) -> list[DimensionHit]:
-    scored: list[tuple[QuoteRow, float]] = []
-    for row in rows:
-        item = coerce_quote_row(row)
-        score = _proxy_liquidity_score(item)
-        if score <= 0:
-            continue
-        scored.append((item, score))
-    scored.sort(key=lambda item: item[1], reverse=True)
-    hits: list[DimensionHit] = []
-    for index, (payload, _proxy) in enumerate(scored[:pool_size], start=1):
-        vt_symbol = str(payload.get("vt_symbol") or "")
-        if not vt_symbol:
-            continue
-        amount = float(payload.get("amount") or 0) / 1e4
-        hits.append(
-            DimensionHit(
-                vt_symbol=vt_symbol,
-                dimension_id=_INTRADAY_DIMENSION_ID,
-                label=_INTRADAY_LABEL,
-                weight=weight,
-                score=rank_score(index, min(len(scored), pool_size)),
-                reason=(f"盘中资金：涨幅 {float(payload.get('change_pct') or 0):+.2f}% + 成交额 {amount:,.0f} 万（代理），排名第 {index}"),
-                row=dimension_hit_row(quote_row_copy(payload, moneyflow_proxy=True)),
-            )
-        )
-    return hits
+    from vnpy_ashare.screener.engine.dimensions.moneyflow_proxy import hits_from_moneyflow_proxy_polars
+
+    return hits_from_moneyflow_proxy_polars(list(rows), pool_size, weight=weight)
 
 
 def _merge_quote_fields(row: QuoteRowLike, quote_row: QuoteRowLike | None) -> dict[str, Any]:

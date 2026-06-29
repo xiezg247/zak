@@ -12,7 +12,9 @@ from vnpy_ashare.ui.quotes.table.columns import LOCAL_TABLE_HEADERS, quote_table
 from vnpy_common.domain.base import FrozenModel
 
 MAX_DISPLAY_ROWS = 300
-LOCAL_PAGE_SIZE = 50
+LOCAL_PAGE_SIZE = 10
+LOCAL_CHART_DAILY_LOOKBACK_BARS = 320
+LOCAL_CHART_MINUTE_LOOKBACK_BARS = 480
 MARKET_PAGE_SIZE = 100
 MARKET_SCROLL_DEBOUNCE_MS = 180
 MARKET_SCROLL_LOAD_COOLDOWN_MS = 500
@@ -22,7 +24,11 @@ STREAM_QUOTE_DEBOUNCE_MS = 150
 STREAM_CHART_QUOTE_DEBOUNCE_MS = 100
 AI_CONTEXT_DEBOUNCE_MS = 500
 STATS_DEBOUNCE_MS = 500
+QUOTE_REFRESH_DEBOUNCE_MS = 200
 SCHEDULER_UI_FALLBACK_REFRESH_MS = 60_000
+SCHEDULER_UI_LOG_DEBOUNCE_MS = 80
+SCHEDULER_UI_TABLE_DEBOUNCE_MS = 400
+SCHEDULER_UI_EVENT_DEBOUNCE_MS = SCHEDULER_UI_TABLE_DEBOUNCE_MS
 MARKET_LIVE_DISPLAY_LIMIT = 100
 MARKET_QUOTE_REFRESH_MS = 15000
 WATCHLIST_QUOTE_REFRESH_MS = 3000
@@ -195,6 +201,7 @@ class PageConfig(FrozenModel):
     show_stock_notes: bool = Field(default=False, description="是否显示个股笔记区")
     show_watchlist_multiview: bool = Field(default=False, description="是否显示自选多维看盘")
     show_watchlist_groups: bool = Field(default=False, description="是否显示自选分组")
+    show_market_table: bool = Field(default=True, description="是否显示主行情表")
     search_max_width: int = Field(default=280, description="搜索框最大宽度（像素）")
 
 
@@ -336,7 +343,7 @@ PAGE_CONFIGS: dict[str, PageConfig] = {
         show_local_column=False,
         require_keyword=False,
         show_remove_watchlist_button=True,
-        show_watchlist_move_buttons=True,
+        show_watchlist_move_buttons=False,
         quote_refresh_ms=WATCHLIST_QUOTE_REFRESH_MS,
         quote_source="watchlist",
         show_depth_panel=True,
@@ -348,11 +355,43 @@ PAGE_CONFIGS: dict[str, PageConfig] = {
         show_batch_backtest_button=True,
         show_refresh_quotes_button=True,
         show_run_output_panel=False,
-        show_watchlist_signals=True,
-        show_watchlist_positions=True,
+        show_watchlist_signals=False,
+        show_watchlist_positions=False,
         show_stock_notes=True,
         show_watchlist_multiview=True,
         show_watchlist_groups=True,
+    ),
+    "策略监控": PageConfig(
+        title="策略监控",
+        scope_key="自选池",
+        search_placeholder="",
+        search_max_width=0,
+        show_sync_button=False,
+        show_download_button=False,
+        show_local_column=False,
+        require_keyword=False,
+        show_remove_watchlist_button=False,
+        show_watchlist_move_buttons=False,
+        auto_refresh_quotes=True,
+        quote_refresh_ms=WATCHLIST_QUOTE_REFRESH_MS,
+        quote_source="watchlist",
+        show_depth_panel=False,
+        show_chart_tabs=False,
+        show_kline=False,
+        use_quote_stream=False,
+        column_configurable=False,
+        hide_quote_header=True,
+        show_diagnose_button=False,
+        show_diagnose_panel=False,
+        show_batch_backtest_button=False,
+        show_refresh_quotes_button=False,
+        show_run_output_panel=False,
+        show_watchlist_signals=True,
+        show_watchlist_positions=True,
+        show_stock_notes=False,
+        show_watchlist_multiview=False,
+        show_watchlist_groups=False,
+        show_market_table=False,
     ),
     "本地": PageConfig(
         title="本地",

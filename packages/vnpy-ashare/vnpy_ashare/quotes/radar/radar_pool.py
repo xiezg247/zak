@@ -8,7 +8,6 @@ from vnpy_ashare.config.constants.watchlist import SHORT_TERM_FOCUS_GROUP_NAME
 from vnpy_ashare.config.preferences.watchlist_signal import load_signal_panel_symbols
 from vnpy_ashare.domain.symbols.stock import StockItem, parse_stock_symbol
 from vnpy_ashare.storage.repositories.positions import load_position_rows
-from vnpy_ashare.storage.repositories.symbols import build_symbol_name_map
 from vnpy_ashare.storage.repositories.watchlist import load_watchlist_rows
 from vnpy_ashare.storage.repositories.watchlist_groups import load_watchlist_group_member_keys, load_watchlist_groups
 
@@ -86,25 +85,20 @@ def collect_outlook_exclusion_vt_symbols() -> set[str]:
 
 
 def name_map_for_symbols(vt_symbols: list[str]) -> dict[str, str]:
-    """vt_symbol → 名称（自选优先，其次 A 股 universe）。"""
+    """vt_symbol → 名称（仅自选池与 StockItem 已有字段，不查 universe 全表）。"""
+    watchlist_names = {_vt_from_parts(symbol, exchange): name for symbol, exchange, name in load_watchlist_rows() if str(name or "").strip()}
     mapping: dict[str, str] = {}
-    for symbol, exchange, name in load_watchlist_rows():
-        if name:
-            mapping[_vt_from_parts(symbol, exchange)] = name
-    for (symbol, exchange), name in build_symbol_name_map().items():
-        if not name:
-            continue
-        vt_symbol = f"{symbol}.{exchange.value}"
-        if vt_symbol not in mapping:
-            mapping[vt_symbol] = name
     for vt_symbol in vt_symbols:
-        if mapping.get(vt_symbol):
+        text = str(vt_symbol or "").strip()
+        if not text:
             continue
-        item = parse_stock_symbol(vt_symbol)
-        if item is None:
+        watchlist_name = watchlist_names.get(text, "")
+        if watchlist_name:
+            mapping[text] = watchlist_name
             continue
-        if item.name:
-            mapping[vt_symbol] = item.name
+        item = parse_stock_symbol(text)
+        if item is not None and item.name:
+            mapping[text] = item.name
     return mapping
 
 

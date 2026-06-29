@@ -12,16 +12,40 @@ from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.domain.time.quote_time import normalize_datetime_text
 from vnpy_ashare.quotes.core.enrich import backfill_rank_scores_from_zset, fill_missing_tushare_factors
+from vnpy_ashare.quotes.core.quote_l1_cache import (
+    clear_quote_l1_cache,
+    merge_quotes,
+    quote_l1_enabled,
+    seq_matches,
+    swap_quotes,
+    try_get_quotes,
+    try_list_rank_symbols,
+)
+from vnpy_ashare.quotes.core.quote_notify import publish_quote_updated
+from vnpy_ashare.quotes.core.quote_redis_codec import (
+    decode_quote_blob,
+    encode_enrich_hash,
+    encode_quote_blob,
+    encode_quote_hash,
+    quote_blob_enabled,
+    quote_compact_enabled,
+)
 from vnpy_ashare.quotes.misc.speed_baseline import apply_change_speed_5m
 from vnpy_ashare.quotes.rank.rank_engine import compute_intraday_change_pct
 from vnpy_common.paths import ENV_FILE
 
 KEY_PREFIX = "zak"
 QUOTE_KEY_FMT = f"{KEY_PREFIX}:quote:{{symbol}}"
+QUOTE_BLOB_KEY_FMT = f"{KEY_PREFIX}:quote:b:{{symbol}}"
 RANK_KEY_FMT = f"{KEY_PREFIX}:rank:{{field}}"
+PRECOMPUTED_RANK_KEY_FMT = f"{KEY_PREFIX}:rank:precomputed:{{field}}"
+ORDERED_RANK_KEY_FMT = f"{KEY_PREFIX}:rank:ordered:{{field}}"
 RANK_CHANGE_PCT_KEY = f"{KEY_PREFIX}:rank:change_pct"
 META_UPDATED_AT_KEY = f"{KEY_PREFIX}:meta:updated_at"
 META_QUOTE_COUNT_KEY = f"{KEY_PREFIX}:meta:quote_count"
+META_SEQ_KEY = f"{KEY_PREFIX}:meta:seq"
+
+PRECOMPUTED_RANK_TOP_N = 200
 
 RANK_REDIS_FIELDS: tuple[str, ...] = (
     "change_pct",
@@ -37,6 +61,14 @@ RANK_REDIS_FIELDS: tuple[str, ...] = (
 )
 # 盘中可能暂无新值（如窗口刚滚动、盘后静止），保留上一版榜避免 UI 整榜为空
 _RANK_PRESERVE_WHEN_EMPTY: frozenset[str] = frozenset({"change_speed_5m"})
+# 全市场每轮采集都会写入的成员榜（无需 delete 重建）
+_FULL_RANK_FIELDS: frozenset[str] = frozenset(
+    {"change_pct", "turnover_rate", "amount", "volume", "amplitude", "intraday_change_pct"},
+)
+# 条件成员榜：未达标标的需 zrem
+_SPARSE_RANK_FIELDS: frozenset[str] = frozenset(
+    {"volume_ratio", "net_mf_amount", "change_speed_5m", "limit_times"},
+)
 # 单次 pipeline 命令数上限，避免全市场 ~5k 标的一次 hgetall 写 socket 超时
 QUOTE_READ_BATCH_SIZE = 300
 
@@ -51,8 +83,88 @@ def quote_key(tf_symbol: str) -> str:
     return QUOTE_KEY_FMT.format(symbol=tf_symbol)
 
 
+def quote_blob_key(tf_symbol: str) -> str:
+    return QUOTE_BLOB_KEY_FMT.format(symbol=tf_symbol)
+
+
 def rank_key(field: str) -> str:
     return RANK_KEY_FMT.format(field=field)
+
+
+def precomputed_rank_key(field: str) -> str:
+    return PRECOMPUTED_RANK_KEY_FMT.format(field=field)
+
+
+def ordered_rank_key(field: str) -> str:
+    return ORDERED_RANK_KEY_FMT.format(field=field)
+
+
+def rank_ordered_list_enabled() -> bool:
+    return os.getenv("ZAK_RANK_ORDERED_LIST", "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def rank_precompute_enabled() -> bool:
+    return os.getenv("ZAK_RANK_PRECOMPUTE", "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def rank_incremental_enabled() -> bool:
+    return os.getenv("ZAK_RANK_INCREMENTAL", "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _write_precomputed_rank(pipe, field: str, members: list[tuple[float, str]]) -> None:
+    if not rank_precompute_enabled() or not members:
+        return
+    top = sorted(members, key=lambda item: item[0], reverse=True)[:PRECOMPUTED_RANK_TOP_N]
+    pkey = precomputed_rank_key(field)
+    pipe.delete(pkey)
+    if top:
+        pipe.rpush(pkey, *[member for _score, member in top])
+
+
+def _write_ordered_rank_list(pipe, field: str, members: list[tuple[float, str]]) -> None:
+    """全市场涨幅序 LIST（跨进程读榜，避免 ZREVRANGE 大 key）。"""
+    if field != "change_pct" or not rank_ordered_list_enabled() or not members:
+        return
+    ordered = sorted(members, key=lambda item: item[0], reverse=True)
+    okey = ordered_rank_key(field)
+    pipe.delete(okey)
+    pipe.rpush(okey, *[member for _score, member in ordered])
+
+
+def _write_rank_field(
+    pipe,
+    *,
+    field: str,
+    members: list[tuple[float, str]],
+    quotes: dict[str, QuoteSnapshot],
+) -> None:
+    if not members and field in _RANK_PRESERVE_WHEN_EMPTY and is_ashare_trading_session():
+        return
+
+    key = rank_key(field)
+    if rank_incremental_enabled():
+        if field in _FULL_RANK_FIELDS:
+            if members:
+                pipe.zadd(key, {member: score for score, member in members})
+        elif field in _SPARSE_RANK_FIELDS:
+            member_scores = {member: score for score, member in members}
+            for tf_symbol in quotes:
+                if tf_symbol not in member_scores:
+                    pipe.zrem(key, tf_symbol)
+            if member_scores:
+                pipe.zadd(key, member_scores)
+        else:
+            pipe.delete(key)
+            if members:
+                pipe.zadd(key, {member: score for score, member in members})
+    else:
+        pipe.delete(key)
+        if members:
+            pipe.zadd(key, {member: score for score, member in members})
+
+    _write_precomputed_rank(pipe, field, members)
+    if field == "change_pct":
+        _write_ordered_rank_list(pipe, field, members)
 
 
 def create_redis_client():
@@ -87,10 +199,17 @@ class RedisQuoteStore:
         apply_change_speed_5m(self._client, quotes)
 
         pipe = self._client.pipeline(transaction=False)
+        pipe.incr(META_SEQ_KEY)
         rank_members: dict[str, list[tuple[float, str]]] = {field: [] for field in RANK_REDIS_FIELDS}
 
         for tf_symbol, quote in quotes.items():
-            pipe.hset(quote_key(tf_symbol), mapping=quote.to_redis_hash())
+            key = quote_key(tf_symbol)
+            mapping = encode_quote_hash(quote)
+            if quote_compact_enabled():
+                pipe.delete(key)
+            pipe.hset(key, mapping=mapping)
+            if quote_blob_enabled():
+                pipe.set(quote_blob_key(tf_symbol), encode_quote_blob(quote))
             rank_members["change_pct"].append((quote.change_pct, tf_symbol))
             rank_members["turnover_rate"].append((quote.turnover_rate, tf_symbol))
             rank_members["amount"].append((quote.amount, tf_symbol))
@@ -107,41 +226,113 @@ class RedisQuoteStore:
                 rank_members["limit_times"].append((quote.limit_times, tf_symbol))
 
         for field in RANK_REDIS_FIELDS:
-            members = rank_members[field]
-            if not members and field in _RANK_PRESERVE_WHEN_EMPTY and is_ashare_trading_session():
-                continue
-            key = rank_key(field)
-            pipe.delete(key)
-            if members:
-                pipe.zadd(key, {member: score for score, member in members})
+            _write_rank_field(pipe, field=field, members=rank_members[field], quotes=quotes)
         pipe.set(META_UPDATED_AT_KEY, datetime.now().isoformat(timespec="seconds"))
         pipe.set(META_QUOTE_COUNT_KEY, str(len(quotes)))
-        pipe.execute()
+        results = pipe.execute()
+        new_seq = int(results[0]) if results else 0
+        publish_quote_updated(seq=new_seq, client=self._client)
+        if quote_l1_enabled():
+            swap_quotes(
+                quotes,
+                updated_at=self.get_updated_at(),
+                seq=new_seq if new_seq > 0 else None,
+                complete=True,
+            )
         return len(quotes)
+
+    def patch_enriched_quotes(self, quotes: dict[str, QuoteSnapshot]) -> int:
+        """异步 enrich Job：仅 PATCH 因子字段与稀疏榜，不重写价量主路径。"""
+        if not quotes:
+            return 0
+
+        pipe = self._client.pipeline(transaction=False)
+        sparse_members: dict[str, list[tuple[float, str]]] = {field: [] for field in _SPARSE_RANK_FIELDS}
+
+        for tf_symbol, quote in quotes.items():
+            mapping = encode_enrich_hash(quote)
+            if mapping:
+                pipe.hset(quote_key(tf_symbol), mapping=mapping)
+            if quote_blob_enabled():
+                pipe.set(quote_blob_key(tf_symbol), encode_quote_blob(quote))
+            if quote.volume_ratio > 0:
+                sparse_members["volume_ratio"].append((quote.volume_ratio, tf_symbol))
+            if quote.net_mf_amount != 0:
+                sparse_members["net_mf_amount"].append((quote.net_mf_amount, tf_symbol))
+            if quote.change_speed_5m != 0:
+                sparse_members["change_speed_5m"].append((quote.change_speed_5m, tf_symbol))
+            if quote.limit_times >= 1:
+                sparse_members["limit_times"].append((quote.limit_times, tf_symbol))
+
+        for field in _SPARSE_RANK_FIELDS:
+            _write_rank_field(
+                pipe,
+                field=field,
+                members=sparse_members.get(field, []),
+                quotes=quotes,
+            )
+        pipe.execute()
+        merge_quotes(quotes)
+        return len(quotes)
+
+    def _l1_valid(self) -> bool:
+        if not quote_l1_enabled():
+            return False
+        return seq_matches(self.get_quote_seq())
+
+    def _fetch_quote_batch(
+        self,
+        batch: list[str],
+        *,
+        fallback_time: str,
+    ) -> dict[str, QuoteSnapshot]:
+        result: dict[str, QuoteSnapshot] = {}
+        hash_batch = batch
+        if quote_blob_enabled() and batch:
+            blobs = self._client.mget([quote_blob_key(tf_symbol) for tf_symbol in batch])
+            hash_batch = []
+            for tf_symbol, blob in zip(batch, blobs, strict=True):
+                quote = decode_quote_blob(blob)
+                if quote is None:
+                    hash_batch.append(tf_symbol)
+                    continue
+                if not quote.trade_time.strip() and fallback_time:
+                    quote.trade_time = fallback_time
+                result[tf_symbol] = quote
+        if hash_batch:
+            pipe = self._client.pipeline(transaction=False)
+            for tf_symbol in hash_batch:
+                pipe.hgetall(quote_key(tf_symbol))
+            rows = pipe.execute()
+            for tf_symbol, data in zip(hash_batch, rows, strict=True):
+                if not data:
+                    continue
+                quote = QuoteSnapshot.from_redis_hash(data)
+                if not quote:
+                    continue
+                if not quote.trade_time.strip() and fallback_time:
+                    quote.trade_time = fallback_time
+                result[tf_symbol] = quote
+        return result
 
     def get_quotes(self, tf_symbols: list[str], *, enrich_factors: bool = True) -> dict[str, QuoteSnapshot]:
         if not tf_symbols:
             return {}
 
-        rows: list[dict] = []
-        for batch in _iter_symbol_batches(tf_symbols, QUOTE_READ_BATCH_SIZE):
-            pipe = self._client.pipeline(transaction=False)
-            for tf_symbol in batch:
-                pipe.hgetall(quote_key(tf_symbol))
-            rows.extend(pipe.execute())
+        if self._l1_valid():
+            cached = try_get_quotes(tf_symbols)
+            if cached is not None:
+                if enrich_factors and cached:
+                    fill_missing_tushare_factors(cached)
+                    backfill_rank_scores_from_zset(self, cached)
+                return cached
+        elif quote_l1_enabled():
+            clear_quote_l1_cache()
 
         fallback_time = normalize_datetime_text(self.get_updated_at() or "")
-
         result: dict[str, QuoteSnapshot] = {}
-        for tf_symbol, data in zip(tf_symbols, rows, strict=True):
-            if not data:
-                continue
-            quote = QuoteSnapshot.from_redis_hash(data)
-            if not quote:
-                continue
-            if not quote.trade_time.strip() and fallback_time:
-                quote.trade_time = fallback_time
-            result[tf_symbol] = quote
+        for batch in _iter_symbol_batches(tf_symbols, QUOTE_READ_BATCH_SIZE):
+            result.update(self._fetch_quote_batch(batch, fallback_time=fallback_time))
         if enrich_factors and result:
             fill_missing_tushare_factors(result)
             backfill_rank_scores_from_zset(self, result)
@@ -175,6 +366,13 @@ class RedisQuoteStore:
         total = int(self._client.zcard(key) or 0)
         if total == 0 or limit <= 0:
             return [], total
+        if rank_precompute_enabled() and not ascending and offset < PRECOMPUTED_RANK_TOP_N and offset + limit <= PRECOMPUTED_RANK_TOP_N:
+            pkey = precomputed_rank_key(field)
+            pre_len = int(self._client.llen(pkey) or 0)
+            if pre_len > 0:
+                end = min(offset + limit - 1, pre_len - 1)
+                if offset <= end:
+                    return list(self._client.lrange(pkey, offset, end)), total
         if ascending:
             symbols = self._client.zrange(key, offset, offset + limit - 1)
         else:
@@ -187,10 +385,34 @@ class RedisQuoteStore:
         field: str = "change_pct",
         ascending: bool = False,
     ) -> list[str]:
+        if field == "change_pct" and not ascending:
+            if self._l1_valid():
+                cached = try_list_rank_symbols()
+                if cached:
+                    return cached
+            elif quote_l1_enabled():
+                clear_quote_l1_cache()
+            if rank_ordered_list_enabled():
+                okey = ordered_rank_key(field)
+                ordered_len = int(self._client.llen(okey) or 0)
+                if ordered_len > 0:
+                    key = rank_key(field)
+                    total = int(self._client.zcard(key) or 0)
+                    if total <= 0 or ordered_len == total:
+                        return list(self._client.lrange(okey, 0, -1))
         key = rank_key(field)
         if ascending:
             return list(self._client.zrange(key, 0, -1))
         return list(self._client.zrevrange(key, 0, -1))
+
+    def get_quote_seq(self) -> int | None:
+        value = self._client.get(META_SEQ_KEY)
+        if value is None:
+            return None
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
 
     def get_updated_at(self) -> str | None:
         value = self._client.get(META_UPDATED_AT_KEY)
@@ -211,3 +433,4 @@ def get_redis_quote_store() -> RedisQuoteStore:
 def reset_redis_quote_store() -> None:
     global _shared_redis_store
     _shared_redis_store = None
+    clear_quote_l1_cache()

@@ -8,6 +8,7 @@ import re
 from collections.abc import Callable
 from typing import Any
 
+from vnpy_ashare.data.download_concurrency import mcp_intraday_flow_max_workers, run_parallel_map
 from vnpy_ashare.domain.market.quote_row import QuoteRowsLike
 from vnpy_ashare.domain.symbols.stock import vt_symbol_to_symbol
 
@@ -51,13 +52,16 @@ def fetch_intraday_moneyflow_map(
 
     symbols = [str(row.get("vt_symbol") or "") for row in rows if row.get("vt_symbol")]
     symbols = symbols[: max(1, min(top_n, 60))]
-    result: dict[str, float] = {}
-    for vt_symbol in symbols:
+    if not symbols:
+        return {}
+
+    def _fetch_one(vt_symbol: str) -> tuple[str, float | None]:
         symbol = vt_symbol_to_symbol(vt_symbol)
-        amount = _query_symbol_flow(tool, vt_symbol, symbol)
-        if amount is not None:
-            result[vt_symbol] = amount
-    return result
+        return vt_symbol, _query_symbol_flow(tool, vt_symbol, symbol)
+
+    workers = mcp_intraday_flow_max_workers(item_count=len(symbols))
+    pairs = run_parallel_map(symbols, _fetch_one, max_workers=workers)
+    return {vt_symbol: amount for vt_symbol, amount in pairs if amount is not None}
 
 
 def _pick_flow_tool() -> str | None:

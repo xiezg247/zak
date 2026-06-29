@@ -4,6 +4,10 @@ from __future__ import annotations
 
 import os
 
+from vnpy_ashare.data.download_concurrency import (
+    run_parallel_map,
+    sector_flow_sync_max_workers,
+)
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError, get_tushare_pro
 from vnpy_ashare.integrations.tushare.sector_moneyflow import (
     fetch_moneyflow_cnt_ths,
@@ -25,6 +29,38 @@ def _sync_lookback_days() -> int:
         return 15
 
 
+def _sync_sector_flow_day(trade_date: str) -> str | None:
+    day_parts: list[str] = []
+
+    dc_industry, _ = fetch_moneyflow_ind_dc(trade_date=trade_date, content_type="行业")
+    if dc_industry:
+        industry_rows = build_sw_industry_rows_from_dc(dc_industry, limit_each_side=None)
+        if industry_rows:
+            upsert_sector_flow_day(trade_date, "industry", industry_rows)
+            day_parts.append(f"行业{len(industry_rows)}")
+
+    ths_rows, _ = fetch_moneyflow_cnt_ths(trade_date=trade_date)
+    if ths_rows:
+        concept_rows = rows_from_ths_concept_moneyflow(ths_rows, top_each_side=None)
+        upsert_sector_flow_day(trade_date, "concept", concept_rows)
+        day_parts.append(f"概念{len(concept_rows)}")
+    else:
+        dc_concept, _ = fetch_moneyflow_ind_dc(trade_date=trade_date, content_type="概念")
+        if dc_concept:
+            concept_rows = rows_from_dc_moneyflow(
+                dc_concept,
+                sector_kind="concept",
+                flow_source="dc_concept",
+                top_each_side=None,
+            )
+            upsert_sector_flow_day(trade_date, "concept", concept_rows)
+            day_parts.append(f"概念东财{len(concept_rows)}")
+
+    if not day_parts:
+        return None
+    return f"{trade_date}:{'/'.join(day_parts)}"
+
+
 def sync_sector_flow_daily_job() -> JobResult:
     """收盘后拉取近 N 日东财行业 + 同花顺概念板块资金，写入 sector_flow_daily。"""
     try:
@@ -34,37 +70,10 @@ def sync_sector_flow_daily_job() -> JobResult:
 
     lookback = _sync_lookback_days()
     job_log(f"同步近 {lookback} 日板块资金（东财行业 + 同花顺概念）…")
-    summaries: list[str] = []
-
-    for trade_date in iter_trade_date_strs(max_lookback=lookback):
-        day_parts: list[str] = []
-
-        dc_industry, _ = fetch_moneyflow_ind_dc(trade_date=trade_date, content_type="行业")
-        if dc_industry:
-            industry_rows = build_sw_industry_rows_from_dc(dc_industry, limit_each_side=None)
-            if industry_rows:
-                upsert_sector_flow_day(trade_date, "industry", industry_rows)
-                day_parts.append(f"行业{len(industry_rows)}")
-
-        ths_rows, _ = fetch_moneyflow_cnt_ths(trade_date=trade_date)
-        if ths_rows:
-            concept_rows = rows_from_ths_concept_moneyflow(ths_rows, top_each_side=None)
-            upsert_sector_flow_day(trade_date, "concept", concept_rows)
-            day_parts.append(f"概念{len(concept_rows)}")
-        else:
-            dc_concept, _ = fetch_moneyflow_ind_dc(trade_date=trade_date, content_type="概念")
-            if dc_concept:
-                concept_rows = rows_from_dc_moneyflow(
-                    dc_concept,
-                    sector_kind="concept",
-                    flow_source="dc_concept",
-                    top_each_side=None,
-                )
-                upsert_sector_flow_day(trade_date, "concept", concept_rows)
-                day_parts.append(f"概念东财{len(concept_rows)}")
-
-        if day_parts:
-            summaries.append(f"{trade_date}:{'/'.join(day_parts)}")
+    trade_dates = list(iter_trade_date_strs(max_lookback=lookback))
+    workers = sector_flow_sync_max_workers(item_count=len(trade_dates))
+    day_results = run_parallel_map(trade_dates, _sync_sector_flow_day, max_workers=workers)
+    summaries = [item for item in day_results if item]
 
     if not summaries:
         return JobResult(

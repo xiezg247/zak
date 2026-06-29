@@ -3,36 +3,26 @@
 from __future__ import annotations
 
 import json
-import tempfile
 import unittest
-from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 from vnpy.trader.constant import Exchange
 
 import tests._bootstrap  # noqa: F401
 from skills.vnpy_notes_skill import VnpyNotesSkill
+from tests.ashare.pg_unittest import PgStorageTestCase
 from vnpy_ashare.services.note import NoteService
-from vnpy_ashare.storage.connection import init_app_db
 
 
-class VnpyNotesSkillTests(unittest.TestCase):
+class VnpyNotesSkillTests(PgStorageTestCase):
     def setUp(self) -> None:
-        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self.db_path = Path(self._tmp.name)
-        self._patcher = patch("vnpy_ashare.storage.connection._db_path", return_value=self.db_path)
-        self._patcher.start()
-        init_app_db()
+        super().setUp()
         engine = Mock()
         engine.main_engine = None
         engine.event_engine = None
         self.note_service = NoteService(engine)
         self.skill = VnpyNotesSkill()
         self.skill._services = {"note": self.note_service}
-
-    def tearDown(self) -> None:
-        self._patcher.stop()
-        self.db_path.unlink(missing_ok=True)
 
     def test_get_and_append_notes(self) -> None:
         raw = self.skill.get_stock_notes("600519.SSE")

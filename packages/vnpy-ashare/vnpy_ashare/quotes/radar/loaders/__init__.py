@@ -15,6 +15,7 @@ from vnpy_ashare.quotes.radar.loaders.load import (
     incremental_refresh_radar_card_quotes,
     load_radar_board,
     load_radar_card,
+    load_radar_cards_batch,
 )
 from vnpy_ashare.quotes.radar.loaders.resonance import (
     build_radar_resonance_ai_prompt,
@@ -51,5 +52,6 @@ __all__ = [
     "load_discovery_volume_surge",
     "load_radar_board",
     "load_radar_card",
+    "load_radar_cards_batch",
     "load_screen_task",
 ]

@@ -20,6 +20,7 @@
 | [AI 数据路由](./ai-data-routing.md) · [AI 与 K 线](./ai-kline-data.md) · [团队分析](./team-agent.md) | AI 与 Skill |
 | [消息通知](./notifications.md) · [信息流](./info-feed.md) | 飞书与 B 站订阅 |
 | [配置热加载](./config-hot-reload.md) | instant / soft / restart |
+| [性能优化](./performance-optimization.md) | 极致短线 SLI、PG/Redis/UI 分层方案 |
 | [编码规范](./coding-standards.md) · [mypy](./mypy.md) | 开发约定 |
 
 Superpowers 工作区（不提交 Git）：[`superpowers/README.md`](./superpowers/README.md)

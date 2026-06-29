@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from vnpy_ashare.domain.time.china import format_china_datetime_minute
 from vnpy_ashare.quotes.market.emotion_cycle import format_mode_label, load_emotion_cycle_snapshot
+from vnpy_ashare.quotes.market.emotion_cycle_cache import peek_emotion_cycle_snapshot
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
 from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow
 
@@ -37,7 +38,9 @@ def is_stat_row(vt_symbol: str) -> bool:
 
 
 def load_market_emotion(spec: RadarCardSpec) -> RadarCardData:
-    snapshot = load_emotion_cycle_snapshot(fetch_if_missing=True)
+    snapshot = peek_emotion_cycle_snapshot()
+    if snapshot is None:
+        snapshot = load_emotion_cycle_snapshot(fetch_if_missing=False)
     if snapshot is None:
         return RadarCardData(
             card_id=spec.id,

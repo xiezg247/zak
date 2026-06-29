@@ -13,10 +13,7 @@ def _flatten_action_for_overflow_menu(action: QuickAction) -> list[QuickAction]:
     """将带子菜单的项展开为扁平列表，供「更多」一级菜单展示。"""
     if not action.has_menu:
         return [action]
-    return [
-        child.model_copy(update={"label": f"{action.label}·{child.label}"})
-        for child in action.children
-    ]
+    return [child.model_copy(update={"label": f"{action.label}·{child.label}"}) for child in action.children]
 
 
 def compact_quick_actions_for_display(

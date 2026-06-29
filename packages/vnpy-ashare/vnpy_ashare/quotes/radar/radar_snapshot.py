@@ -8,7 +8,7 @@ from vnpy_ashare.domain.radar.card import RadarCardData, RadarResonanceEntry, Ra
 from vnpy_ashare.domain.radar.snapshot import RadarBoardSnapshot, RadarLimitLadderSummary
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
-from vnpy_ashare.quotes.radar.radar_loaders import build_radar_resonance_list
+from vnpy_ashare.quotes.radar.loaders import build_radar_resonance_list
 
 __all__ = [
     "build_radar_board_snapshot",

@@ -8,6 +8,10 @@ from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowsLike, quote_r
 from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
 from vnpy_ashare.quotes.radar.radar_leader import LeaderScoredRow, score_market_leaders
+from vnpy_ashare.quotes.radar.radar_leader_pool_cache import (
+    peek_leader_candidate_pool,
+    store_leader_candidate_pool,
+)
 from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, enrich_radar_rows, merge_row_quotes
 from vnpy_ashare.quotes.radar.radar_sector import _row_from_leader_scored
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
@@ -29,6 +33,10 @@ def build_leader_candidate_pool(
     pool_size: int = 80,
 ) -> tuple[list[QuoteRow | dict[str, Any]], int]:
     """构建龙头评分候选池；返回 (candidates, total_scanned)。"""
+    peeked = peek_leader_candidate_pool(variant=variant, pool_size=pool_size)
+    if peeked is not None:
+        return peeked
+
     try:
         snapshot = load_screening_quote_snapshot()
     except MarketQuotesLoadError:
@@ -50,6 +58,7 @@ def build_leader_candidate_pool(
             else:
                 pool_rows.append(row)
         attach_first_time_fields(pool_rows)
+        store_leader_candidate_pool(variant=variant, pool_size=pool_size, candidates=pool_rows, total=snapshot.total)
         return pool_rows, snapshot.total
 
     distribution = compute_sector_distribution(enriched, top_n=10, min_stocks=3)
@@ -84,6 +93,7 @@ def build_leader_candidate_pool(
     )
     trimmed = candidates[:pool_size]
     attach_first_time_fields(trimmed)
+    store_leader_candidate_pool(variant=variant, pool_size=pool_size, candidates=trimmed, total=snapshot.total)
     return trimmed, snapshot.total
 
 

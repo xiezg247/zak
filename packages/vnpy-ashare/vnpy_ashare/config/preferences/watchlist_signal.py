@@ -1,4 +1,4 @@
-"""自选页策略信号配置（QSettings 持久化）。"""
+"""自选页策略信号配置。"""
 
 from __future__ import annotations
 
@@ -7,8 +7,14 @@ from typing import Any
 from pydantic import Field
 
 from strategies.signals import list_supported_signal_strategies
-from vnpy_ashare.config.preferences._settings import coerce_settings_bool, coerce_settings_int, get_settings
-from vnpy_ashare.config.preferences.signal_panel_columns import normalize_visible_optional_keys
+from vnpy_ashare.config.preferences._local_ui_pref import (
+    load_json_local_ui,
+    load_scalar_local_ui,
+    save_json_local_ui,
+    save_scalar_local_ui,
+)
+from vnpy_ashare.config.preferences._user_pref import load_model_pref, save_model_pref
+from vnpy_ashare.config.preferences.signal_panel_columns import ensure_quote_display_columns, normalize_visible_optional_keys
 from vnpy_ashare.domain.symbols.stock import canonical_vt_symbol
 from vnpy_common.domain.base import FrozenModel
 
@@ -22,6 +28,7 @@ SIGNAL_PANEL_COLUMNS_KEY = "watchlist/signal_panel/columns"
 SIGNAL_STALE_SWEEP_MINUTES_KEY = "watchlist/signal_stale_sweep_minutes"
 SIGNAL_CENTER_SPLITTER_SIZES_KEY = "watchlist/center_splitter/sizes"
 SIGNAL_PANEL_MAX_SYMBOLS = 10
+SIGNAL_LOOKBACK_BARS = 60
 
 DEFAULT_CLASS = "AshareShortBreakoutStrategy"
 DEFAULT_FAST = 5
@@ -29,6 +36,19 @@ DEFAULT_SLOW = 10
 DEFAULT_STALE_SWEEP_MINUTES = 30
 MIN_STALE_SWEEP_MINUTES = 5
 MAX_STALE_SWEEP_MINUTES = 120
+
+_PREF_NAMESPACE = "watchlist"
+_PREF_KEY_CONFIG = "signal_config"
+_LOCAL_UI_PANEL = "watchlist/signal_panel"
+_LOCAL_UI_SPLITTER = "watchlist/center_splitter_sizes"
+_LOCAL_UI_STALE = "watchlist/stale_sweep_minutes"
+
+_DEFAULT_PANEL_STATE: dict[str, object] = {
+    "symbols": "",
+    "enabled": True,
+    "expanded": True,
+    "columns": "",
+}
 
 
 class WatchlistSignalConfig(FrozenModel):
@@ -55,25 +75,17 @@ class WatchlistSignalConfig(FrozenModel):
 
 
 def load_watchlist_signal_config() -> WatchlistSignalConfig:
-    settings = get_settings()
-    raw_class = settings.value(SIGNAL_STRATEGY_KEY, DEFAULT_CLASS)
-    raw_fast = settings.value(SIGNAL_FAST_KEY, DEFAULT_FAST)
-    raw_slow = settings.value(SIGNAL_SLOW_KEY, DEFAULT_SLOW)
-    fast = coerce_settings_int(raw_fast, default=DEFAULT_FAST)
-    slow = coerce_settings_int(raw_slow, default=DEFAULT_SLOW)
-    return WatchlistSignalConfig(
-        class_name=str(raw_class or DEFAULT_CLASS),
-        fast_window=fast,
-        slow_window=slow,
-    ).normalized()
+    item = load_model_pref(
+        _PREF_NAMESPACE,
+        _PREF_KEY_CONFIG,
+        WatchlistSignalConfig,
+        load_default=lambda: WatchlistSignalConfig().normalized(),
+    )
+    return item.normalized()
 
 
 def save_watchlist_signal_config(config: WatchlistSignalConfig) -> None:
-    item = config.normalized()
-    settings = get_settings()
-    settings.setValue(SIGNAL_STRATEGY_KEY, item.class_name)
-    settings.setValue(SIGNAL_FAST_KEY, item.fast_window)
-    settings.setValue(SIGNAL_SLOW_KEY, item.slow_window)
+    save_model_pref(_PREF_NAMESPACE, _PREF_KEY_CONFIG, config.normalized())
 
 
 def normalize_signal_panel_symbols(
@@ -96,87 +108,99 @@ def normalize_signal_panel_symbols(
     return cleaned
 
 
+def _load_panel_state() -> dict[str, object]:
+    return load_json_local_ui(
+        _LOCAL_UI_PANEL,
+        load_default=lambda: dict(_DEFAULT_PANEL_STATE),
+    )
+
+
+def _save_panel_state(state: dict[str, object]) -> None:
+    save_json_local_ui(_LOCAL_UI_PANEL, state)
+
+
 def load_signal_panel_symbols() -> list[str]:
-    settings = get_settings()
-    raw = settings.value(SIGNAL_PANEL_SYMBOLS_KEY, "")
-    if not isinstance(raw, str) or not raw.strip():
+    raw = str(_load_panel_state().get("symbols") or "")
+    if not raw.strip():
         return []
     parts = [part.strip() for part in raw.split(",") if part.strip()]
     return normalize_signal_panel_symbols(parts)
 
 
 def save_signal_panel_symbols(symbols: list[str]) -> None:
-    settings = get_settings()
-    cleaned = normalize_signal_panel_symbols(symbols)
-    settings.setValue(SIGNAL_PANEL_SYMBOLS_KEY, ",".join(cleaned))
+    state = dict(_load_panel_state())
+    state["symbols"] = ",".join(normalize_signal_panel_symbols(symbols))
+    _save_panel_state(state)
 
 
-def load_signal_panel_enabled() -> bool:
-    settings = get_settings()
-    return coerce_settings_bool(settings.value(SIGNAL_PANEL_ENABLED_KEY), default=True)
+def load_signal_panel_enabled(*, page_name: str | None = None) -> bool:
+    from vnpy_ashare.ui.quotes.page.roles import is_strategy_monitor_page
+
+    state = _load_panel_state()
+    if page_name is not None and is_strategy_monitor_page(page_name):
+        return bool(state.get("strategy_monitor_enabled", False))
+    return bool(state.get("enabled", True))
 
 
-def save_signal_panel_enabled(enabled: bool) -> None:
-    settings = get_settings()
-    settings.setValue(SIGNAL_PANEL_ENABLED_KEY, enabled)
+def save_signal_panel_enabled(enabled: bool, *, page_name: str | None = None) -> None:
+    from vnpy_ashare.ui.quotes.page.roles import is_strategy_monitor_page
+
+    state = dict(_load_panel_state())
+    if page_name is not None and is_strategy_monitor_page(page_name):
+        state["strategy_monitor_enabled"] = enabled
+    else:
+        state["enabled"] = enabled
+    _save_panel_state(state)
 
 
 def load_signal_panel_expanded() -> bool:
-    settings = get_settings()
-    return coerce_settings_bool(settings.value(SIGNAL_PANEL_EXPANDED_KEY), default=True)
+    return bool(_load_panel_state().get("expanded", True))
 
 
 def save_signal_panel_expanded(expanded: bool) -> None:
-    settings = get_settings()
-    settings.setValue(SIGNAL_PANEL_EXPANDED_KEY, expanded)
+    state = dict(_load_panel_state())
+    state["expanded"] = expanded
+    _save_panel_state(state)
 
 
 def load_signal_panel_columns() -> list[str]:
-    settings = get_settings()
-    raw = settings.value(SIGNAL_PANEL_COLUMNS_KEY, "")
-    if not isinstance(raw, str) or not raw.strip():
+    raw = str(_load_panel_state().get("columns") or "")
+    if not raw.strip():
         return normalize_visible_optional_keys(None)
     parts = [part.strip() for part in raw.split(",") if part.strip()]
-    return normalize_visible_optional_keys(parts)
+    return ensure_quote_display_columns(normalize_visible_optional_keys(parts))
 
 
 def save_signal_panel_columns(keys: list[str]) -> None:
-    settings = get_settings()
-    cleaned = normalize_visible_optional_keys(keys)
-    settings.setValue(SIGNAL_PANEL_COLUMNS_KEY, ",".join(cleaned))
+    state = dict(_load_panel_state())
+    state["columns"] = ",".join(normalize_visible_optional_keys(keys))
+    _save_panel_state(state)
 
 
 def load_center_splitter_sizes() -> list[int]:
-    settings = get_settings()
-    raw = settings.value(SIGNAL_CENTER_SPLITTER_SIZES_KEY)
-    if raw is None:
-        return []
-    if isinstance(raw, (list, tuple)):
-        parts = raw
-    else:
-        text = str(raw).strip()
-        if not text:
-            return []
-        parts = text.split(",")
-    sizes: list[int] = []
-    for part in parts:
-        try:
-            sizes.append(max(0, int(part)))
-        except (TypeError, ValueError):
-            continue
-    return sizes
+    stored: list[object] = load_json_local_ui(
+        _LOCAL_UI_SPLITTER,
+        load_default=lambda: [],
+    )
+    if isinstance(stored, list):
+        return [max(0, int(value)) for value in stored if isinstance(value, (int, float, str))]
+    return []
 
 
 def save_center_splitter_sizes(sizes: list[int]) -> None:
-    settings = get_settings()
     cleaned = [max(0, int(value)) for value in sizes]
-    settings.setValue(SIGNAL_CENTER_SPLITTER_SIZES_KEY, ",".join(str(value) for value in cleaned))
+    save_json_local_ui(_LOCAL_UI_SPLITTER, cleaned)
 
 
 def load_watchlist_strategy_stale_sweep_minutes() -> int:
-    settings = get_settings()
-    raw = settings.value(SIGNAL_STALE_SWEEP_MINUTES_KEY, DEFAULT_STALE_SWEEP_MINUTES)
-    minutes = coerce_settings_int(raw, default=DEFAULT_STALE_SWEEP_MINUTES)
+    value = load_scalar_local_ui(
+        _LOCAL_UI_STALE,
+        load_default=lambda: DEFAULT_STALE_SWEEP_MINUTES,
+    )
+    try:
+        minutes = int(value)
+    except (TypeError, ValueError):
+        minutes = DEFAULT_STALE_SWEEP_MINUTES
     return max(MIN_STALE_SWEEP_MINUTES, min(minutes, MAX_STALE_SWEEP_MINUTES))
 
 
@@ -185,6 +209,5 @@ def load_watchlist_strategy_stale_sweep_ms() -> int:
 
 
 def save_watchlist_strategy_stale_sweep_minutes(minutes: int) -> None:
-    settings = get_settings()
     value = max(MIN_STALE_SWEEP_MINUTES, min(int(minutes), MAX_STALE_SWEEP_MINUTES))
-    settings.setValue(SIGNAL_STALE_SWEEP_MINUTES_KEY, value)
+    save_scalar_local_ui(_LOCAL_UI_STALE, value)

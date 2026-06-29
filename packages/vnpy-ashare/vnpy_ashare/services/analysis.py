@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from vnpy_ashare.config.preferences.watchlist_signal import load_signal_panel_symbols
+from vnpy_ashare.config.preferences.watchlist_signal import SIGNAL_LOOKBACK_BARS, load_signal_panel_symbols
 from vnpy_ashare.integrations.tickflow.quotes import fetch_quotes_from_tickflow
 from vnpy_ashare.quotes.analysis.entry_mode import evaluate_entry_mode_for_symbol
 from vnpy_ashare.quotes.analysis.leader_tier import explain_leader_tier_for_symbol
@@ -225,7 +225,7 @@ class AnalysisService(BaseService):
         symbol: str,
         *,
         class_name: str = "AshareDoubleMaStrategy",
-        lookback: int = 120,
+        lookback: int = SIGNAL_LOOKBACK_BARS,
         fast_window: int = 10,
         slow_window: int = 20,
         scope: str = "daily",
@@ -244,7 +244,7 @@ class AnalysisService(BaseService):
         symbol: str,
         *,
         class_name: str = "AshareDoubleMaStrategy",
-        lookback: int = 120,
+        lookback: int = SIGNAL_LOOKBACK_BARS,
         fast_window: int = 10,
         slow_window: int = 20,
         scope: str = "daily",
@@ -263,7 +263,7 @@ class AnalysisService(BaseService):
         symbols: list[str],
         *,
         class_name: str = "AshareDoubleMaStrategy",
-        lookback: int = 120,
+        lookback: int = SIGNAL_LOOKBACK_BARS,
         fast_window: int = 10,
         slow_window: int = 20,
         scope: str = "daily",

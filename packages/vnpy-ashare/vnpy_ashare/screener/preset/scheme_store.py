@@ -9,19 +9,11 @@ from typing import Any
 from pydantic import Field
 
 from vnpy_ashare.domain.time.china import format_china_datetime
-from vnpy_ashare.storage.cache.sqlite_session import sqlite_cache_session
+from vnpy_ashare.storage.repository.app import AppUserScopedRepository
 from vnpy_common.domain.base import MutableModel
-from vnpy_common.paths import get_app_db_path
+from vnpy_common.storage.tables import screener_schemes as ss
 
-_SCHEME_SCHEMA = """
-CREATE TABLE IF NOT EXISTS screener_schemes (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE,
-    config_json TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
-);
-"""
+_SCHEME_COLUMNS = (ss.c.id, ss.c.name, ss.c.config_json, ss.c.created_at, ss.c.updated_at)
 
 
 class SavedScheme(MutableModel):
@@ -34,41 +26,11 @@ class SavedScheme(MutableModel):
     updated_at: str = Field(description="更新时间")
 
 
-def _connect():
-    return sqlite_cache_session(get_app_db_path(), _SCHEME_SCHEMA)
-
-
 def _now() -> str:
     return format_china_datetime()
 
 
-def list_schemes() -> list[SavedScheme]:
-    """列出全部方案，按更新时间倒序。"""
-    with _connect() as conn:
-        rows = conn.execute("SELECT id, name, config_json, created_at, updated_at FROM screener_schemes ORDER BY updated_at DESC").fetchall()
-    result: list[SavedScheme] = []
-    for row in rows:
-        result.append(
-            SavedScheme(
-                id=str(row["id"]),
-                name=str(row["name"]),
-                config=json.loads(str(row["config_json"])),
-                created_at=str(row["created_at"]),
-                updated_at=str(row["updated_at"]),
-            )
-        )
-    return result
-
-
-def get_scheme(scheme_id: str) -> SavedScheme | None:
-    """按 id 读取方案。"""
-    with _connect() as conn:
-        row = conn.execute(
-            "SELECT id, name, config_json, created_at, updated_at FROM screener_schemes WHERE id=?",
-            (scheme_id,),
-        ).fetchone()
-    if row is None:
-        return None
+def _row_to_scheme(row) -> SavedScheme:
     return SavedScheme(
         id=str(row["id"]),
         name=str(row["name"]),
@@ -78,33 +40,63 @@ def get_scheme(scheme_id: str) -> SavedScheme | None:
     )
 
 
-def save_scheme(name: str, config: dict[str, Any], *, scheme_id: str | None = None) -> SavedScheme:
-    """新建或更新方案；``scheme_id`` 非空时为更新。"""
-    cleaned = name.strip()
-    if not cleaned:
-        raise ValueError("方案名称不能为空")
-    now = _now()
-    payload = json.dumps(config, ensure_ascii=False)
-    with _connect() as conn:
+class ScreenerSchemeRepository(AppUserScopedRepository):
+    table = ss
+
+    def list_schemes(self) -> list[SavedScheme]:
+        rows = self.list_for_user(*_SCHEME_COLUMNS, order_by=(ss.c.updated_at.desc(),))
+        return [_row_to_scheme(row) for row in rows]
+
+    def get_scheme(self, scheme_id: str) -> SavedScheme | None:
+        rows = self.list_for_user(*_SCHEME_COLUMNS, extras=(ss.c.id == scheme_id,), limit=1)
+        return _row_to_scheme(rows[0]) if rows else None
+
+    def save_scheme(self, name: str, config: dict[str, Any], *, scheme_id: str | None = None) -> SavedScheme:
+        cleaned = name.strip()
+        if not cleaned:
+            raise ValueError("方案名称不能为空")
+        now = _now()
+        payload = json.dumps(config, ensure_ascii=False)
         if scheme_id:
-            conn.execute(
-                "UPDATE screener_schemes SET name=?, config_json=?, updated_at=? WHERE id=?",
-                (cleaned, payload, now, scheme_id),
+            updated = self.update_matching(
+                {"name": cleaned, "config_json": payload, "updated_at": now},
+                self.scope(ss.c.id == scheme_id),
             )
+            if updated == 0:
+                raise RuntimeError("保存选股方案失败")
             sid = scheme_id
         else:
             sid = uuid.uuid4().hex
-            conn.execute(
-                "INSERT INTO screener_schemes (id, name, config_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
-                (sid, cleaned, payload, now, now),
+            self.insert_one_for_user(
+                id=sid,
+                name=cleaned,
+                config_json=payload,
+                created_at=now,
+                updated_at=now,
             )
-    saved = get_scheme(sid)
-    if saved is None:
-        raise RuntimeError("保存选股方案失败")
-    return saved
+        saved = self.get_scheme(sid)
+        if saved is None:
+            raise RuntimeError("保存选股方案失败")
+        return saved
+
+    def delete_scheme(self, scheme_id: str) -> None:
+        self.delete_matching(self.scope(ss.c.id == scheme_id))
+
+
+_repo = ScreenerSchemeRepository()
+
+
+def list_schemes() -> list[SavedScheme]:
+    return _repo.list_schemes()
+
+
+def get_scheme(scheme_id: str) -> SavedScheme | None:
+    return _repo.get_scheme(scheme_id)
+
+
+def save_scheme(name: str, config: dict[str, Any], *, scheme_id: str | None = None) -> SavedScheme:
+    return _repo.save_scheme(name, config, scheme_id=scheme_id)
 
 
 def delete_scheme(scheme_id: str) -> None:
-    """删除方案。"""
-    with _connect() as conn:
-        conn.execute("DELETE FROM screener_schemes WHERE id=?", (scheme_id,))
+    _repo.delete_scheme(scheme_id)

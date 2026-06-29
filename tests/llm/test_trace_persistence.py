@@ -2,29 +2,31 @@
 
 from __future__ import annotations
 
-import tempfile
+import os
 import unittest
-from pathlib import Path
-from unittest.mock import patch
 
-import vnpy_llm.chat.store as store
+from vnpy_ashare.storage.auth.users import get_or_create_default_user_id
 from vnpy_common.ai.protocol import AiChartBar, AiChartSpec
-from vnpy_llm.trace.persistence import TracePersistence
+from vnpy_common.auth.context import clear_current_user, set_current_user
+from vnpy_common.storage.config import force_database_url, reset_storage_config
+from vnpy_llm.trace.persistence import TraceRepository
 from vnpy_llm.trace.trace import TraceStore
 
 
-class TracePersistenceTest(unittest.TestCase):
+class TraceRepositoryTest(unittest.TestCase):
     def setUp(self) -> None:
-        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self.db_path = Path(self._tmp.name)
-        self._patcher = patch.object(store, "_chat_db_path", return_value=self.db_path)
-        self._patcher.start()
-        self.persistence = TracePersistence()
+        url = os.environ.get("DATABASE_URL", "").strip()
+        if not url:
+            self.skipTest("需要 DATABASE_URL")
+        reset_storage_config()
+        force_database_url(url)
+        set_current_user(get_or_create_default_user_id())
+        self.persistence = TraceRepository()
         self.store = TraceStore(self.persistence)
 
     def tearDown(self) -> None:
-        self._patcher.stop()
-        self.db_path.unlink(missing_ok=True)
+        clear_current_user()
+        reset_storage_config()
 
     def test_save_and_reload_turn(self) -> None:
         turn = self.store.start_turn("sess-1", "诊断 600519")

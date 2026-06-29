@@ -98,6 +98,10 @@ class SchedulerConfig(MutableModel):
         default_factory=lambda: JobConfig(enabled=False, interval_seconds=30),
         description="行情采集任务配置",
     )
+    enrich_market_quotes: JobConfig = Field(
+        default_factory=lambda: JobConfig(enabled=False, interval_seconds=60),
+        description="行情 Tushare 因子异步 enrich 配置",
+    )
     sync_universe: JobConfig = Field(
         default_factory=lambda: _job_config_from_cron(
             *_WEEKLY_CRON["sync_universe"],
@@ -200,6 +204,16 @@ class SchedulerConfig(MutableModel):
         default_factory=lambda: _job_config_from_cron(*_POST_CLOSE_CRON["scan_horizon_outlook"]),
         description="雷达展望扫描任务配置",
     )
+    warm_radar_card_snapshots: JobConfig = Field(
+        default_factory=lambda: JobConfig(
+            enabled=False,
+            interval_seconds=300,
+            cron_hour=9,
+            cron_minute=35,
+            cron_day_of_week="mon-fri",
+        ),
+        description="雷达统计/发现卡片磁盘快照预热",
+    )
     sync_bilibili_feed: JobConfig = Field(
         default_factory=lambda: JobConfig(
             enabled=True,
@@ -236,6 +250,7 @@ class SchedulerConfig(MutableModel):
 
         return {
             "collect_quotes": dump_job(self.collect_quotes),
+            "enrich_market_quotes": dump_job(self.enrich_market_quotes),
             "sync_universe": dump_job(self.sync_universe),
             "sync_stock_industry": dump_job(self.sync_stock_industry),
             "sync_trade_calendar": dump_job(self.sync_trade_calendar),
@@ -254,6 +269,7 @@ class SchedulerConfig(MutableModel):
             "screen_intraday": dump_auto(self.screen_intraday),
             "screen_post_close": dump_auto(self.screen_post_close),
             "scan_horizon_outlook": dump_job(self.scan_horizon_outlook),
+            "warm_radar_card_snapshots": dump_job(self.warm_radar_card_snapshots),
             "sync_bilibili_feed": dump_job(self.sync_bilibili_feed),
         }
 
@@ -286,6 +302,7 @@ class SchedulerConfig(MutableModel):
         defaults = cls()
         return cls(
             collect_quotes=load_job("collect_quotes", defaults.collect_quotes),
+            enrich_market_quotes=load_job("enrich_market_quotes", defaults.enrich_market_quotes),
             sync_universe=load_job("sync_universe", defaults.sync_universe),
             sync_stock_industry=load_job("sync_stock_industry", defaults.sync_stock_industry),
             sync_trade_calendar=load_job("sync_trade_calendar", defaults.sync_trade_calendar),
@@ -307,25 +324,52 @@ class SchedulerConfig(MutableModel):
             screen_intraday=load_auto("screen_intraday", defaults.screen_intraday),
             screen_post_close=load_auto("screen_post_close", defaults.screen_post_close),
             scan_horizon_outlook=load_job("scan_horizon_outlook", defaults.scan_horizon_outlook),
+            warm_radar_card_snapshots=load_job(
+                "warm_radar_card_snapshots",
+                defaults.warm_radar_card_snapshots,
+            ),
             sync_bilibili_feed=load_job("sync_bilibili_feed", defaults.sync_bilibili_feed),
         )
 
 
 def load_scheduler_config(path: Path | None = None) -> SchedulerConfig:
-    target = path or SCHEDULER_CONFIG_PATH
-    if not target.exists():
+    if path is not None:
+        if not path.exists():
+            return SchedulerConfig()
+        try:
+            with path.open(encoding="utf-8") as f:
+                data = json.load(f)
+        except (json.JSONDecodeError, OSError, TypeError, ValueError):
+            return SchedulerConfig()
+        return SchedulerConfig.from_dict(data)
+
+    from vnpy_ashare.storage.system.scheduler_config_store import load_scheduler_config_dict
+
+    stored = load_scheduler_config_dict()
+    if stored is not None:
+        return SchedulerConfig.from_dict(stored)
+
+    if not SCHEDULER_CONFIG_PATH.exists():
         return SchedulerConfig()
     try:
-        with target.open(encoding="utf-8") as f:
+        with SCHEDULER_CONFIG_PATH.open(encoding="utf-8") as f:
             data = json.load(f)
     except (json.JSONDecodeError, OSError, TypeError, ValueError):
         return SchedulerConfig()
-    return SchedulerConfig.from_dict(data)
+    config = SchedulerConfig.from_dict(data)
+    save_scheduler_config(config)
+    return config
 
 
 def save_scheduler_config(config: SchedulerConfig, path: Path | None = None) -> Path:
-    target = path or SCHEDULER_CONFIG_PATH
-    target.parent.mkdir(parents=True, exist_ok=True)
-    with target.open("w", encoding="utf-8") as f:
-        json.dump(config.to_dict(), f, indent=2, ensure_ascii=False)
-    return target
+    if path is not None:
+        target = path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with target.open("w", encoding="utf-8") as f:
+            json.dump(config.to_dict(), f, indent=2, ensure_ascii=False)
+        return target
+
+    from vnpy_ashare.storage.system.scheduler_config_store import save_scheduler_config_dict
+
+    save_scheduler_config_dict(config.to_dict())
+    return SCHEDULER_CONFIG_PATH

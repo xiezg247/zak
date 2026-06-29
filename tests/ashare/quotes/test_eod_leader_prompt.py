@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import patch
 
 from vnpy_ashare.domain.radar.card import RadarCardData, RadarRow
-from vnpy_ashare.quotes.radar.radar_loaders import build_eod_leader_prompt
+from vnpy_ashare.quotes.radar.loaders import build_eod_leader_prompt
 
 
 def _row(vt_symbol: str = "600519.SSE", *, leader_tier: str = "dragon_1") -> RadarRow:

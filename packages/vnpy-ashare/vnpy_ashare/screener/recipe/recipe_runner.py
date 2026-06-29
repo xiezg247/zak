@@ -34,6 +34,7 @@ from vnpy_ashare.screener.sentiment.sentiment_gate import (
     apply_sentiment_modulation,
     sentiment_gate_enabled,
 )
+from vnpy_common.perf_trace import tracer
 
 
 def recipe_dimension_max_workers(*, dimension_count: int) -> int:
@@ -75,63 +76,65 @@ def run_recipe_object(
     hits_by_symbol: dict[str, list[DimensionHit]] = {}
     total_scanned = 0
 
-    with screening_context_scope() as ctx:
-        preload_screening_context(ctx)
-        apply_sentiment_prefilter_to_context(ctx)
-        scoring_specs = scoring_dimension_specs(list(recipe.dimensions))
-        dimension_results = _run_all_dimensions(scoring_specs, recipe.pool_size)
-        for _spec, dimension_hits, scanned in dimension_results:
-            total_scanned = max(total_scanned, scanned)
-            for hit in dimension_hits:
-                hits_by_symbol.setdefault(hit.vt_symbol, []).append(hit)
+    with tracer.trace(f"run_recipe.{recipe.recipe_id}"):
+        with screening_context_scope() as ctx:
+            with tracer.trace("recipe.preload_context"):
+                preload_screening_context(ctx)
+                apply_sentiment_prefilter_to_context(ctx)
+            scoring_specs = scoring_dimension_specs(list(recipe.dimensions))
+            with tracer.trace("recipe.run_dimensions"):
+                dimension_results = _run_all_dimensions(scoring_specs, recipe.pool_size)
+            for _spec, dimension_hits, scanned in dimension_results:
+                total_scanned = max(total_scanned, scanned)
+                for hit in dimension_hits:
+                    hits_by_symbol.setdefault(hit.vt_symbol, []).append(hit)
 
-    merged_payloads: list[dict[str, Any]] = []
-    for _vt_symbol, hits in hits_by_symbol.items():
-        if len(hits) < recipe.min_dimensions:
-            continue
-        hits = apply_volume_liquidity_dedup(hits)
-        weight_sum = sum(item.weight for item in hits)
-        composite = sum(item.score * item.weight * moneyflow_dimension_score_factor(item.dimension_id, item.row) for item in hits) / max(weight_sum, 1e-6)
-        merged_row = ScreenerResultRow.from_mapping(merge_rows([item.row for item in hits]))
-        if row_has_moneyflow_fields(merged_row):
-            enriched = enrich_moneyflow_row_with_kind(merged_row.quote)
-            merged_row = ScreenerResultRow.from_mapping({**merged_row.to_dict(), **enriched})
-        base = merged_row.to_dict()
-        reasons = [item.reason for item in hits]
-        base["composite_score"] = round(composite, 1)
-        base["hit_reasons"] = reasons
-        base["hit_reason"] = reasons[0] if len(reasons) == 1 else "；".join(reasons[:2])
-        base["dimensions"] = {item.dimension_id: round(item.score, 1) for item in hits}
-        base["source"] = "recipe"
-        merged_payloads.append(base)
+    with tracer.trace("recipe.merge_and_gate"):
+        merged_payloads: list[dict[str, Any]] = []
+        for _vt_symbol, hits in hits_by_symbol.items():
+            if len(hits) < recipe.min_dimensions:
+                continue
+            hits = apply_volume_liquidity_dedup(hits)
+            weight_sum = sum(item.weight for item in hits)
+            composite = sum(item.score * item.weight * moneyflow_dimension_score_factor(item.dimension_id, item.row) for item in hits) / max(weight_sum, 1e-6)
+            merged_row = ScreenerResultRow.from_mapping(merge_rows([item.row for item in hits]))
+            if row_has_moneyflow_fields(merged_row):
+                enriched = enrich_moneyflow_row_with_kind(merged_row.quote)
+                merged_row = ScreenerResultRow.from_mapping({**merged_row.to_dict(), **enriched})
+            base = merged_row.to_dict()
+            reasons = [item.reason for item in hits]
+            base["composite_score"] = round(composite, 1)
+            base["hit_reasons"] = reasons
+            base["hit_reason"] = reasons[0] if len(reasons) == 1 else "；".join(reasons[:2])
+            base["dimensions"] = {item.dimension_id: round(item.score, 1) for item in hits}
+            base["source"] = "recipe"
+            merged_payloads.append(base)
 
-    merged_rows = enrich_recipe_rows(merged_payloads)
-    merged_rows.sort(
-        key=lambda row: (
-            float(row.get("composite_score") or 0),
-            len(row.get("hit_reasons") or []),
-        ),
-        reverse=True,
-    )
-    filtered_rows = apply_recipe_filters(merged_rows)
-    use_sentiment = sentiment_gate_enabled() and (
-        recipe.trigger_kind == "intraday"
-        or any(spec.dimension_id == "sentiment_gate" for spec in recipe.dimensions)
-        or recipe.recipe_id == RECIPE_EMOTION_GATE_ONLY
-    )
-    gated_rows, _sentiment_meta = apply_sentiment_modulation(filtered_rows, enabled=use_sentiment)
+        enriched_rows = enrich_recipe_rows(merged_payloads)
+        from vnpy_ashare.screener.engine.recipe_sort import sort_recipe_payloads_polars
 
-    gate_meta: dict[str, Any] | None = None
-    if recipe.recipe_id == RECIPE_EMOTION_GATE_ONLY:
-        gated_rows, gate_meta = apply_emotion_gate_only_finalize(gated_rows, top_n=limit)
+        sorted_payloads = sort_recipe_payloads_polars([row.to_dict() for row in enriched_rows])
+        filtered_payloads = apply_recipe_filters(sorted_payloads)
+        merged_rows = [ScreenerResultRow.from_mapping(row) for row in filtered_payloads]
+        use_sentiment = sentiment_gate_enabled() and (
+            recipe.trigger_kind == "intraday"
+            or any(spec.dimension_id == "sentiment_gate" for spec in recipe.dimensions)
+            or recipe.recipe_id == RECIPE_EMOTION_GATE_ONLY
+        )
+        gated_rows, _sentiment_meta = apply_sentiment_modulation(merged_rows, enabled=use_sentiment)
 
-    rows = gated_rows[: max(1, min(int(limit), 200))]
+        gate_meta: dict[str, Any] | None = None
+        if recipe.recipe_id == RECIPE_EMOTION_GATE_ONLY:
+            gated_rows, gate_meta = apply_emotion_gate_only_finalize(gated_rows, top_n=limit)
+
+        rows = gated_rows[: max(1, min(int(limit), 200))]
     now = format_china_datetime()
 
     condition = f"{condition_prefix} · {recipe.name}"
     if gate_meta and gate_meta.get("gate_message"):
         condition += f" · {gate_meta['gate_message']}"
 
+    tracer.summary(f"run_recipe.{recipe.recipe_id}")
     return build_screener_run_result(
         rows=rows,
         condition=condition,

@@ -13,16 +13,12 @@ def build_sector_flow_structure_prompt() -> str:
 
 
 def build_sector_flow_rotation_prompt() -> str:
-    return (
-        "请解读近 15 日板块资金轮动：哪些板块持续净流入/流出，"
-        "与当日快照是否形成共振或背离。结合终端已注入的轮动与延续摘要，不要编造。"
-    )
+    return "请解读近 15 日板块资金轮动：哪些板块持续净流入/流出，与当日快照是否形成共振或背离。结合终端已注入的轮动与延续摘要，不要编造。"
 
 
 def build_sector_flow_radar_leader_prompt() -> str:
     return (
-        "请先 get_emotion_cycle 评估短线环境；若允许新开仓则 run_leader_screen 解读雷达龙头候选，"
-        "并说明与当前板块资金主线的关系，不要编造未在工具结果中的标的。"
+        "请先 get_emotion_cycle 评估短线环境；若允许新开仓则 run_leader_screen 解读雷达龙头候选，并说明与当前板块资金主线的关系，不要编造未在工具结果中的标的。"
     )
 
 

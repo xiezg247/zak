@@ -17,19 +17,13 @@ from vnpy_ashare.screener.hard_filters import (
     clear_suspend_screening_cache,
     recipe_exclude_suspended_enabled,
 )
-from vnpy_ashare.storage.connection import connect
-from vnpy_ashare.storage.repositories.symbol_suspend import clear_symbol_suspend_cache
+from vnpy_ashare.storage.repositories.symbol_suspend import SymbolSuspendRepository, clear_symbol_suspend_cache
+
+_suspend_repo = SymbolSuspendRepository()
 
 
 def _insert_suspend(symbol: str, exchange: str, cal_date: date) -> None:
-    with connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO symbol_suspend_days(symbol, exchange, cal_date, suspend_type)
-            VALUES (?, ?, ?, ?)
-            """,
-            (symbol, exchange, cal_date.isoformat(), "S"),
-        )
+    _suspend_repo.upsert_rows([(symbol, exchange, cal_date.isoformat(), "S")])
 
 
 class HardFiltersSuspendTests(unittest.TestCase):

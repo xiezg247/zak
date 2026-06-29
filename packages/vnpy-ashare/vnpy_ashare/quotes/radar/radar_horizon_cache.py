@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 import json
-import sqlite3
-from pathlib import Path
-from typing import cast
 
 from vnpy_ashare.domain.radar.horizon_cache import HorizonCacheEntry
 from vnpy_ashare.domain.time.china import format_china_datetime_minute
@@ -14,31 +11,8 @@ from vnpy_ashare.quotes.radar.radar_models import (
     radar_row_from_cache_dict,
     radar_row_to_cache_dict,
 )
-from vnpy_ashare.storage.cache.sqlite_session import sqlite_cache_session
-from vnpy_common.paths import get_app_db_path
-
-_SCHEMA = """
-CREATE TABLE IF NOT EXISTS radar_horizon_cache (
-    variant TEXT PRIMARY KEY,
-    rows_json TEXT NOT NULL,
-    scanned_total INTEGER NOT NULL DEFAULT 0,
-    excluded_count INTEGER NOT NULL DEFAULT 0,
-    prefilter_total INTEGER NOT NULL DEFAULT 0,
-    refined_total INTEGER NOT NULL DEFAULT 0,
-    kline_missing INTEGER NOT NULL DEFAULT 0,
-    strategy_key TEXT NOT NULL DEFAULT '',
-    computed_at TEXT NOT NULL
-);
-"""
-
-
-def _db_path() -> Path:
-    return cast(Path, get_app_db_path().parent / "radar_horizon_cache.db")
-
-
-def _connect(db_path: Path | None = None):
-    path = db_path or _db_path()
-    return sqlite_cache_session(path, _SCHEMA)
+from vnpy_ashare.storage.repositories.cache_stores import _radar_horizon_repo
+from vnpy_common.storage.compat import DbRow
 
 
 def horizon_cache_storage_key(variant: str, strategy_key: str) -> str:
@@ -52,7 +26,7 @@ def horizon_cache_storage_key(variant: str, strategy_key: str) -> str:
     return f"{text}|{key}"
 
 
-def _entry_from_row(row: sqlite3.Row, *, logical_variant: str) -> HorizonCacheEntry:
+def _entry_from_row(row: DbRow, *, logical_variant: str) -> HorizonCacheEntry:
     try:
         payload = json.loads(str(row["rows_json"] or "[]"))
     except (json.JSONDecodeError, TypeError):
@@ -77,11 +51,7 @@ def get_horizon_cache(variant: str, *, strategy_key: str = "") -> HorizonCacheEn
         return None
     key = str(strategy_key or "").strip()
     storage_key = horizon_cache_storage_key(text, key) if key else text
-    with _connect() as conn:
-        row = conn.execute(
-            "SELECT * FROM radar_horizon_cache WHERE variant = ?",
-            (storage_key,),
-        ).fetchone()
+    row = _radar_horizon_repo.get_row(storage_key)
     if row is None:
         return None
     cached_key = str(row["strategy_key"] or "").strip()
@@ -110,36 +80,17 @@ def put_horizon_cache(
         return
     stamp = computed_at or format_china_datetime_minute()
     payload = json.dumps([radar_row_to_cache_dict(row) for row in rows], ensure_ascii=False)
-    with _connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO radar_horizon_cache (
-                variant, rows_json, scanned_total, excluded_count,
-                prefilter_total, refined_total, kline_missing,
-                strategy_key, computed_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(variant) DO UPDATE SET
-                rows_json = excluded.rows_json,
-                scanned_total = excluded.scanned_total,
-                excluded_count = excluded.excluded_count,
-                prefilter_total = excluded.prefilter_total,
-                refined_total = excluded.refined_total,
-                kline_missing = excluded.kline_missing,
-                strategy_key = excluded.strategy_key,
-                computed_at = excluded.computed_at
-            """,
-            (
-                storage_key,
-                payload,
-                int(scanned_total),
-                int(excluded_count),
-                int(prefilter_total),
-                int(refined_total),
-                int(kline_missing),
-                str(strategy_key or ""),
-                stamp,
-            ),
-        )
+    _radar_horizon_repo.upsert(
+        storage_key=storage_key,
+        rows_json=payload,
+        scanned_total=int(scanned_total),
+        excluded_count=int(excluded_count),
+        prefilter_total=int(prefilter_total),
+        refined_total=int(refined_total),
+        kline_missing=int(kline_missing),
+        strategy_key=str(strategy_key or ""),
+        computed_at=stamp,
+    )
 
 
 def build_horizon_subtitle(

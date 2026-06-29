@@ -8,6 +8,7 @@ from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.ui.quotes.features.watchlist.prefs import LayoutPresetId, load_watchlist_layout_preset
+from vnpy_ashare.ui.quotes.page.roles import STRATEGY_MONITOR_PAGE, uses_watchlist_pool
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
@@ -29,18 +30,58 @@ class WatchlistBootstrapCoordinator:
         return "|".join(f"{item.symbol}:{item.exchange.value}" for item in stocks)
 
     def on_activate(self, page: WatchlistHost) -> None:
-        if page.page_name != "自选":
+        if not uses_watchlist_pool(page.page_name):
             page.load_stock_list()
             return
 
         pool = page._watchlist._pool_from_service()
         fingerprint = self.pool_fingerprint(pool)
-        if self._last_pool_fingerprint is not None and fingerprint == self._last_pool_fingerprint and page.display_stocks:
+        if page.display_stocks and self._last_pool_fingerprint is not None and fingerprint == self._last_pool_fingerprint:
             self._sync_display_only(page, pool)
             self.schedule_downstream(page, reason="tab_resume")
             return
 
-        page.load_stock_list()
+        self.on_pool_ready(page, pool, source="pool_ready")
+
+    def reload_watchlist_pool(
+        self,
+        page: WatchlistHost,
+        *,
+        source: ScheduleReason = "pool_ready",
+    ) -> None:
+        """同步读取自选池（不经 UniverseLoadWorker / K 线 overview 预热）。"""
+        if not uses_watchlist_pool(page.page_name):
+            page.load_stock_list()
+            return
+        pool = page._watchlist._pool_from_service()
+        self.on_pool_ready(page, pool, source=source)
+
+    @staticmethod
+    def _apply_strategy_pool(page: WatchlistHost, pool: list[StockItem]) -> None:
+        page.all_stocks = list(pool)
+        page.display_stocks = list(pool)
+        page._watchlist.refresh_keys()
+        monitor = getattr(page, "_strategy_monitor_feature", None)
+        if monitor is not None:
+            monitor.refresh_context_bar()
+        status = getattr(page, "status_label", None)
+        if status is not None:
+            status.setText(f"自选池 {len(pool)} 只")
+
+    def _sync_pool_display(self, page: WatchlistHost, pool: list[StockItem]) -> None:
+        page.watchlist_pool_stocks = list(pool)
+        if page.page_name == STRATEGY_MONITOR_PAGE:
+            self._apply_strategy_pool(page, pool)
+            return
+        if page._watchlist_groups is not None:
+            page._watchlist_groups.on_stock_list_loaded(pool)
+        else:
+            page.all_stocks = list(pool)
+            page.apply_filter()
+        page._watchlist.refresh_keys()
+        feature = getattr(page, "_watchlist_feature", None)
+        if feature is not None:
+            feature.refresh_context_bar()
 
     def on_pool_ready(
         self,
@@ -49,28 +90,36 @@ class WatchlistBootstrapCoordinator:
         *,
         source: ScheduleReason,
     ) -> None:
-        if page.page_name != "自选":
+        if not uses_watchlist_pool(page.page_name):
             return
 
         self._last_pool_fingerprint = self.pool_fingerprint(stocks)
-        page.watchlist_pool_stocks = list(stocks)
 
-        if page._watchlist_groups is not None:
+        if page.page_name == STRATEGY_MONITOR_PAGE:
+            page.watchlist_pool_stocks = list(stocks)
+            self._apply_strategy_pool(page, stocks)
+            monitor = getattr(page, "_strategy_monitor_feature", None)
+            if monitor is not None:
+                monitor.on_stock_list_loaded()
+        elif page._watchlist_groups is not None:
+            page.watchlist_pool_stocks = list(stocks)
             page._watchlist_groups.on_stock_list_loaded(stocks)
         else:
+            page.watchlist_pool_stocks = list(stocks)
             page.all_stocks = list(stocks)
             page.apply_filter()
-
-        page._watchlist.refresh_keys()
-        feature = getattr(page, "_watchlist_feature", None)
-        if feature is not None:
-            feature.on_stock_list_loaded()
+            page._watchlist.refresh_keys()
+            feature = getattr(page, "_watchlist_feature", None)
+            if feature is not None:
+                feature.on_stock_list_loaded()
 
         page._update_action_buttons()
         self.schedule_downstream(page, reason=source)
+        if hasattr(page, "end_tab_switch_loading"):
+            page.end_tab_switch_loading()
 
     def schedule_downstream(self, page: WatchlistHost, *, reason: ScheduleReason) -> None:
-        if page.page_name != "自选" or not page._active:
+        if not uses_watchlist_pool(page.page_name) or not page._active:
             return
 
         self._last_schedule_reason = reason
@@ -99,37 +148,71 @@ class WatchlistBootstrapCoordinator:
             page._multiview.refresh(force=False, refresh_moneyflow=False)
 
     def _sync_display_only(self, page: WatchlistHost, pool: list[StockItem]) -> None:
-        page.watchlist_pool_stocks = list(pool)
-        if page._watchlist_groups is not None:
-            page._watchlist_groups.on_stock_list_loaded(pool)
-        else:
-            page.all_stocks = list(pool)
-            page.apply_filter()
-        page._watchlist.refresh_keys()
-        feature = getattr(page, "_watchlist_feature", None)
-        if feature is not None:
-            feature.refresh_context_bar()
+        self._sync_pool_display(page, pool)
         page._update_action_buttons()
+        if hasattr(page, "end_tab_switch_loading"):
+            page.end_tab_switch_loading()
+
+    def _try_hydrate_downstream_cache(self, page: WatchlistHost) -> None:
+        if page.config.show_watchlist_signals:
+            page._signals.hydrate_from_disk()
+        if page.config.show_watchlist_positions:
+            page._positions.hydrate_from_disk()
+
+    def _can_render_only_on_resume(self, page: WatchlistHost) -> bool:
+        cfg = page.config
+        signals_ok = not cfg.show_watchlist_signals or page._signals.cache_covers_panel()
+        positions_ok = not cfg.show_watchlist_positions or page._positions.cache_covers_panel()
+        return signals_ok and positions_ok
+
+    def _render_downstream_only(self, page: WatchlistHost) -> None:
+        if page.config.show_watchlist_positions:
+            page._positions.render_on_resume()
+        if page.config.show_watchlist_signals:
+            page._signals.render_on_resume()
+        if page.config.show_watchlist_multiview and page._multiview.is_multiview_active():
+            page._multiview.refresh(force=False, refresh_moneyflow=False)
+        if hasattr(page, "end_tab_switch_loading"):
+            page.end_tab_switch_loading()
 
     def _run_downstream(self, page: WatchlistHost, *, reason: ScheduleReason) -> None:
-        preset = load_watchlist_layout_preset()
+        if page.page_name != STRATEGY_MONITOR_PAGE:
+            preset = load_watchlist_layout_preset()
+            self._schedule_multiview(page, preset=preset)
+            return
 
-        if preset == "intraday":
-            self._schedule_signals(page)
-            self._render_positions_only(page)
-        else:
-            self._schedule_positions(page)
-            QtCore.QTimer.singleShot(100, lambda: self._schedule_signals(page))
+        if reason == "tab_resume" and self._can_render_only_on_resume(page):
+            self._render_downstream_only(page)
+            return
 
-        self._schedule_multiview(page, preset=preset)
+        if reason != "tab_resume":
+            self._try_hydrate_downstream_cache(page)
+            if self._can_render_only_on_resume(page):
+                self._render_downstream_only(page)
+                return
 
-    def _schedule_signals(self, page: WatchlistHost) -> None:
+        # 信号区仅手动刷新：hydrate + render，不触发 on_stock_list_loaded Worker 链
         if page.config.show_watchlist_signals:
-            page._signals.on_stock_list_loaded()
+            page._signals.render_on_resume()
+        self._schedule_positions(page, delay_ms=0)
+        if hasattr(page, "end_tab_switch_loading"):
+            page.end_tab_switch_loading()
 
-    def _schedule_positions(self, page: WatchlistHost) -> None:
-        if page.config.show_watchlist_positions:
-            page._positions.on_stock_list_loaded()
+    def _schedule_signals(self, page: WatchlistHost, *, delay_ms: int = 0) -> None:
+        if not page.config.show_watchlist_signals:
+            return
+        QtCore.QTimer.singleShot(
+            delay_ms,
+            lambda: page._signals.on_stock_list_loaded() if page._active else None,
+        )
+
+    def _schedule_positions(self, page: WatchlistHost, *, delay_ms: int = 0) -> None:
+        if not page.config.show_watchlist_positions:
+            return
+        QtCore.QTimer.singleShot(
+            delay_ms,
+            lambda: page._positions.on_stock_list_loaded() if page._active else None,
+        )
 
     @staticmethod
     def _render_positions_only(page: WatchlistHost) -> None:
@@ -147,8 +230,7 @@ class WatchlistBootstrapCoordinator:
         if preset == "review" and not page._multiview.is_multiview_active():
             return
 
-        def _load() -> None:
-            if page._active:
-                page._multiview.on_stock_list_loaded()
-
-        _load()
+        QtCore.QTimer.singleShot(
+            0,
+            lambda: page._multiview.on_stock_list_loaded() if page._active else None,
+        )

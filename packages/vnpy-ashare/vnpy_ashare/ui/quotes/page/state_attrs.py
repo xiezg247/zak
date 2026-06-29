@@ -94,6 +94,7 @@ class QuotesPageStateAttrs:
     _batch_gap_fill_worker: BatchGapFillWorker | None
     _gap_worker: BarGapCheckWorker | None
     _quotes_worker: QuotesRefreshWorker | None
+    _pending_quote_refresh: bool
     _depth_worker: DepthRefreshWorker | None
     _diagnose_worker: DiagnoseWorker | None
     _invalid_bar_cleanup_worker: InvalidBarCleanupWorker | None
@@ -112,4 +113,6 @@ class QuotesPageStateAttrs:
     _market_scroll_timer: QtCore.QTimer
     _market_cache_sync_timer: QtCore.QTimer
     _task_lock_table: bool
+    _task_lock_search: bool
     _active_worker_attr: str | None
+    _watchlist_quotes_loading: bool

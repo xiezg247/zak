@@ -67,11 +67,7 @@ class _OverviewAlertRow(QtWidgets.QWidget):
         style.polish(label)
 
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
-        if (
-            self._jump_target
-            and event.button() == QtCore.Qt.MouseButton.LeftButton
-            and self.rect().contains(event.position().toPoint())
-        ):
+        if self._jump_target and event.button() == QtCore.Qt.MouseButton.LeftButton and self.rect().contains(event.position().toPoint()):
             self.jump_requested.emit(self._jump_target)
         super().mouseReleaseEvent(event)
 

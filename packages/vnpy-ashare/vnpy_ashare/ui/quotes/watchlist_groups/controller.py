@@ -5,16 +5,16 @@ from __future__ import annotations
 from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtWidgets
 
+from vnpy_ashare.config.preferences.watchlist_groups import (
+    load_active_watchlist_group_id,
+    save_active_watchlist_group_id,
+)
 from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.services.watchlist import WatchlistGroupRecord, load_watchlist_group_member_keys
 from vnpy_ashare.trading.risk.metrics import read_total_capital
 from vnpy_ashare.trading.risk.plan_position import format_group_position_tab_label, summarize_group_position
 from vnpy_ashare.ui.quotes._host_widget import as_qwidget
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
-from vnpy_ashare.ui.quotes.watchlist_groups.prefs import (
-    load_active_watchlist_group_id,
-    save_active_watchlist_group_id,
-)
 from vnpy_common.ui.feedback import page_notify
 
 
@@ -90,7 +90,7 @@ class WatchlistGroupController(QtCore.QObject):
             max_groups=service.max_groups,
             tab_labels=self._group_tab_labels(),
         )
-        self._sync_move_buttons()
+        self._page._update_action_buttons()
 
     def _position_records(self):
         service = self._page._get_position_service()
@@ -130,7 +130,7 @@ class WatchlistGroupController(QtCore.QObject):
         save_active_watchlist_group_id(self._active_group_id)
         self._reload_member_keys()
         self.apply_display_stocks()
-        self._sync_move_buttons()
+        self._page._update_action_buttons()
 
     def _prompt_name(self, *, title: str, label: str, initial: str = "") -> str | None:
         text, ok = QtWidgets.QInputDialog.getText(as_qwidget(self._page), title, label, text=initial)
@@ -261,8 +261,6 @@ class WatchlistGroupController(QtCore.QObject):
         pool = list(getattr(page, "watchlist_pool_stocks", page.all_stocks))
         page.all_stocks = self.filter_stocks(pool)
         page.apply_filter()
-        if page.config.show_watchlist_multiview and page._multiview.is_multiview_active():
-            page._multiview.on_stock_list_loaded()
         page._update_action_buttons()
 
     def on_stock_list_loaded(self, stocks: list[StockItem]) -> None:
@@ -368,12 +366,3 @@ class WatchlistGroupController(QtCore.QObject):
 
     def select_all_tab(self) -> None:
         self.select_group_tab(None)
-
-    def _sync_move_buttons(self) -> None:
-        page = self._page
-        if not page.config.show_watchlist_move_buttons:
-            return
-        tip = "筛选分组时请在「自选」下调整顺序" if self.is_filtering() else "调整自选池排序"
-        page.move_watchlist_up_button.setToolTip(tip)
-        page.move_watchlist_down_button.setToolTip(tip)
-        page._update_action_buttons()

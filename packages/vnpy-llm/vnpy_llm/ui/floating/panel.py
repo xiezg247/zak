@@ -7,8 +7,8 @@ from typing import cast
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
+from vnpy_ashare.config.preferences._settings import read_setting_value, write_setting_value
 from vnpy_common.ai.protocol import AiContextData
-from vnpy_common.paths import QSETTINGS_ORG
 from vnpy_common.ui.feedback import PageToastHost
 from vnpy_common.ui.qt_helpers import (
     clamp_point_in_parent,
@@ -23,6 +23,19 @@ from vnpy_llm.app.engine import LlmEngine
 from vnpy_llm.ui.floating.context_labels import orb_tooltip_text
 from vnpy_llm.ui.panel.chat import AiChatPanel
 from vnpy_llm.ui.themed_styles import bind_ai_floating_style
+
+
+def _floating_pref_key(name: str) -> str:
+    return f"floating_ai/{name}"
+
+
+def _read_floating_pref(name: str, default: object = None) -> object:
+    return read_setting_value(_floating_pref_key(name), default)
+
+
+def _save_floating_pref(name: str, value: object) -> None:
+    write_setting_value(_floating_pref_key(name), value)
+
 
 ORB_SIZE = 52
 ORB_MARGIN = 20
@@ -294,8 +307,7 @@ class FloatingAiOrb(QtWidgets.QWidget):
             default_x = shell.width() - self.width() - ORB_MARGIN
         if default_y is None:
             default_y = shell.height() - self.height() - ORB_MARGIN
-        settings = QtCore.QSettings(QSETTINGS_ORG, "floating_ai")
-        pos = settings.value(self._position_key)
+        pos = _read_floating_pref(self._position_key)
         restore_child_position(
             shell,
             self,
@@ -305,8 +317,7 @@ class FloatingAiOrb(QtWidgets.QWidget):
         )
 
     def _save_position(self) -> None:
-        settings = QtCore.QSettings(QSETTINGS_ORG, "floating_ai")
-        settings.setValue(self._position_key, self.pos())
+        _save_floating_pref(self._position_key, self.pos())
 
     def clamp_to_parent(self, shell: QtWidgets.QWidget | None = None) -> None:
         if shell is None:
@@ -454,8 +465,7 @@ class FloatingAiPanel(QtWidgets.QWidget):
         return bar
 
     def _restore_geometry(self) -> None:
-        settings = QtCore.QSettings(QSETTINGS_ORG, "floating_ai")
-        geometry = settings.value("panel_geometry")
+        geometry = _read_floating_pref("panel_geometry")
         if isinstance(geometry, QtCore.QByteArray) and not geometry.isEmpty():
             self.restoreGeometry(geometry)
             if not frame_intersects_any_screen(self.frameGeometry()):
@@ -466,8 +476,7 @@ class FloatingAiPanel(QtWidgets.QWidget):
         self.hide()
 
     def _save_geometry(self) -> None:
-        settings = QtCore.QSettings(QSETTINGS_ORG, "floating_ai")
-        settings.setValue("panel_geometry", self.saveGeometry())
+        _save_floating_pref("panel_geometry", self.saveGeometry())
 
     def show_aligned_in_parent(self, parent: QtWidgets.QWidget | None = None) -> None:
         """在指定父控件右下角弹出面板（用于模态窗等 overlay 场景）。"""

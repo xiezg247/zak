@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import unittest
 
 from vnpy_ashare.screener.hard_filter_prefs import (
@@ -19,8 +20,20 @@ from vnpy_ashare.screener.hard_filters import (
 
 
 class HardFilterPrefsTests(unittest.TestCase):
+    def setUp(self) -> None:
+        from vnpy_common.storage.config import force_database_url, reset_storage_config
+
+        url = os.environ.get("DATABASE_URL", "").strip()
+        if not url:
+            self.skipTest("需要 DATABASE_URL")
+        reset_storage_config()
+        force_database_url(url)
+
     def tearDown(self) -> None:
+        from vnpy_common.storage.config import reset_storage_config
+
         save_hard_filter_prefs(default_hard_filter_prefs())
+        reset_storage_config()
 
     def test_save_and_load_roundtrip(self) -> None:
         prefs = HardFilterPrefs(

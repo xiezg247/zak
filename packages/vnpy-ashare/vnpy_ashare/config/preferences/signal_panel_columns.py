@@ -5,6 +5,8 @@ from __future__ import annotations
 SIGNAL_PANEL_FIXED_KEYS: frozenset[str] = frozenset({"symbol", "name"})
 
 SIGNAL_PANEL_OPTIONAL_COLUMNS: tuple[tuple[str, str], ...] = (
+    ("last_price", "现价"),
+    ("change_pct", "涨幅%"),
     ("signal", "信号"),
     ("signal_age", "信号天"),
     ("volume_ratio", "量比"),
@@ -23,10 +25,24 @@ SIGNAL_PANEL_OPTIONAL_COLUMNS: tuple[tuple[str, str], ...] = (
 
 _CONTINUATION_COLUMN_KEYS: frozenset[str] = frozenset({"continuation_pattern", "outlook_compact"})
 
-DEFAULT_VISIBLE_OPTIONAL_KEYS: tuple[str, ...] = tuple(key for key, _ in SIGNAL_PANEL_OPTIONAL_COLUMNS if key not in _CONTINUATION_COLUMN_KEYS)
+_DEFAULT_HIDDEN_OPTIONAL_KEYS: frozenset[str] = _CONTINUATION_COLUMN_KEYS | frozenset({"change_pct"})
+
+DEFAULT_VISIBLE_OPTIONAL_KEYS: tuple[str, ...] = tuple(key for key, _ in SIGNAL_PANEL_OPTIONAL_COLUMNS if key not in _DEFAULT_HIDDEN_OPTIONAL_KEYS)
 
 
 SIGNAL_PANEL_OPTIONAL_KEYS: frozenset[str] = frozenset(key for key, _ in SIGNAL_PANEL_OPTIONAL_COLUMNS)
+
+
+_QUOTE_DISPLAY_KEYS: tuple[str, ...] = ("last_price",)
+
+
+def ensure_quote_display_columns(keys: list[str]) -> list[str]:
+    """持久化列配置中补全现价（旧配置默认不含）。"""
+    merged = list(keys)
+    for key in _QUOTE_DISPLAY_KEYS:
+        if key not in merged:
+            merged.insert(0, key)
+    return normalize_visible_optional_keys(merged)
 
 
 def normalize_visible_optional_keys(keys: list[str] | None) -> list[str]:

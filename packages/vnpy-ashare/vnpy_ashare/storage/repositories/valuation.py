@@ -6,10 +6,35 @@ from datetime import datetime, timezone
 from typing import Any
 
 from pydantic import Field
+from sqlalchemy import Table, select
 
 from vnpy_ashare.domain.core.numbers import coerce_float
-from vnpy_ashare.storage.connection import connect
+from vnpy_ashare.storage.repository.app import AppBaseRepository
 from vnpy_common.domain.base import FrozenModel
+from vnpy_common.storage.repository import bulk_upsert
+from vnpy_common.storage.tables import valuation_history as vh
+
+_VALUATION_COLUMNS = (
+    vh.c.ts_code,
+    vh.c.trade_date,
+    vh.c.close,
+    vh.c.pe_ttm,
+    vh.c.pb,
+    vh.c.total_mv,
+    vh.c.circ_mv,
+    vh.c.turnover_rate,
+    vh.c.fetched_at,
+)
+
+_UPSERT_UPDATE_COLUMNS = (
+    "close",
+    "pe_ttm",
+    "pb",
+    "total_mv",
+    "circ_mv",
+    "turnover_rate",
+    "fetched_at",
+)
 
 
 class ValuationRow(FrozenModel):
@@ -28,60 +53,51 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
-def upsert_valuation_rows(ts_code: str, rows: list[dict[str, Any]]) -> int:
-    if not rows:
-        return 0
-    fetched_at = _now_iso()
-    payload = [
-        (
-            ts_code,
-            str(row.get("trade_date", "")),
-            coerce_float(row.get("close")),
-            coerce_float(row.get("pe_ttm")),
-            coerce_float(row.get("pb")),
-            coerce_float(row.get("total_mv")),
-            coerce_float(row.get("circ_mv")),
-            coerce_float(row.get("turnover_rate")),
-            fetched_at,
-        )
-        for row in rows
-        if row.get("trade_date")
-    ]
-    if not payload:
-        return 0
-    with connect() as conn:
-        conn.executemany(
-            """
-            INSERT INTO valuation_history (
-                ts_code, trade_date, close, pe_ttm, pb, total_mv, circ_mv,
-                turnover_rate, fetched_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(ts_code, trade_date) DO UPDATE SET
-                close=excluded.close,
-                pe_ttm=excluded.pe_ttm,
-                pb=excluded.pb,
-                total_mv=excluded.total_mv,
-                circ_mv=excluded.circ_mv,
-                turnover_rate=excluded.turnover_rate,
-                fetched_at=excluded.fetched_at
-            """,
-            payload,
-        )
-    return len(payload)
+class ValuationRepository(AppBaseRepository):
+    table: Table = vh
 
+    def upsert_rows(self, ts_code: str, rows: list[dict[str, Any]]) -> int:
+        if not rows:
+            return 0
+        fetched_at = _now_iso()
+        values = [
+            {
+                "ts_code": ts_code,
+                "trade_date": str(row.get("trade_date", "")),
+                "close": coerce_float(row.get("close")),
+                "pe_ttm": coerce_float(row.get("pe_ttm")),
+                "pb": coerce_float(row.get("pb")),
+                "total_mv": coerce_float(row.get("total_mv")),
+                "circ_mv": coerce_float(row.get("circ_mv")),
+                "turnover_rate": coerce_float(row.get("turnover_rate")),
+                "fetched_at": fetched_at,
+            }
+            for row in rows
+            if row.get("trade_date")
+        ]
+        if not values:
+            return 0
 
-def list_valuation_history(ts_code: str, limit: int = 750) -> list[ValuationRow]:
-    with connect() as conn:
-        cur = conn.execute(
-            """
-            SELECT ts_code, trade_date, close, pe_ttm, pb, total_mv, circ_mv,
-                   turnover_rate, fetched_at
-            FROM valuation_history
-            WHERE ts_code = ?
-            ORDER BY trade_date DESC
-            LIMIT ?
-            """,
-            (ts_code, limit),
+        def _write(conn) -> None:
+            bulk_upsert(
+                conn,
+                self.table,
+                values,
+                conflict_columns=("ts_code", "trade_date"),
+                update_columns=_UPSERT_UPDATE_COLUMNS,
+            )
+
+        self.run(_write)
+        return len(values)
+
+    def list_history(self, ts_code: str, limit: int = 750) -> list[ValuationRow]:
+        rows = self.fetchall(
+            self.select_columns(
+                *_VALUATION_COLUMNS,
+                where=(vh.c.ts_code == ts_code,),
+                order_by=(vh.c.trade_date.desc(),),
+                limit=limit,
+            )
         )
         return [
             ValuationRow(
@@ -95,19 +111,24 @@ def list_valuation_history(ts_code: str, limit: int = 750) -> list[ValuationRow]
                 turnover_rate=row["turnover_rate"],
                 fetched_at=row["fetched_at"],
             )
-            for row in cur.fetchall()
+            for row in rows
         ]
+
+    def latest_trade_date(self, ts_code: str) -> str | None:
+        row = self.fetchone(select(vh.c.trade_date).where(vh.c.ts_code == ts_code).order_by(vh.c.trade_date.desc()).limit(1))
+        return str(row["trade_date"]) if row else None
+
+
+_repo = ValuationRepository()
+
+
+def upsert_valuation_rows(ts_code: str, rows: list[dict[str, Any]]) -> int:
+    return _repo.upsert_rows(ts_code, rows)
+
+
+def list_valuation_history(ts_code: str, limit: int = 750) -> list[ValuationRow]:
+    return _repo.list_history(ts_code, limit)
 
 
 def latest_valuation_trade_date(ts_code: str) -> str | None:
-    with connect() as conn:
-        row = conn.execute(
-            """
-            SELECT trade_date FROM valuation_history
-            WHERE ts_code = ?
-            ORDER BY trade_date DESC
-            LIMIT 1
-            """,
-            (ts_code,),
-        ).fetchone()
-    return str(row["trade_date"]) if row else None
+    return _repo.latest_trade_date(ts_code)

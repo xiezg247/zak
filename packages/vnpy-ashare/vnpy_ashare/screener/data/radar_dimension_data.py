@@ -4,14 +4,20 @@ from __future__ import annotations
 
 from typing import Any
 
+import polars as pl
+
 from vnpy_ashare.domain.market.quote_row import quote_row_to_dict
+from vnpy_ashare.integrations.tushare.concept_board import build_hot_concept_vt_symbol_map
 from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
 from vnpy_ashare.quotes.radar.radar_board_store import get_radar_board_snapshot
 from vnpy_ashare.quotes.radar.radar_leader_pick import build_leader_candidate_pool, rank_leader_pool
 from vnpy_ashare.quotes.radar.radar_resonance_store import get_radar_resonance_entries
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
-from vnpy_ashare.screener.sector.sector_summary import attach_sector_fields, compute_sector_distribution
+from vnpy_ashare.screener.engine.dimensions.radar_resonance import build_radar_resonance_rows_polars
+from vnpy_ashare.screener.engine.sector_stats import compute_sector_distribution_polars
+from vnpy_ashare.screener.engine.snapshot_frame import snapshot_rows_to_dataframe
+from vnpy_ashare.screener.sector.sector_summary import attach_sector_fields
 
 __all__ = [
     "build_leader_score_dimension_rows",
@@ -27,6 +33,25 @@ def resonance_entries_for_dimension() -> tuple:
     return get_radar_resonance_entries()
 
 
+def _strong_sectors_for_leader_pool(pool: list[Any], hot_concepts: list[str]) -> tuple[set[str], set[str]]:
+    df = snapshot_rows_to_dataframe(pool)
+    if df.is_empty():
+        return set(), set(hot_concepts)
+    industry_dist = compute_sector_distribution_polars(df, top_n=8, min_stocks=3)
+    strong_industries = {str(value) for value in industry_dist.head(5)["industry"].to_list()} if not industry_dist.is_empty() else set()
+    vt_to_concept, _hot = build_hot_concept_vt_symbol_map()
+    strong_concepts: set[str] = set()
+    if vt_to_concept:
+        map_df = pl.DataFrame(
+            {"vt_symbol": list(vt_to_concept.keys()), "concept": list(vt_to_concept.values())},
+        )
+        concept_df = df.join(map_df, on="vt_symbol", how="inner")
+        concept_dist = compute_sector_distribution_polars(concept_df, top_n=8, min_stocks=3, sector_col="concept")
+        if not concept_dist.is_empty():
+            strong_concepts = {str(value) for value in concept_dist.head(5)["industry"].to_list()}
+    return strong_industries, strong_concepts | set(hot_concepts)
+
+
 def build_leader_score_dimension_rows(pool_size: int) -> tuple[list[dict[str, Any]], int]:
     """主线龙头候选 → 带 leader_score / leader_tier 的行情行。"""
     candidates, total = build_leader_candidate_pool(variant="mainline", pool_size=max(pool_size * 2, 60))
@@ -35,10 +60,7 @@ def build_leader_score_dimension_rows(pool_size: int) -> tuple[list[dict[str, An
 
     enriched, hot_concepts = attach_sector_fields(candidates)
     pool = enriched or candidates
-    industry_distribution = compute_sector_distribution(pool, top_n=8, min_stocks=3)
-    concept_distribution = compute_sector_distribution(pool, top_n=8, min_stocks=3, sector_field="concept")
-    strong_industries = {str(item["industry"]) for item in industry_distribution[:5]}
-    strong_concepts = {str(item["concept"]) for item in concept_distribution[:5]} | set(hot_concepts)
+    strong_industries, strong_concepts = _strong_sectors_for_leader_pool(pool, hot_concepts)
 
     cycle = load_emotion_cycle_snapshot(fetch_if_missing=False)
     ranked = rank_leader_pool(
@@ -70,26 +92,5 @@ def build_radar_resonance_dimension_rows(pool_size: int) -> tuple[list[dict[str,
     except MarketQuotesLoadError:
         return [], 0
 
-    by_vt = {str(row.get("vt_symbol") or ""): row for row in snapshot.rows}
-    rows: list[dict[str, Any]] = []
-    for entry in entries:
-        raw = by_vt.get(entry.vt_symbol)
-        if raw is None:
-            continue
-        payload = dict(raw)
-        payload["resonance_score"] = entry.resonance_score
-        payload["resonance_card_count"] = entry.card_count
-        if entry.leader_tier:
-            payload["leader_tier"] = entry.leader_tier
-        if entry.leader_score is not None:
-            payload["leader_score"] = entry.leader_score
-        rows.append(payload)
-
-    rows.sort(
-        key=lambda row: (
-            float(row.get("resonance_score") or 0),
-            float(row.get("resonance_card_count") or 0),
-        ),
-        reverse=True,
-    )
-    return rows[:pool_size], snapshot.total
+    rows = build_radar_resonance_rows_polars(entries, list(snapshot.rows), pool_size=pool_size)
+    return rows, snapshot.total

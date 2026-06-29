@@ -74,16 +74,6 @@ def finalize_rank_catalog(
     spec: RankDefinition,
 ) -> list[str]:
     """按榜定义过滤并排序 tickflow symbol 列表。"""
-    sort_column = spec.sort_column or spec.redis_field
-    reverse = not spec.ascending
-    matched: list[tuple[str, float]] = []
-    for tf_symbol in tf_symbols:
-        quote = quotes.get(tf_symbol)
-        if quote is None or quote.last_price <= 0:
-            continue
-        if not quote_matches_rank(quote, spec):
-            continue
-        matched.append((tf_symbol, quote_rank_value(quote, sort_column)))
+    from vnpy_ashare.quotes.rank.rank_engine_polars import finalize_rank_catalog_polars
 
-    matched.sort(key=lambda pair: pair[1], reverse=reverse)
-    return [tf_symbol for tf_symbol, _ in matched]
+    return finalize_rank_catalog_polars(tf_symbols, quotes, spec)

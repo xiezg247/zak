@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Literal
 from pydantic import Field
 
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
+from vnpy_ashare.data.pattern_bars import load_daily_bars_tail
 from vnpy_ashare.domain.financial.bundle import FinancialBundle, FinancialSyncResult
 from vnpy_ashare.domain.stock.concept import ConceptProfile
 from vnpy_ashare.domain.stock.context import MoneyflowProfile
@@ -24,6 +25,7 @@ from vnpy_ashare.services.stock.overview_dashboard import build_overview_dashboa
 from vnpy_ashare.services.stock.profile import (
     build_sector_profile,
     build_valuation_profile,
+    load_sector_market_snapshot,
     sync_disclosure_calendar,
     sync_valuation_history,
 )
@@ -117,31 +119,38 @@ class StockAnalysisService(BaseService):
 
     def _load_overview(self, payload: StockAnalysisPayload, *, sync_financials: bool = False) -> None:
         analysis = self.engine.analysis_service
+        item = parse_stock_symbol(payload.vt_symbol)
+        daily_bars = load_daily_bars_tail(item.symbol, item.exchange, lookback_bars=80) if item is not None else []
         payload.technical = analysis.technical_snapshot(payload.vt_symbol)
-        payload.relative_returns = compute_relative_returns(self.engine, payload.vt_symbol)
-        # 在仪表盘构建前同步财报，确保数据就绪检查能看到最新数据
+        payload.relative_returns = compute_relative_returns(
+            self.engine,
+            payload.vt_symbol,
+            daily_bars=daily_bars or None,
+        )
         if sync_financials:
             self._load_financial(payload, sync_financials=True)
         payload.overview_dashboard = build_overview_dashboard(
             self.engine,
             payload.vt_symbol,
             technical=payload.technical,
+            daily_bars=daily_bars or None,
         )
 
     def _load_sector(self, payload: StockAnalysisPayload, *, stock_name: str) -> None:
-        payload.valuation = sync_valuation_history(payload.vt_symbol)
+        market = load_sector_market_snapshot()
+        payload.valuation = sync_valuation_history(payload.vt_symbol, market=market)
         if payload.valuation.message and not payload.valuation.synced:
             if "跳过" not in payload.valuation.message:
                 payload.warnings.append(payload.valuation.message)
         elif not payload.valuation.history_days:
-            payload.valuation = build_valuation_profile(payload.vt_symbol)
+            payload.valuation = build_valuation_profile(payload.vt_symbol, market=market)
 
         item = parse_stock_symbol(payload.vt_symbol)
         if item is not None:
             payload.valuation_history = list_valuation_history(item.ts_code, limit=120)
 
         count, disclosure_message = sync_disclosure_calendar(payload.vt_symbol)
-        payload.sector = build_sector_profile(payload.vt_symbol, name=stock_name)
+        payload.sector = build_sector_profile(payload.vt_symbol, name=stock_name, market=market)
         if disclosure_message and "无法解析" not in disclosure_message and count == 0:
             if "未配置" not in disclosure_message:
                 payload.warnings.append(disclosure_message)

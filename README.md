@@ -11,7 +11,7 @@
 
 - **看盘**：守则（Playbook）/ 自选 / 市场 / 板块资金 / 雷达；TickFlow 行情与五档、Redis 涨幅榜、分 K 图表
 - **选股**：条件选股（规则 + 方案）与多因子配方（定时收件箱）；硬过滤、导出 CSV、行业分布与 diff；详见 [docs/screener-hub-guide.md](docs/screener-hub-guide.md)
-- **信息流**：B 站 UP 订阅时间线（`Ctrl+Shift+F`）；见 [docs/info-feed.md](docs/info-feed.md)
+- **信息流**：B 站 UP 订阅时间线（`Ctrl+8`）；见 [docs/info-feed.md](docs/info-feed.md)
 - **回测**：`AShareTemplate`（T+1、整手、只做多）；看盘联动、批量回测与回测对比
 - **AI**：悬浮球 + Dock + 全屏；Agent Skills + MCP；**投研团队**（`/team 600519` 并行分析）；多会话、流式停止、配置热重载
 - **运维**：定时任务、本地 K 线健康检测与补全；系统配置页编辑 `.env` / `vt_setting.json` 并分级热加载（见 [docs/config-hot-reload.md](docs/config-hot-reload.md)）
@@ -36,6 +36,10 @@ uv run python cli.py job run sync_universe   # 首次建议：同步全 A 股列
 uv run python cli.py data download-batch --start 2020-01-01 --end 2026-06-08
 uv run python cli.py data list-bars
 ```
+
+### 多人共用 PostgreSQL
+
+内网小团队可共用一套 PostgreSQL，PyQt 客户端直连数据库。配置 `DATABASE_URL` 后执行 `cli.py db upgrade`。详见 [docs/multi-user-pg.md](docs/multi-user-pg.md)。
 
 ## 回测默认参数
 
@@ -67,20 +71,21 @@ class MyStrategy(AShareTemplate):
 
 ## 数据存储
 
-项目采用**双存储结构**，元数据与行情数据分离：
+**仅 PostgreSQL**：业务元数据、AI 对话、Cache 与 K 线共用同一 PG 实例（`DATABASE_URL` + VeighNa `DATABASE_NAME=postgresql`，schema 分离）。
 
-| 存储位置 | 数据类型 | 可否切换 |
-|----------|----------|----------|
-| `~/.vntrader/zak.db` | 自选池、全 A 股、交易日历、回测/选股历史、个股笔记与研报 | **固定 SQLite** |
-| `~/.vntrader/llm_chat.db` | AI 对话会话与消息 | **固定 SQLite** |
-| `~/.vntrader/database.db` | K 线数据（日线/分钟线/Tick） | SQLite 或 PostgreSQL |
+| 存储 | 数据类型 |
+|------|----------|
+| PostgreSQL `app` / `chat` / `auth` / `cache` / `system` | 自选、选股、笔记、AI 会话、计算缓存、调度配置等 |
+| PostgreSQL `public` | K 线（VeighNa `dbbardata` 等） |
+| QSettings | 纯 UI 偏好（本机） |
 
-K 线数据通过 `DATABASE_NAME` 切换存储后端，默认 `sqlite` 即可使用；如需远程共享或多进程查询，可切换为 `postgresql`。
+首次配置：`cli.py db upgrade`。多人共用见 [docs/multi-user-pg.md](docs/multi-user-pg.md)。
 
-### 切换为 PostgreSQL
+### PostgreSQL 配置
 
 ```bash
 # 1. 修改 .env
+DATABASE_URL=postgresql://zak:zak@localhost:5432/zak
 DATABASE_NAME=postgresql
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
@@ -94,11 +99,10 @@ uv sync
 # 3. 启动 PostgreSQL（本地 Docker）
 bash bin/start-postgresql.sh
 
-# 4. 同步配置并重启 GUI
+# 4. 初始化 schema 并同步 GUI 配置
+uv run python cli.py db upgrade
 # 在设置页点「从 .env 同步」，或删除 ~/.vntrader/vt_setting.json 后重启
 ```
-
-> **注意**：仅 K 线数据切换存储，元数据（`zak.db`）和 AI 对话（`llm_chat.db`）始终为本机 SQLite，不受 `DATABASE_NAME` 影响。
 
 ## 命令行
 

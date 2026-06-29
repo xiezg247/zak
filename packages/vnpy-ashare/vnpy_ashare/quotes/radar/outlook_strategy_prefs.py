@@ -6,14 +6,16 @@ from dataclasses import dataclass
 
 from strategies.registry import OUTLOOK_STRATEGY_CLASS_NAMES, get_strategy_meta
 from strategies.signals import STRATEGY_SIGNAL_DEFAULTS, STRATEGY_SIGNAL_RECENT_DAYS
-from vnpy_ashare.config.preferences._settings import get_settings
+from vnpy_ashare.config.preferences._user_pref import load_scalar_pref, save_scalar_pref
 from vnpy_ashare.config.preferences.watchlist_signal import (
     DEFAULT_CLASS,
     WatchlistSignalConfig,
     load_watchlist_signal_config,
 )
 
-_SETTINGS_KEY = "quotes/radar/outlook_strategy_class"
+_PREF_NAMESPACE = "radar"
+_OUTLOOK_PREF_KEY = "outlook_strategy_class"
+_SECTOR_FLOW_PREF_KEY = "sector_flow_outlook_strategy_class"
 
 OUTLOOK_STRATEGY_WHITELIST: tuple[str, ...] = OUTLOOK_STRATEGY_CLASS_NAMES
 
@@ -49,17 +51,15 @@ def default_outlook_strategy_class() -> str:
 
 
 def load_outlook_strategy_class() -> str:
-    settings = get_settings()
-    raw = settings.value(_SETTINGS_KEY, "")
-    if not raw:
-        return default_outlook_strategy_class()
-    return _normalize_class_name(str(raw))
+    return load_scalar_pref(
+        _PREF_NAMESPACE,
+        _OUTLOOK_PREF_KEY,
+        load_default=default_outlook_strategy_class,
+    )
 
 
 def save_outlook_strategy_class(class_name: str) -> None:
-    normalized = _normalize_class_name(class_name)
-    settings = get_settings()
-    settings.setValue(_SETTINGS_KEY, normalized)
+    save_scalar_pref(_PREF_NAMESPACE, _OUTLOOK_PREF_KEY, _normalize_class_name(class_name))
 
 
 def outlook_strategy_options() -> tuple[OutlookStrategyOption, ...]:
@@ -87,22 +87,17 @@ def outlook_signal_recent_days(class_name: str | None = None) -> int:
     return int(STRATEGY_SIGNAL_RECENT_DAYS.get(resolved, STRATEGY_SIGNAL_RECENT_DAYS[DEFAULT_CLASS]))
 
 
-_SECTOR_FLOW_OUTLOOK_SETTINGS_KEY = "quotes/sector_flow/outlook_strategy_class"
-
-
 def load_sector_flow_outlook_strategy_class() -> str:
     """板块资金「策略 B」展望策略；未单独配置时回退雷达展望策略。"""
-    settings = get_settings()
-    raw = settings.value(_SECTOR_FLOW_OUTLOOK_SETTINGS_KEY, "")
-    if not raw:
-        return load_outlook_strategy_class()
-    return _normalize_class_name(str(raw))
+    return load_scalar_pref(
+        _PREF_NAMESPACE,
+        _SECTOR_FLOW_PREF_KEY,
+        load_default=load_outlook_strategy_class,
+    )
 
 
 def save_sector_flow_outlook_strategy_class(class_name: str) -> None:
-    normalized = _normalize_class_name(class_name)
-    settings = get_settings()
-    settings.setValue(_SECTOR_FLOW_OUTLOOK_SETTINGS_KEY, normalized)
+    save_scalar_pref(_PREF_NAMESPACE, _SECTOR_FLOW_PREF_KEY, _normalize_class_name(class_name))
 
 
 def load_sector_flow_outlook_signal_config() -> WatchlistSignalConfig:

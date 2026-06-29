@@ -2,36 +2,26 @@
 
 from __future__ import annotations
 
-import tempfile
 import unittest
-from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 from vnpy.trader.constant import Exchange
 
 import tests._bootstrap  # noqa: F401
+from tests.ashare.pg_unittest import PgStorageTestCase
 from vnpy_ashare.services.position import PositionService
-from vnpy_ashare.storage.connection import init_app_db
 from vnpy_ashare.storage.repositories.positions import POSITION_MAX_ITEMS
 from vnpy_ashare.storage.repositories.watchlist import add_watchlist_item
 
 
-class PositionServiceTests(unittest.TestCase):
+class PositionServiceTests(PgStorageTestCase):
     def setUp(self) -> None:
-        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self.db_path = Path(self._tmp.name)
-        self._patcher = patch("vnpy_ashare.storage.connection._db_path", return_value=self.db_path)
-        self._patcher.start()
-        init_app_db()
+        super().setUp()
         add_watchlist_item("600000", Exchange.SSE, "浦发银行")
         engine = Mock()
         engine.main_engine = None
         engine.event_engine = None
         self.service = PositionService(engine)
-
-    def tearDown(self) -> None:
-        self._patcher.stop()
-        self.db_path.unlink(missing_ok=True)
 
     def test_add_and_remove_position(self) -> None:
         self.assertTrue(

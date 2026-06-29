@@ -1,96 +1,30 @@
-"""持仓策略磁盘短缓存（键：vt_symbol + config_key + bar_as_of + position_key）。"""
+"""持仓策略短缓存（Redis 默认 + 进程 L1）。"""
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
-from datetime import datetime
-from pathlib import Path
+from typing import cast
 
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
-from vnpy_ashare.storage.cache.sqlite_session import sqlite_cache_session
-from vnpy_ashare.storage.cache.watchlist_signal_cache import snapshot_from_payload, snapshot_to_payload
-from vnpy_common.paths import get_app_db_path
-
-_SCHEMA = """
-CREATE TABLE IF NOT EXISTS watchlist_position_cache (
-    vt_symbol TEXT NOT NULL,
-    config_key TEXT NOT NULL,
-    bar_as_of TEXT NOT NULL,
-    position_key TEXT NOT NULL,
-    payload TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
-    PRIMARY KEY (vt_symbol, config_key, bar_as_of, position_key)
-);
-"""
+from vnpy_ashare.storage.cache.position_cache_factory import create_position_cache_backend
+from vnpy_ashare.storage.cache.signal_cache_config import l1_cache_ttl_seconds
 
 
-def _cache_db_path() -> Path:
-    return get_app_db_path().parent / "watchlist_position_cache.db"
+class _L1PositionCacheWrapper:
+    def __init__(self, inner, *, ttl_sec: float) -> None:
+        self._inner = inner
+        self._ttl = ttl_sec
+        self._load_many_hits: dict[tuple, tuple[float, dict[str, SignalSnapshot]]] = {}
 
+    def _fresh(self, cached_at: float) -> bool:
+        return time.monotonic() - cached_at <= self._ttl
 
-def _connect(db_path: Path | None = None):
-    path = db_path or _cache_db_path()
-    return sqlite_cache_session(path, _SCHEMA)
+    def get(self, vt_symbol: str, config_key: str, bar_as_of: str, position_key: str) -> SignalSnapshot | None:
+        return cast(SignalSnapshot | None, self._inner.get(vt_symbol, config_key, bar_as_of, position_key))
 
-
-class WatchlistPositionDiskCache:
-    """持仓区策略信号磁盘缓存（浮盈仍由行情实时计算）。"""
-
-    def get(
-        self,
-        vt_symbol: str,
-        config_key: str,
-        bar_as_of: str,
-        position_key: str,
-    ) -> SignalSnapshot | None:
-        symbol = str(vt_symbol or "").strip()
-        key = str(config_key or "").strip()
-        pos_key = str(position_key or "").strip()
-        as_of = str(bar_as_of or "")
-        if not symbol or not key or not pos_key:
-            return None
-        with _connect() as conn:
-            row = conn.execute(
-                """
-                SELECT payload FROM watchlist_position_cache
-                WHERE vt_symbol = ? AND config_key = ? AND bar_as_of = ? AND position_key = ?
-                """,
-                (symbol, key, as_of, pos_key),
-            ).fetchone()
-        if row is None:
-            return None
-        try:
-            return snapshot_from_payload(str(row["payload"]))
-        except (TypeError, ValueError):
-            return None
-
-    def get_latest(
-        self,
-        vt_symbol: str,
-        config_key: str,
-        position_key: str,
-    ) -> SignalSnapshot | None:
-        symbol = str(vt_symbol or "").strip()
-        key = str(config_key or "").strip()
-        pos_key = str(position_key or "").strip()
-        if not symbol or not key or not pos_key:
-            return None
-        with _connect() as conn:
-            row = conn.execute(
-                """
-                SELECT payload FROM watchlist_position_cache
-                WHERE vt_symbol = ? AND config_key = ? AND position_key = ?
-                ORDER BY updated_at DESC
-                LIMIT 1
-                """,
-                (symbol, key, pos_key),
-            ).fetchone()
-        if row is None:
-            return None
-        try:
-            return snapshot_from_payload(str(row["payload"]))
-        except (TypeError, ValueError):
-            return None
+    def get_latest(self, vt_symbol: str, config_key: str, position_key: str) -> SignalSnapshot | None:
+        return cast(SignalSnapshot | None, self._inner.get_latest(vt_symbol, config_key, position_key))
 
     def load_many(
         self,
@@ -100,18 +34,29 @@ class WatchlistPositionDiskCache:
         position_key_for: Callable[[str], str | None],
         bar_as_of_for: Callable[[str], str | None],
     ) -> dict[str, SignalSnapshot]:
-        loaded: dict[str, SignalSnapshot] = {}
-        for vt in vt_symbols:
-            pos_key = position_key_for(vt) or ""
-            if not pos_key:
-                continue
-            bar_as_of = bar_as_of_for(vt) or ""
-            snap = self.get(vt, config_key, bar_as_of, pos_key)
-            if snap is None:
-                snap = self.get_latest(vt, config_key, pos_key)
-            if snap is not None:
-                loaded[vt] = snap
-        return loaded
+        normalized = tuple(
+            sorted(
+                (
+                    str(vt or "").strip(),
+                    str(position_key_for(str(vt or "").strip()) or ""),
+                    str(bar_as_of_for(str(vt or "").strip()) or ""),
+                )
+                for vt in vt_symbols
+                if str(vt or "").strip()
+            )
+        )
+        cache_key = (config_key, normalized)
+        hit = self._load_many_hits.get(cache_key)
+        if hit is not None and self._fresh(hit[0]):
+            return dict(hit[1])
+        loaded = self._inner.load_many(
+            vt_symbols,
+            config_key=config_key,
+            position_key_for=position_key_for,
+            bar_as_of_for=bar_as_of_for,
+        )
+        self._load_many_hits[cache_key] = (time.monotonic(), dict(loaded))
+        return cast(dict[str, SignalSnapshot], loaded)
 
     def put(
         self,
@@ -121,26 +66,8 @@ class WatchlistPositionDiskCache:
         bar_as_of: str,
         position_key: str,
     ) -> None:
-        symbol = str(snapshot.vt_symbol or "").strip()
-        key = str(config_key or "").strip()
-        pos_key = str(position_key or "").strip()
-        as_of = str(bar_as_of or "")
-        if not symbol or not key or not pos_key:
-            return
-        payload = snapshot_to_payload(snapshot)
-        updated_at = datetime.now().isoformat(timespec="seconds")
-        with _connect() as conn:
-            conn.execute(
-                """
-                INSERT INTO watchlist_position_cache(
-                    vt_symbol, config_key, bar_as_of, position_key, payload, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?)
-                ON CONFLICT(vt_symbol, config_key, bar_as_of, position_key) DO UPDATE SET
-                    payload = excluded.payload,
-                    updated_at = excluded.updated_at
-                """,
-                (symbol, key, as_of, pos_key, payload, updated_at),
-            )
+        self._load_many_hits.clear()
+        self._inner.put(snapshot, config_key=config_key, bar_as_of=bar_as_of, position_key=position_key)
 
     def put_many(
         self,
@@ -150,18 +77,83 @@ class WatchlistPositionDiskCache:
         position_key_for: Callable[[str], str | None],
         bar_as_of_for: Callable[[str], str | None],
     ) -> None:
-        for vt_symbol, snapshot in snapshots.items():
-            pos_key = position_key_for(vt_symbol)
-            if not pos_key:
-                continue
-            bar_as_of = bar_as_of_for(vt_symbol) or snapshot.as_of or ""
-            self.put(
-                snapshot,
-                config_key=config_key,
-                bar_as_of=bar_as_of,
-                position_key=pos_key,
-            )
+        self._load_many_hits.clear()
+        self._inner.put_many(
+            snapshots,
+            config_key=config_key,
+            position_key_for=position_key_for,
+            bar_as_of_for=bar_as_of_for,
+        )
 
     def clear(self) -> None:
-        with _connect() as conn:
-            conn.execute("DELETE FROM watchlist_position_cache")
+        self._load_many_hits.clear()
+        self._inner.clear()
+
+
+class WatchlistPositionDiskCache:
+    """持仓区策略信号缓存；backend 与信号共用 ZAK_SIGNAL_CACHE_BACKEND。"""
+
+    def __init__(self, backend=None, *, l1_ttl_sec: float | None = None) -> None:
+        inner = backend or create_position_cache_backend()
+        ttl = l1_cache_ttl_seconds() if l1_ttl_sec is None else l1_ttl_sec
+        self._backend = inner if ttl <= 0 else _L1PositionCacheWrapper(inner, ttl_sec=ttl)
+
+    def get(
+        self,
+        vt_symbol: str,
+        config_key: str,
+        bar_as_of: str,
+        position_key: str,
+    ) -> SignalSnapshot | None:
+        return self._backend.get(vt_symbol, config_key, bar_as_of, position_key)
+
+    def get_latest(self, vt_symbol: str, config_key: str, position_key: str) -> SignalSnapshot | None:
+        return self._backend.get_latest(vt_symbol, config_key, position_key)
+
+    def load_many(
+        self,
+        vt_symbols: list[str],
+        *,
+        config_key: str,
+        position_key_for: Callable[[str], str | None],
+        bar_as_of_for: Callable[[str], str | None],
+    ) -> dict[str, SignalSnapshot]:
+        return self._backend.load_many(
+            vt_symbols,
+            config_key=config_key,
+            position_key_for=position_key_for,
+            bar_as_of_for=bar_as_of_for,
+        )
+
+    def put(
+        self,
+        snapshot: SignalSnapshot,
+        *,
+        config_key: str,
+        bar_as_of: str,
+        position_key: str,
+    ) -> None:
+        self._backend.put(
+            snapshot,
+            config_key=config_key,
+            bar_as_of=bar_as_of,
+            position_key=position_key,
+        )
+
+    def put_many(
+        self,
+        snapshots: dict[str, SignalSnapshot],
+        *,
+        config_key: str,
+        position_key_for: Callable[[str], str | None],
+        bar_as_of_for: Callable[[str], str | None],
+    ) -> None:
+        self._backend.put_many(
+            snapshots,
+            config_key=config_key,
+            position_key_for=position_key_for,
+            bar_as_of_for=bar_as_of_for,
+        )
+
+    def clear(self) -> None:
+        self._backend.clear()

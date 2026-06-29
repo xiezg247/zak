@@ -17,6 +17,16 @@ class SignalPanelColumnsTests(unittest.TestCase):
         self.assertNotIn("continuation_pattern", keys)
         self.assertNotIn("outlook_compact", keys)
 
+    def test_last_price_column_default_visible(self) -> None:
+        keys = list(DEFAULT_VISIBLE_OPTIONAL_KEYS)
+        self.assertIn("last_price", keys)
+        self.assertNotIn("change_pct", keys)
+        self.assertLess(keys.index("last_price"), keys.index("signal"))
+
+    def test_change_pct_available_in_menu(self) -> None:
+        optional = {key for key, _ in SIGNAL_PANEL_OPTIONAL_COLUMNS}
+        self.assertIn("change_pct", optional)
+
     def test_continuation_columns_available_in_menu(self) -> None:
         optional = {key for key, _ in SIGNAL_PANEL_OPTIONAL_COLUMNS}
         self.assertIn("continuation_pattern", optional)
@@ -25,6 +35,14 @@ class SignalPanelColumnsTests(unittest.TestCase):
     def test_normalize_keeps_continuation_when_requested(self) -> None:
         keys = normalize_visible_optional_keys(["signal", "continuation_pattern", "outlook_compact"])
         self.assertEqual(keys[-2:], ["continuation_pattern", "outlook_compact"])
+
+    def test_ensure_quote_display_columns_prepends_missing(self) -> None:
+        from vnpy_ashare.config.preferences.signal_panel_columns import ensure_quote_display_columns
+
+        keys = ensure_quote_display_columns(["signal", "signal_strength"])
+        self.assertIn("last_price", keys)
+        self.assertNotIn("change_pct", keys)
+        self.assertLess(keys.index("last_price"), keys.index("signal"))
 
 
 if __name__ == "__main__":

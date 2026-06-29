@@ -70,6 +70,10 @@ class WatchlistHost(WatchlistPoolHost, Protocol):
     _watchlist_groups: Any
     event_engine: Any
     emotion_cycle_more_button: QtWidgets.QPushButton | None
+    stock_note_panel: Any
+    _lazy_chart_row: Any
+    _lazy_right_panel: Any
+    _watchlist_quotes_loading: bool
 
     def find_stock_item(self, vt_symbol: str) -> StockItem | None: ...
 

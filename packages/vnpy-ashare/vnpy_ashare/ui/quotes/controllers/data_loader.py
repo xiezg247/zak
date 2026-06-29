@@ -9,6 +9,7 @@ from vnpy_ashare.app.engine_access import get_bar_service
 from vnpy_ashare.quotes.core.enrich import merge_quote_maps_into
 from vnpy_ashare.services.bar import count_universe, universe_exists
 from vnpy_ashare.ui.quotes.page.config import MARKET_SCROLL_LOAD_COOLDOWN_MS
+from vnpy_ashare.ui.quotes.page.roles import uses_watchlist_pool
 from vnpy_ashare.ui.quotes.workers.quotes_workers import (
     MarketFullLoadWorker,
     MarketFullResult,
@@ -21,6 +22,12 @@ from vnpy_ashare.ui.quotes.workers.quotes_workers import (
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
+
+_WORKER_CANCELLED_MESSAGE = "已取消"
+
+
+def _worker_cancelled(msg: str) -> bool:
+    return msg == _WORKER_CANCELLED_MESSAGE
 
 
 class DataLoaderController:
@@ -42,6 +49,7 @@ class DataLoaderController:
         primary_text: str = "",
         primary_handler=None,
         lock_table: bool = True,
+        lock_search: bool = True,
     ) -> bool:
         page = self._p
         if page._task_guard.active:
@@ -53,6 +61,7 @@ class DataLoaderController:
             primary_text=primary_text,
             primary_handler=primary_handler,
             lock_table=lock_table,
+            lock_search=lock_search,
         )
         return True
 
@@ -92,6 +101,8 @@ class DataLoaderController:
         if not page._active or not page.config.use_market_rank:
             return
         if page._market_scroll_blocked or page._market_loading_more or page._thread_active(page._market_worker):
+            return
+        if page._thread_active(page._quotes_worker):
             return
         loaded = len(page.display_stocks)
         if page._market_total > 0 and loaded >= page._market_total:
@@ -199,6 +210,11 @@ class DataLoaderController:
             try:
                 if generation != page._load_generation or not page._active:
                     return
+                if _worker_cancelled(msg):
+                    if not quiet:
+                        page._finish_cancellable_task(cancelled_message="加载已取消")
+                        page._hide_market_loading()
+                    return
                 if not quiet:
                     if page._finish_cancellable_task(cancelled_message="加载已取消"):
                         page._hide_market_loading()
@@ -305,6 +321,14 @@ class DataLoaderController:
                 page._market_worker = None
             try:
                 if generation != page._load_generation or not page._active:
+                    return
+                if _worker_cancelled(msg):
+                    if append:
+                        page._market_loading_more = False
+                        page._market_page = max(page._market_page - 1, 0)
+                    elif not quiet:
+                        page._finish_cancellable_task(cancelled_message="加载已取消")
+                        page._hide_market_loading()
                     return
                 if append:
                     page._market_loading_more = False
@@ -458,6 +482,17 @@ class DataLoaderController:
         if not page._active:
             return
 
+        if uses_watchlist_pool(page.page_name):
+            bootstrap = getattr(page, "_watchlist_bootstrap", None)
+            if bootstrap is not None:
+                bootstrap.reload_watchlist_pool(page)
+            else:
+                pool = page._watchlist._pool_from_service()
+                page.all_stocks = list(pool)
+                page.apply_filter()
+                page._watchlist.refresh_keys()
+            return
+
         if page.config.use_market_rank:
             page._market_page = 0
             page._pagination.set_visible()
@@ -470,6 +505,7 @@ class DataLoaderController:
         page._load_generation += 1
         generation = page._load_generation
         scope_key = page.config.scope_key
+        local_paged_load = page.config.use_local_pagination and scope_key == "已下载"
 
         if scope_key == "全部A股" and not self._universe_exists():
             page.all_stocks = []
@@ -479,15 +515,20 @@ class DataLoaderController:
             return
 
         loading_text = f"正在加载{page.page_name}…"
-        if not self._begin_loader_task(
-            loading_text,
-            worker_attr="_load_worker",
-            lock_table=True,
-        ):
-            return
-        page._show_market_loading(loading_text)
-        page.status_label.setText(loading_text)
-        page.quote_table_model.set_row_count(0)
+        if local_paged_load:
+            if page._task_guard.active:
+                return
+            page.status_label.setText(f"正在加载第 {page._market_page + 1} 页…")
+        else:
+            if not self._begin_loader_task(
+                loading_text,
+                worker_attr="_load_worker",
+                lock_table=True,
+            ):
+                return
+            page._show_market_loading(loading_text)
+            page.status_label.setText(loading_text)
+            page.quote_table_model.set_row_count(0)
 
         if page.config.use_local_pagination and scope_key == "已下载":
             offset = page._market_page * page.config.local_page_size
@@ -521,10 +562,11 @@ class DataLoaderController:
                     page._local_total = len(result)
                 else:
                     return
-                if page._finish_cancellable_task(cancelled_message="加载已取消"):
+                if not local_paged_load:
+                    if page._finish_cancellable_task(cancelled_message="加载已取消"):
+                        page._hide_market_loading()
+                        return
                     page._hide_market_loading()
-                    return
-                page._hide_market_loading()
                 if page.config.use_local_pagination:
                     page._pagination.set_visible()
                     page._pagination.update_controls()
@@ -565,10 +607,11 @@ class DataLoaderController:
             try:
                 if generation != page._load_generation or not page._active:
                     return
-                if page._finish_cancellable_task(cancelled_message="加载已取消"):
+                if not local_paged_load:
+                    if page._finish_cancellable_task(cancelled_message="加载已取消"):
+                        page._hide_market_loading()
+                        return
                     page._hide_market_loading()
-                    return
-                page._hide_market_loading()
                 page.status_label.setText(f"加载失败: {msg}")
                 page._toast.error(msg)
             finally:
@@ -590,6 +633,7 @@ class DataLoaderController:
             primary_text="同步 A 股列表",
             primary_handler=page.sync_universe_clicked,
             lock_table=False,
+            lock_search=False,
         ):
             return
         page.status_label.setText("后台同步 A 股列表...")
@@ -670,6 +714,10 @@ class DataLoaderController:
             quote_svc.set_market_quotes_cache(page.display_stocks, page.quote_map)
 
     def flush_market_cache_sync(self) -> None:
+        page = self._p
+        if page._market_background_sync_paused():
+            page._schedule_market_cache_sync()
+            return
         self.sync_market_quotes_to_cache_from_display()
 
     def _universe_exists(self) -> bool:

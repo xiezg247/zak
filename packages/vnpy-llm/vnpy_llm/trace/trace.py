@@ -1,4 +1,4 @@
-"""AI 助手调用链路 Trace（内存 + SQLite 持久化）。"""
+"""AI 助手调用链路 Trace（内存 + PostgreSQL 持久化）。"""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from vnpy_llm.domain.trace import TraceKind, TraceStatus, TraceStep, TurnStatus,
 from vnpy_llm.tools.chart_collector import merge_chart_attachment
 
 if TYPE_CHECKING:
-    from vnpy_llm.trace.persistence import TracePersistence
+    from vnpy_llm.trace.persistence import TraceRepository
 
 _PREVIEW_MAX = 600
 
@@ -78,7 +78,7 @@ def map_turns_to_user_messages(
 
 
 def step_to_dict(step: TraceStep) -> dict[str, Any]:
-    """TraceStep → SQLite 持久化 dict。"""
+    """TraceStep → 持久化 dict。"""
     return step.persist_dict()
 
 
@@ -88,7 +88,7 @@ def step_from_dict(data: dict[str, Any]) -> TraceStep:
 
 
 def turn_to_dict(turn: TurnTrace) -> dict[str, Any]:
-    """TurnTrace → SQLite 持久化 dict。"""
+    """TurnTrace → 持久化 dict。"""
     return turn.persist_dict()
 
 
@@ -100,7 +100,7 @@ def turn_from_dict(data: dict[str, Any]) -> TurnTrace:
 class TraceStore:
     """按 session 保存 TurnTrace，支持当前轮次实时更新与持久化。"""
 
-    def __init__(self, persistence: TracePersistence | None = None) -> None:
+    def __init__(self, persistence: TraceRepository | None = None) -> None:
         self._persistence = persistence
         self._turns: dict[str, list[TurnTrace]] = {}
         self._current: TurnTrace | None = None

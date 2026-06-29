@@ -3,16 +3,15 @@
 from __future__ import annotations
 
 from vnpy_ashare.domain.market.board import matches_board
-from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike, quote_row_copy
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
-from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row
-from vnpy_ashare.screener.hard_filters import apply_recipe_filters, row_symbol
-from vnpy_ashare.screener.sector.sector_summary import attach_industry
+from vnpy_ashare.screener.dimensions.base import DimensionHit
+from vnpy_ashare.screener.hard_filters import row_symbol
 
-_CM20_MIN_CHANGE = 7.0
 _CM20_SWEET_MV_YI = (20.0, 80.0)
 _CM20_MAX_MV_YI = 150.0
+_CM20_MIN_CHANGE = 0.0
 
 
 def is_cm20_row(row: QuoteRowLike) -> bool:
@@ -29,11 +28,11 @@ def cm20_elastic_score(row: QuoteRowLike, *, amount_rank: float = 0.5) -> float:
     mv_yi = mv_wan / 10_000.0 if mv_wan > 0 else 0.0
     if mv_yi <= 0:
         size_score = 0.5
-    elif mv_yi < _CM20_SWEET_MV_YI[0]:
+    elif mv_yi < 20.0:
         size_score = 0.35
-    elif mv_yi <= _CM20_SWEET_MV_YI[1]:
+    elif mv_yi <= 80.0:
         size_score = 1.0
-    elif mv_yi <= _CM20_MAX_MV_YI:
+    elif mv_yi <= 150.0:
         size_score = 0.65
     else:
         size_score = 0.25
@@ -41,75 +40,20 @@ def cm20_elastic_score(row: QuoteRowLike, *, amount_rank: float = 0.5) -> float:
     return round(max(0.0, min(100.0, raw * 100.0)), 1)
 
 
-def _amount_rank_map(rows: QuoteRowsLike) -> dict[str, float]:
-    amounts = [(str(row.get("vt_symbol") or ""), float(row.get("amount") or 0)) for row in rows]
-    amounts = [(vt, amt) for vt, amt in amounts if vt]
-    if not amounts:
-        return {}
-    sorted_amounts = sorted(amount for _, amount in amounts)
-    n = len(sorted_amounts)
-    result: dict[str, float] = {}
-    for vt, amount in amounts:
-        if amount <= 0:
-            result[vt] = 0.0
-            continue
-        rank = sum(1 for value in sorted_amounts if value <= amount)
-        result[vt] = rank / n
-    return result
-
-
 def run_cm20_elastic(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], int]:
+    from vnpy_ashare.screener.engine.dimensions.cm20_elastic import run_cm20_elastic_polars
+
     try:
         snapshot = load_screening_quote_snapshot()
     except MarketQuotesLoadError:
         return [], 0
 
-    enriched = attach_industry(snapshot.rows)
-    if not enriched:
-        return [], snapshot.total
-
-    candidates: list[QuoteRow] = []
-    for row in enriched:
-        if not is_cm20_row(row):
-            continue
-        change = float(row.get("change_pct") or 0)
-        if change < _CM20_MIN_CHANGE:
-            continue
-        candidates.append(quote_row_copy(row, board_tag="20cm"))
-
-    filtered = apply_recipe_filters(candidates)
-    if not filtered:
-        return [], snapshot.total
-
-    amount_ranks = _amount_rank_map(filtered)
-    filtered.sort(
-        key=lambda item: (
-            cm20_elastic_score(item, amount_rank=amount_ranks.get(str(item.get("vt_symbol") or ""), 0.0)),
-            float(item.get("change_pct") or 0),
-        ),
-        reverse=True,
+    return run_cm20_elastic_polars(
+        list(snapshot.rows),
+        pool_size=pool_size,
+        weight=weight,
+        total=snapshot.total,
     )
-    top_rows: list[QuoteRow] = list(filtered[:pool_size])
-
-    hits: list[DimensionHit] = []
-    for top_row in top_rows:
-        vt_symbol = str(top_row.get("vt_symbol") or "")
-        if not vt_symbol:
-            continue
-        amount_rank = amount_ranks.get(vt_symbol, 0.0)
-        score = cm20_elastic_score(top_row, amount_rank=amount_rank)
-        hits.append(
-            DimensionHit(
-                vt_symbol=vt_symbol,
-                dimension_id="cm20_elastic",
-                label="20cm",
-                weight=weight,
-                score=score,
-                reason=_cm20_reason(top_row, score),
-                row=dimension_hit_row(top_row),
-            )
-        )
-    return hits, snapshot.total
 
 
 def _cm20_reason(row: QuoteRowLike, score: float) -> str:

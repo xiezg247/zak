@@ -1,25 +1,17 @@
-"""交易参数 QSettings（总资金、止损、浮亏阈值等）。"""
+"""交易参数（总资金、止损、浮亏阈值等）。"""
 
 from __future__ import annotations
 
 from pydantic import Field
 
-from vnpy_ashare.config.preferences._settings import get_settings
+from vnpy_ashare.config.preferences._user_pref import load_model_pref, save_model_pref
 from vnpy_common.domain.base import FrozenModel
 
-PREFIX = "trading/risk"
+_PREF_NAMESPACE = "trading"
+_PREF_KEY = "risk"
 
 DEFAULT_STOP_LOSS_PCT = 0.05
 DEFAULT_CAUTION_FLOAT_PCT = -5.0
-
-
-def _coerce_float(value: object, *, default: float | None = None) -> float | None:
-    if value is None or str(value).strip() == "":
-        return default
-    try:
-        return float(str(value))
-    except (TypeError, ValueError):
-        return default
 
 
 class TradingRiskPrefs(FrozenModel):
@@ -46,32 +38,24 @@ class TradingRiskPrefs(FrozenModel):
         )
 
 
-def load_trading_risk_prefs() -> TradingRiskPrefs:
-    settings = get_settings()
+def default_trading_risk_prefs() -> TradingRiskPrefs:
     return TradingRiskPrefs(
-        total_capital=_coerce_float(settings.value(f"{PREFIX}/total_capital")),
-        stop_loss_pct=_coerce_float(
-            settings.value(f"{PREFIX}/stop_loss_pct"),
-            default=DEFAULT_STOP_LOSS_PCT,
-        )
-        or DEFAULT_STOP_LOSS_PCT,
-        caution_float_pct=_coerce_float(
-            settings.value(f"{PREFIX}/caution_float_pct"),
-            default=DEFAULT_CAUTION_FLOAT_PCT,
-        )
-        or DEFAULT_CAUTION_FLOAT_PCT,
-        realized_pnl_today=_coerce_float(settings.value(f"{PREFIX}/realized_pnl_today")),
+        total_capital=None,
+        stop_loss_pct=DEFAULT_STOP_LOSS_PCT,
+        caution_float_pct=DEFAULT_CAUTION_FLOAT_PCT,
+        realized_pnl_today=None,
     ).normalized()
 
 
-def save_trading_risk_prefs(prefs: TradingRiskPrefs) -> None:
-    item = prefs.normalized()
-    settings = get_settings()
-    settings.setValue(f"{PREFIX}/total_capital", "" if item.total_capital is None else item.total_capital)
-    settings.setValue(f"{PREFIX}/stop_loss_pct", item.stop_loss_pct)
-    settings.setValue(f"{PREFIX}/caution_float_pct", item.caution_float_pct)
-    settings.setValue(
-        f"{PREFIX}/realized_pnl_today",
-        "" if item.realized_pnl_today is None else item.realized_pnl_today,
+def load_trading_risk_prefs() -> TradingRiskPrefs:
+    item = load_model_pref(
+        _PREF_NAMESPACE,
+        _PREF_KEY,
+        TradingRiskPrefs,
+        load_default=default_trading_risk_prefs,
     )
-    settings.sync()
+    return item.normalized()
+
+
+def save_trading_risk_prefs(prefs: TradingRiskPrefs) -> None:
+    save_model_pref(_PREF_NAMESPACE, _PREF_KEY, prefs.normalized())

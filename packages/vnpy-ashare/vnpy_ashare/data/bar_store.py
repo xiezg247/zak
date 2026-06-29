@@ -67,6 +67,17 @@ def invalidate_bar_overview_cache() -> None:
         _overview_by_interval = None
 
 
+def is_overview_cache_warmed() -> bool:
+    """概览索引是否已在内存中（未预热时主线程不得触发全库扫描）。"""
+    with _overview_cache_lock:
+        return _overview_by_interval is not None
+
+
+def warm_bar_overview_cache() -> None:
+    """预热线 K 线概览内存索引（应在后台线程调用，避免 UI 全量扫描）。"""
+    _ensure_overview_cache()
+
+
 def _ensure_overview_cache() -> dict[Interval, dict[tuple[str, Exchange], PeriodBarOverview]]:
     global _overview_by_interval
     with _overview_cache_lock:
@@ -92,8 +103,12 @@ def get_scope_overview(
     scope: str,
 ) -> PeriodBarOverview | None:
     _, interval = _interval_for_scope(scope)
-    cache = _ensure_overview_cache()
-    return cache.get(interval, {}).get((symbol, exchange))
+    with _overview_cache_lock:
+        if _overview_by_interval is not None:
+            return _overview_by_interval.get(interval, {}).get((symbol, exchange))
+    from vnpy_ashare.storage.repositories.bar_overview import fetch_scope_bar_overview
+
+    return fetch_scope_bar_overview(symbol, exchange, scope)
 
 
 def load_scope_bars(

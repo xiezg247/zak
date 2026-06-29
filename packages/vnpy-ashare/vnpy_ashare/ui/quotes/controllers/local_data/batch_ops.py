@@ -128,6 +128,8 @@ class LocalDataBatchOpsMixin(LocalDataControllerBase):
             primary=page.batch_fill_button,
             primary_text="批量补全过期",
             primary_handler=page.batch_fill_stale,
+            lock_table=False,
+            lock_search=False,
         )
         self.update_batch_toolbar_buttons()
         begin_run_log(page, f"批量补全过期日 K · {len(items)} 只")
@@ -215,6 +217,8 @@ class LocalDataBatchOpsMixin(LocalDataControllerBase):
             primary=page.batch_gap_fill_button,
             primary_text="批量修复断层",
             primary_handler=page.batch_fill_gaps,
+            lock_table=False,
+            lock_search=False,
         )
         self.update_batch_toolbar_buttons()
         begin_run_log(page, f"批量修复断层 · 扫描 {scannable} 只")
@@ -317,6 +321,8 @@ class LocalDataBatchOpsMixin(LocalDataControllerBase):
             primary=page.gap_fill_button,
             primary_text="修复断层",
             primary_handler=page.fill_selected_gaps,
+            lock_table=False,
+            lock_search=False,
         )
         self.update_batch_toolbar_buttons()
         begin_run_log(page, f"修复断层 · {display}")

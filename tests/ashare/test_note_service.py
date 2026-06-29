@@ -2,34 +2,24 @@
 
 from __future__ import annotations
 
-import tempfile
 import unittest
-from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 from vnpy.trader.constant import Exchange
 
 import tests._bootstrap  # noqa: F401
+from tests.ashare.pg_unittest import PgStorageTestCase
 from vnpy_ashare.domain.models.stock_note import StockNoteBundle
 from vnpy_ashare.services.note import NoteService
-from vnpy_ashare.storage.connection import init_app_db
 
 
-class NoteServiceTests(unittest.TestCase):
+class NoteServiceTests(PgStorageTestCase):
     def setUp(self) -> None:
-        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self.db_path = Path(self._tmp.name)
-        self._patcher = patch("vnpy_ashare.storage.connection._db_path", return_value=self.db_path)
-        self._patcher.start()
-        init_app_db()
+        super().setUp()
         engine = Mock()
         engine.main_engine = None
         engine.event_engine = None
         self.service = NoteService(engine)
-
-    def tearDown(self) -> None:
-        self._patcher.stop()
-        self.db_path.unlink(missing_ok=True)
 
     def test_build_ai_snippet_with_memo_and_entries(self) -> None:
         self.service.upsert_memo("600519", Exchange.SSE, "长期持有逻辑")

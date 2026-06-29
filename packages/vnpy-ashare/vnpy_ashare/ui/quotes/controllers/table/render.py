@@ -16,12 +16,22 @@ from vnpy_ashare.ui.quotes.table.columns import (
     quote_column_index,
 )
 from vnpy_ashare.ui.quotes.table.model import QuoteCell
+from vnpy_ashare.ui.quotes.watchlist.quote_status import refresh_watchlist_quotes_status
 from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.market_colors import MarketColors, market_colors
 from vnpy_common.ui.theme.tokens import ThemeTokens
 
 
 class TableRenderMixin(TableControllerBase):
+    def _can_incremental_render(self, model, display_stocks: list[StockItem]) -> bool:
+        if model.row_count() != len(display_stocks):
+            return False
+        for row, item in enumerate(display_stocks):
+            row_item = model.stock_at_row(row)
+            if row_item is None or row_item.tickflow_symbol != item.tickflow_symbol:
+                return False
+        return True
+
     def render_table(self, *, preserve_selection: bool = True) -> None:
         page = self._p
         self.invalidate_symbol_row_index()
@@ -35,12 +45,21 @@ class TableRenderMixin(TableControllerBase):
         view.setSortingEnabled(False)
         try:
             row_cells = [self._build_row_cells(row, item, page.quote_map.get(item.tickflow_symbol)) for row, item in enumerate(page.display_stocks)]
-            model.set_rows(row_cells)
+            incremental = self._can_incremental_render(model, page.display_stocks)
+            if incremental:
+                for row, cells in enumerate(row_cells):
+                    model.apply_row(
+                        row,
+                        cells,
+                        sortable=page.config.table_header_sortable,
+                    )
+            else:
+                model.set_rows(row_cells)
 
             if selected_key:
                 self.select_stock_key(selected_key)
             if view.currentIndex().row() < 0 and page.display_stocks:
-                view.selectRow(0)
+                self.select_row(0)
         finally:
             view.setUpdatesEnabled(True)
             view.blockSignals(False)
@@ -61,6 +80,7 @@ class TableRenderMixin(TableControllerBase):
         if view.currentIndex().row() >= 0:
             self.on_selection_changed()
         page._sync_stream_subscriptions()
+        refresh_watchlist_quotes_status(page)
         self._build_symbol_row_index()
         self.update_stats()
         self._refresh_market_scrollbar()
@@ -140,13 +160,12 @@ class TableRenderMixin(TableControllerBase):
         page = self._p
         key = (item.symbol, item.exchange)
         meta = page.bar_meta.get(key)
-        status = page.bar_list_status.get(key, list_status(meta))
         minute = not page._is_daily_local_scope()
         return [
             format_meta_datetime(meta.start if meta else None, minute=minute),
             format_meta_datetime(meta.end if meta else None, minute=minute),
             str(meta.count) if meta else "—",
-            status_label(status),
+            status_label(page.bar_list_status.get(key, list_status(meta))),
         ]
 
     def _quote_sort_key(
@@ -328,9 +347,7 @@ class TableRenderMixin(TableControllerBase):
 
     def _build_local_row_cells(self, row: int, item: StockItem) -> list[QuoteCell]:
         page = self._p
-        key = (item.symbol, item.exchange)
-        meta = page.bar_meta.get(key)
-        status = page.bar_list_status.get(key, list_status(meta))
+        meta = page.bar_meta.get((item.symbol, item.exchange))
         minute = not page._is_daily_local_scope()
         values = build_local_data_row(
             item,
@@ -338,16 +355,12 @@ class TableRenderMixin(TableControllerBase):
             start=format_meta_datetime(meta.start if meta else None, minute=minute),
             end=format_meta_datetime(meta.end if meta else None, minute=minute),
             count=str(meta.count) if meta else "—",
-            status=status_label(status),
         )
-        status_col = len(values) - 1
         cells: list[QuoteCell] = []
         for col, text in enumerate(values):
-            cell_color = self._status_color(status) if col == status_col else None
             cells.append(
                 QuoteCell(
                     text=text,
-                    color=cell_color,
                     stock_item=item if col == 0 else None,
                 )
             )

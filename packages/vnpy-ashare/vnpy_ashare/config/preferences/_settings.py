@@ -2,14 +2,24 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from vnpy.trader.ui import QtCore
 
-SETTINGS_ORG = "vnpy_ashare"
-SETTINGS_APP = "ZakTerminal"
+from vnpy_common.paths import QSETTINGS_ORG, SETTINGS_APP
 
 
 def get_settings() -> QtCore.QSettings:
-    return QtCore.QSettings(SETTINGS_ORG, SETTINGS_APP)
+    return QtCore.QSettings(QSETTINGS_ORG, SETTINGS_APP)
+
+
+def read_setting_value(key: str, default: Any = None) -> Any:
+    val = get_settings().value(key)
+    return default if val is None else val
+
+
+def write_setting_value(key: str, value: Any) -> None:
+    get_settings().setValue(key, value)
 
 
 def coerce_settings_bool(value: object, *, default: bool) -> bool:

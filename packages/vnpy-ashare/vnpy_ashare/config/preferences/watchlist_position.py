@@ -1,11 +1,12 @@
-"""自选页持仓策略区配置（QSettings 持久化）。"""
+"""自选页持仓策略区配置。"""
 
 from __future__ import annotations
 
 from pydantic import Field
 
 from strategies.signals import list_supported_signal_strategies
-from vnpy_ashare.config.preferences._settings import coerce_settings_bool, coerce_settings_int, get_settings
+from vnpy_ashare.config.preferences._local_ui_pref import load_json_local_ui, save_json_local_ui
+from vnpy_ashare.config.preferences._user_pref import load_model_pref, save_model_pref
 from vnpy_ashare.config.preferences.watchlist_signal import (
     DEFAULT_CLASS,
     DEFAULT_FAST,
@@ -22,6 +23,15 @@ POSITION_FAST_KEY = "watchlist/position_panel/fast_window"
 POSITION_SLOW_KEY = "watchlist/position_panel/slow_window"
 POSITION_PANEL_DEFAULT_HEIGHT = 220
 POSITION_PANEL_COLLAPSED_HEIGHT = 32
+
+_PREF_NAMESPACE = "watchlist"
+_PREF_KEY_CONFIG = "position_config"
+_LOCAL_UI_PANEL = "watchlist/position_panel"
+
+_DEFAULT_PANEL_STATE: dict[str, bool] = {
+    "enabled": True,
+    "expanded": True,
+}
 
 
 class WatchlistPositionConfig(FrozenModel):
@@ -55,46 +65,56 @@ class WatchlistPositionConfig(FrozenModel):
         ).normalized()
 
 
-def load_position_panel_enabled() -> bool:
-    settings = get_settings()
-    return coerce_settings_bool(settings.value(POSITION_PANEL_ENABLED_KEY), default=True)
+def _load_panel_state() -> dict[str, bool]:
+    return load_json_local_ui(
+        _LOCAL_UI_PANEL,
+        load_default=lambda: dict(_DEFAULT_PANEL_STATE),
+    )
 
 
-def save_position_panel_enabled(enabled: bool) -> None:
-    settings = get_settings()
-    settings.setValue(POSITION_PANEL_ENABLED_KEY, enabled)
+def _save_panel_state(state: dict[str, bool]) -> None:
+    save_json_local_ui(_LOCAL_UI_PANEL, state)
+
+
+def load_position_panel_enabled(*, page_name: str | None = None) -> bool:
+    from vnpy_ashare.ui.quotes.page.roles import is_strategy_monitor_page
+
+    state = _load_panel_state()
+    if page_name is not None and is_strategy_monitor_page(page_name):
+        return bool(state.get("strategy_monitor_enabled", False))
+    return bool(state.get("enabled", True))
+
+
+def save_position_panel_enabled(enabled: bool, *, page_name: str | None = None) -> None:
+    from vnpy_ashare.ui.quotes.page.roles import is_strategy_monitor_page
+
+    state = dict(_load_panel_state())
+    if page_name is not None and is_strategy_monitor_page(page_name):
+        state["strategy_monitor_enabled"] = enabled
+    else:
+        state["enabled"] = enabled
+    _save_panel_state(state)
 
 
 def load_position_panel_expanded() -> bool:
-    settings = get_settings()
-    return coerce_settings_bool(settings.value(POSITION_PANEL_EXPANDED_KEY), default=True)
+    return bool(_load_panel_state().get("expanded", True))
 
 
 def save_position_panel_expanded(expanded: bool) -> None:
-    settings = get_settings()
-    settings.setValue(POSITION_PANEL_EXPANDED_KEY, expanded)
+    state = dict(_load_panel_state())
+    state["expanded"] = expanded
+    _save_panel_state(state)
 
 
 def load_watchlist_position_config() -> WatchlistPositionConfig:
-    settings = get_settings()
-    follow = coerce_settings_bool(settings.value(POSITION_FOLLOW_SIGNAL_KEY), default=True)
-    raw_class = settings.value(POSITION_STRATEGY_KEY, DEFAULT_CLASS)
-    raw_fast = settings.value(POSITION_FAST_KEY, DEFAULT_FAST)
-    raw_slow = settings.value(POSITION_SLOW_KEY, DEFAULT_SLOW)
-    fast = coerce_settings_int(raw_fast, default=DEFAULT_FAST)
-    slow = coerce_settings_int(raw_slow, default=DEFAULT_SLOW)
-    return WatchlistPositionConfig(
-        follow_signal=follow,
-        class_name=str(raw_class or DEFAULT_CLASS),
-        fast_window=fast,
-        slow_window=slow,
-    ).normalized()
+    item = load_model_pref(
+        _PREF_NAMESPACE,
+        _PREF_KEY_CONFIG,
+        WatchlistPositionConfig,
+        load_default=lambda: WatchlistPositionConfig().normalized(),
+    )
+    return item.normalized()
 
 
 def save_watchlist_position_config(config: WatchlistPositionConfig) -> None:
-    item = config.normalized()
-    settings = get_settings()
-    settings.setValue(POSITION_FOLLOW_SIGNAL_KEY, item.follow_signal)
-    settings.setValue(POSITION_STRATEGY_KEY, item.class_name)
-    settings.setValue(POSITION_FAST_KEY, item.fast_window)
-    settings.setValue(POSITION_SLOW_KEY, item.slow_window)
+    save_model_pref(_PREF_NAMESPACE, _PREF_KEY_CONFIG, config.normalized())

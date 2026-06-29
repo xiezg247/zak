@@ -3,18 +3,42 @@
 from __future__ import annotations
 
 import os
+from collections import OrderedDict
 from datetime import timedelta
 
 from vnpy.trader.constant import Exchange
 from vnpy.trader.object import BarData
 
-from vnpy_ashare.data.bar_store import get_scope_overview, load_scope_bars
+from vnpy_ashare.data.bar_store import get_scope_overview, load_scope_bars, warm_bar_overview_cache
 from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.domain.symbols.stock import StockItem
 
 PATTERN_MIN_BARS = 60
 PATTERN_LOOKBACK_BARS = 120
 DEFAULT_PATTERN_LOAD_MAX_WORKERS = 4
+
+_BARS_LRU: OrderedDict[tuple[str, Exchange, int], list[BarData]] = OrderedDict()
+_BARS_LRU_MAX = max(64, int(os.getenv("ZAK_BARS_TAIL_LRU_SIZE", "512")))
+
+
+def _bars_lru_get(key: tuple[str, Exchange, int]) -> list[BarData] | None:
+    bars = _BARS_LRU.get(key)
+    if bars is None:
+        return None
+    _BARS_LRU.move_to_end(key)
+    return bars
+
+
+def _bars_lru_put(key: tuple[str, Exchange, int], bars: list[BarData]) -> None:
+    _BARS_LRU[key] = bars
+    _BARS_LRU.move_to_end(key)
+    while len(_BARS_LRU) > _BARS_LRU_MAX:
+        _BARS_LRU.popitem(last=False)
+
+
+def clear_daily_bars_lru_cache() -> None:
+    """测试 / 日切后清空进程内 tail LRU。"""
+    _BARS_LRU.clear()
 
 
 def pattern_load_max_workers(*, item_count: int) -> int:
@@ -35,7 +59,18 @@ def load_daily_bars_tail(
     lookback_bars: int = PATTERN_LOOKBACK_BARS,
 ) -> list[BarData]:
     """按 overview 尾部加载日 K，供形态规则使用。"""
-    overview = get_scope_overview(symbol, exchange, "daily")
+    return load_scope_bars_tail(symbol, exchange, "daily", lookback_bars=lookback_bars)
+
+
+def load_scope_bars_tail(
+    symbol: str,
+    exchange: Exchange,
+    scope: str,
+    *,
+    lookback_bars: int,
+) -> list[BarData]:
+    """按 overview 尾部窗口加载 K 线，避免全区间扫库。"""
+    overview = get_scope_overview(symbol, exchange, scope)
     if overview is None:
         return []
 
@@ -45,7 +80,7 @@ def load_daily_bars_tail(
     if start < overview.start:
         start = overview.start
 
-    bars = load_scope_bars(symbol, exchange, "daily", start, end)
+    bars = load_scope_bars(symbol, exchange, scope, start, end)
     if len(bars) > lookback_bars:
         return bars[-lookback_bars:]
     return bars
@@ -65,7 +100,13 @@ def _dedupe_items(items: list[StockItem]) -> list[StockItem]:
 
 def _load_daily_bars_entry(item: StockItem, *, lookback_bars: int) -> tuple[tuple[str, Exchange], list[BarData]]:
     key = (item.symbol, item.exchange)
-    return key, load_daily_bars_tail(item.symbol, item.exchange, lookback_bars=lookback_bars)
+    cache_key = (item.symbol, item.exchange, lookback_bars)
+    cached = _bars_lru_get(cache_key)
+    if cached is not None:
+        return key, cached
+    bars = load_daily_bars_tail(item.symbol, item.exchange, lookback_bars=lookback_bars)
+    _bars_lru_put(cache_key, bars)
+    return key, bars
 
 
 def load_daily_bars_batch(
@@ -79,6 +120,7 @@ def load_daily_bars_batch(
     if not unique:
         return {}
 
+    warm_bar_overview_cache()
     workers = max_workers if max_workers is not None else pattern_load_max_workers(item_count=len(unique))
     if workers <= 1 or len(unique) <= 1:
         return {key: bars for key, bars in (_load_daily_bars_entry(item, lookback_bars=lookback_bars) for item in unique)}

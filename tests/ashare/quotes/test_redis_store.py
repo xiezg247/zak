@@ -6,6 +6,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 import tests._bootstrap  # noqa: F401
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore, _iter_symbol_batches
 
 
@@ -66,6 +67,149 @@ class RedisQuoteStoreBatchReadTests(unittest.TestCase):
         scores_map = store.get_rank_scores("volume_ratio", symbols)
         self.assertEqual(scores_map, {})
         self.assertEqual(client.pipeline.call_count, 1)
+
+    def test_get_quotes_uses_l1_when_enabled(self) -> None:
+        import os
+
+        from vnpy_ashare.quotes.core import quote_l1_cache as l1
+
+        l1.clear_quote_l1_cache()
+        prev = os.environ.get("ZAK_QUOTE_L1_CACHE")
+        os.environ["ZAK_QUOTE_L1_CACHE"] = "1"
+        try:
+            quote = QuoteSnapshot(
+                symbol="000001",
+                name="平安",
+                last_price=10.0,
+                prev_close=9.9,
+                open_price=9.9,
+                high_price=10.1,
+                low_price=9.8,
+                change_amount=0.1,
+                change_pct=1.0,
+                turnover_rate=1.0,
+                volume=1000.0,
+            )
+            l1.swap_quotes({"000001.SZ": quote}, complete=True)
+            client = MagicMock()
+            store = RedisQuoteStore(client=client)
+            client.get = MagicMock(return_value=None)
+            result = store.get_quotes(["000001.SZ"], enrich_factors=False)
+            self.assertEqual(result["000001.SZ"].name, "平安")
+            client.pipeline.assert_not_called()
+        finally:
+            l1.clear_quote_l1_cache()
+            if prev is None:
+                os.environ.pop("ZAK_QUOTE_L1_CACHE", None)
+            else:
+                os.environ["ZAK_QUOTE_L1_CACHE"] = prev
+
+
+class RedisRankIncrementalTests(unittest.TestCase):
+    def test_incremental_full_rank_skips_delete(self) -> None:
+        from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
+        from vnpy_ashare.quotes.core import redis_store as rs
+
+        class _FakePipe:
+            def __init__(self) -> None:
+                self.ops: list[tuple] = []
+
+            def hset(self, key: str, mapping: dict[str, str]) -> None:
+                self.ops.append(("hset", key))
+
+            def zadd(self, key: str, mapping: dict[str, float]) -> None:
+                self.ops.append(("zadd", key, len(mapping)))
+
+            def zrem(self, key: str, member: str) -> None:
+                self.ops.append(("zrem", key, member))
+
+            def delete(self, key: str) -> None:
+                self.ops.append(("delete", key))
+
+            def rpush(self, key: str, *values: str) -> None:
+                self.ops.append(("rpush", key, len(values)))
+
+            def set(self, key: str, value: str) -> None:
+                self.ops.append(("set", key))
+
+            def incr(self, key: str) -> None:
+                self.ops.append(("incr", key))
+
+            def execute(self) -> list:
+                return [1]
+
+        class _FakeClient:
+            def pipeline(self, transaction: bool = False):
+                del transaction
+                return self.pipe
+
+            def get(self, key: str) -> str | None:
+                del key
+                return None
+
+        pipe = _FakePipe()
+        client = _FakeClient()
+        client.pipe = pipe
+        store = RedisQuoteStore(client=client)
+
+        quote = QuoteSnapshot(
+            symbol="000001",
+            name="平安",
+            last_price=10.0,
+            prev_close=9.9,
+            open_price=9.9,
+            high_price=10.1,
+            low_price=9.8,
+            change_amount=0.1,
+            change_pct=1.0,
+            turnover_rate=1.0,
+            volume=1000.0,
+            volume_ratio=0.0,
+        )
+
+        prev = __import__("os").environ.get("ZAK_RANK_INCREMENTAL")
+        __import__("os").environ["ZAK_RANK_INCREMENTAL"] = "1"
+        try:
+            with patch.object(rs, "apply_change_speed_5m"), patch.object(rs, "quote_l1_enabled", return_value=False):
+                store.write_quotes({"000001.SZ": quote})
+        finally:
+            if prev is None:
+                __import__("os").environ.pop("ZAK_RANK_INCREMENTAL", None)
+            else:
+                __import__("os").environ["ZAK_RANK_INCREMENTAL"] = prev
+
+        deletes = [op for op in pipe.ops if op[0] == "delete"]
+        change_pct_deletes = [op for op in deletes if op[1] == rs.rank_key("change_pct")]
+        self.assertEqual(change_pct_deletes, [])
+        zadd_ops = [op for op in pipe.ops if op[0] == "zadd" and op[1] == rs.rank_key("change_pct")]
+        self.assertEqual(len(zadd_ops), 1)
+        zrem_volume = [op for op in pipe.ops if op[0] == "zrem" and op[1] == rs.rank_key("volume_ratio")]
+        self.assertGreaterEqual(len(zrem_volume), 1)
+
+    def test_list_all_rank_symbols_uses_ordered_list(self) -> None:
+        from vnpy_ashare.quotes.core import redis_store as rs
+
+        client = MagicMock()
+        client.llen.return_value = 2
+        client.zcard.return_value = 2
+        client.lrange.return_value = ["600000.SH", "000001.SZ"]
+        store = RedisQuoteStore(client=client)
+        store.get_quote_seq = MagicMock(return_value=None)  # type: ignore[method-assign]
+
+        prev = __import__("os").environ.get("ZAK_RANK_ORDERED_LIST")
+        __import__("os").environ["ZAK_RANK_ORDERED_LIST"] = "1"
+        try:
+            with patch.object(rs, "quote_l1_enabled", return_value=False):
+                symbols = store.list_all_rank_symbols(field="change_pct", ascending=False)
+        finally:
+            if prev is None:
+                __import__("os").environ.pop("ZAK_RANK_ORDERED_LIST", None)
+            else:
+                __import__("os").environ["ZAK_RANK_ORDERED_LIST"] = prev
+
+        self.assertEqual(symbols, ["600000.SH", "000001.SZ"])
+        client.lrange.assert_called_once()
+        client.zrevrange.assert_not_called()
 
 
 if __name__ == "__main__":

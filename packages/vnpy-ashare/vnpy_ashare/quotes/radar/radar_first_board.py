@@ -87,12 +87,13 @@ def rank_first_board_pool(
     *,
     first_time_map: dict[str, str] | None = None,
     top_n: int = 8,
+    strong_industries: set[str] | None = None,
 ) -> list[tuple[QuoteRowLike, float, str]]:
     if not candidates:
         return []
     time_map = first_time_map or {}
     amount_ranks = _amount_rank_map(candidates)
-    strong = _strong_industries()
+    strong = strong_industries if strong_industries is not None else _strong_industries()
     scored: list[tuple[QuoteRowLike, float, str]] = []
     for row in candidates:
         vt = str(row.get("vt_symbol") or "")

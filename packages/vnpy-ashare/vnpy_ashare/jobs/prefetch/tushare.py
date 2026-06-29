@@ -2,10 +2,19 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+
+from vnpy_ashare.data.download_concurrency import (
+    run_parallel_map,
+    tushare_anchor_prefetch_max_workers,
+    tushare_prefetch_stage_max_workers,
+)
 from vnpy_ashare.domain.time.calendar import last_trading_day
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError, get_tushare_pro
 from vnpy_ashare.integrations.tushare.factors import (
     fetch_daily_pct_map,
+    fetch_daily_turnover_total_yuan,
     fetch_index_daily_snapshot,
     fetch_limit_list_d,
     fetch_moneyflow_hsgt_window,
@@ -19,6 +28,52 @@ from vnpy_ashare.jobs.core.progress import job_log
 from vnpy_ashare.jobs.core.result import JobResult
 from vnpy_ashare.jobs.sync.stock_industry import sync_stock_industry_job
 from vnpy_ashare.screener.data.data_source import fetch_daily_basic_with_fallback
+
+
+def _prefetch_anchor_datasets(anchor_date: str) -> list[str]:
+    """anchor_date 确定后，并行拉取互不依赖的 Tushare 数据集。"""
+    shock_date = anchor_date
+    hsgt_end = last_trading_day().strftime("%Y%m%d")
+
+    def _task_daily_pct() -> str:
+        pct_map = fetch_daily_pct_map(anchor_date)
+        return f"daily_pct {len(pct_map)} 条 @ {anchor_date}"
+
+    def _task_limit_list() -> str:
+        limit_rows, limit_date = fetch_limit_list_d(trade_date=anchor_date)
+        return f"limit_list_d {len(limit_rows)} 条 @ {limit_date or '-'}"
+
+    def _task_index_daily() -> str:
+        index_rows, index_date = fetch_index_daily_snapshot(trade_date=anchor_date)
+        return f"index_daily {len(index_rows)} 条 @ {index_date or '-'}"
+
+    def _task_moneyflow_hsgt() -> str:
+        hsgt_rows, hsgt_date = fetch_moneyflow_hsgt_window(trade_date=hsgt_end, force=True)
+        return f"moneyflow_hsgt {len(hsgt_rows)} 条 @ {hsgt_date or '-'}"
+
+    def _task_turnover() -> str:
+        turnover_yuan = fetch_daily_turnover_total_yuan(anchor_date, force=True)
+        turnover_trillion = turnover_yuan / 1e12 if turnover_yuan > 0 else 0.0
+        return f"daily_amount {turnover_trillion:.2f} 万亿 @ {anchor_date}"
+
+    def _task_stk_shock() -> str:
+        shock_rows = fetch_stk_shock_daily(shock_date)
+        high_shock_rows = fetch_stk_high_shock_daily(shock_date)
+        return f"stk_shock {len(shock_rows)} + high {len(high_shock_rows)} @ {shock_date}"
+
+    tasks: list[Callable[[], str]] = [
+        _task_daily_pct,
+        _task_limit_list,
+        _task_index_daily,
+        _task_moneyflow_hsgt,
+        _task_turnover,
+        _task_stk_shock,
+    ]
+    workers = tushare_anchor_prefetch_max_workers(item_count=len(tasks))
+    messages = run_parallel_map(tasks, lambda task: task(), max_workers=workers)
+    for message in messages:
+        job_log(message)
+    return messages
 
 
 def prefetch_tushare_factors() -> JobResult:
@@ -40,47 +95,27 @@ def prefetch_tushare_factors() -> JobResult:
     job_log(parts[-1])
 
     anchor_date = basic_date
+    basic_snapshot: list = []
+    basic_count = 0
     if anchor_date:
-        job_log("拉取 daily_pct …")
-        pct_map = fetch_daily_pct_map(anchor_date)
-        parts.append(f"daily_pct {len(pct_map)} 条 @ {anchor_date}")
+        job_log("并行拉取 daily_pct / limit_list_d / index_daily / stock_basic / …")
+
+        def _fetch_stock_basic() -> tuple[list, int]:
+            return fetch_stock_basic_snapshot()
+
+        with ThreadPoolExecutor(max_workers=tushare_prefetch_stage_max_workers(item_count=2)) as pool:
+            anchor_future = pool.submit(_prefetch_anchor_datasets, anchor_date)
+            stock_future = pool.submit(_fetch_stock_basic)
+            parts.extend(anchor_future.result())
+            basic_snapshot, basic_count = stock_future.result()
+        stock_msg = f"stock_basic {basic_count} 条"
+        parts.append(stock_msg)
+        job_log(stock_msg)
+    else:
+        job_log("拉取 stock_basic …")
+        basic_snapshot, basic_count = fetch_stock_basic_snapshot()
+        parts.append(f"stock_basic {basic_count} 条")
         job_log(parts[-1])
-
-        job_log("拉取 limit_list_d …")
-        limit_rows, limit_date = fetch_limit_list_d(trade_date=anchor_date)
-        parts.append(f"limit_list_d {len(limit_rows)} 条 @ {limit_date or '-'}")
-        job_log(parts[-1])
-
-        job_log("拉取 index_daily …")
-        index_rows, index_date = fetch_index_daily_snapshot(trade_date=anchor_date)
-        parts.append(f"index_daily {len(index_rows)} 条 @ {index_date or '-'}")
-        job_log(parts[-1])
-
-        job_log("拉取 moneyflow_hsgt …")
-        hsgt_end = last_trading_day().strftime("%Y%m%d")
-        hsgt_rows, hsgt_date = fetch_moneyflow_hsgt_window(trade_date=hsgt_end, force=True)
-        parts.append(f"moneyflow_hsgt {len(hsgt_rows)} 条 @ {hsgt_date or '-'}")
-        job_log(parts[-1])
-
-        from vnpy_ashare.integrations.tushare.factors import fetch_daily_turnover_total_yuan
-
-        job_log("汇总 daily 成交额 …")
-        turnover_yuan = fetch_daily_turnover_total_yuan(anchor_date, force=True)
-        turnover_trillion = turnover_yuan / 1e12 if turnover_yuan > 0 else 0.0
-        parts.append(f"daily_amount {turnover_trillion:.2f} 万亿 @ {anchor_date}")
-        job_log(parts[-1])
-
-        shock_date = anchor_date or last_trading_day().strftime("%Y%m%d")
-        job_log("拉取 stk_shock / stk_high_shock …")
-        shock_rows = fetch_stk_shock_daily(shock_date)
-        high_shock_rows = fetch_stk_high_shock_daily(shock_date)
-        parts.append(f"stk_shock {len(shock_rows)} + high {len(high_shock_rows)} @ {shock_date}")
-        job_log(parts[-1])
-
-    job_log("拉取 stock_basic …")
-    basic_snapshot, basic_count = fetch_stock_basic_snapshot()
-    parts.append(f"stock_basic {basic_count} 条")
-    job_log(parts[-1])
 
     job_log("同步行业映射 …")
     industry_result = sync_stock_industry_job(force=False)

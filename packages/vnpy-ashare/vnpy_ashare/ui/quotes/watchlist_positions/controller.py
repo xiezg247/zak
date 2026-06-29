@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from vnpy.trader.ui import QtCore
+
 from vnpy_ashare.app.engine_access import get_ashare_engine
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
 from vnpy_ashare.domain.time.china import format_china_time_hm
@@ -14,6 +16,7 @@ from vnpy_ashare.notifications.triggers.position_alerts import scan_position_ale
 from vnpy_ashare.services.bar import format_meta_date
 from vnpy_ashare.services.position import get_position_disk_cache_standalone
 from vnpy_ashare.trading.exit.overlay import apply_overnight_exit_overlay
+from vnpy_ashare.ui.quotes.page.roles import is_strategy_monitor_page
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 if TYPE_CHECKING:
@@ -45,7 +48,7 @@ class WatchlistPositionController:
         self._disk_cache_override = value
 
     def _compute_enabled(self) -> bool:
-        if not self._page.config.show_watchlist_positions or self._page.page_name != "自选":
+        if not self._page.config.show_watchlist_positions:
             return False
         panel = getattr(self._page, "position_panel", None)
         return panel is not None and panel.enabled
@@ -131,6 +134,20 @@ class WatchlistPositionController:
 
     def _symbols_needing_refresh(self, symbols: list[str], record_map: dict[str, PositionRecord]) -> list[str]:
         return [symbol for symbol in symbols if not self._cache_valid(symbol, record_map[symbol])]
+
+    def cache_covers_panel(self) -> bool:
+        record_map = self._record_map()
+        if not record_map:
+            return True
+        return not self._symbols_needing_refresh(list(record_map), record_map)
+
+    def render_on_resume(self) -> None:
+        """Tab 复进且 cache 仍有效：仅重绘持仓区，不提交策略 Worker。"""
+        if not self._page._active:
+            return
+        record_map = self._record_map()
+        self.on_rows_changed(record_map=record_map)
+        self._apply_refresh_result()
 
     def _strategy_batch(self) -> WatchlistStrategyBatchCoordinator | None:
         return getattr(self._page, "_strategy_batch", None)
@@ -239,9 +256,10 @@ class WatchlistPositionController:
             )
         return PositionAlertScanInput(enabled=True, rows=tuple(rows))
 
-    def hydrate_from_disk(self) -> bool:
+    def hydrate_from_disk(self, *, record_map: dict[str, PositionRecord] | None = None) -> bool:
         """从磁盘恢复策略信号到内存并渲染（冷启动快速展示）。"""
-        record_map = self._record_map()
+        if record_map is None:
+            record_map = self._record_map()
         symbols = list(record_map)
         if not symbols:
             return False
@@ -266,11 +284,24 @@ class WatchlistPositionController:
     def on_stock_list_loaded(self) -> None:
         if not self._page.config.show_watchlist_positions:
             return
-        self.on_rows_changed()
-        self.hydrate_from_disk()
-        self.refresh(force=False)
+        QtCore.QTimer.singleShot(0, self._complete_stock_list_loaded)
 
-    def refresh(self, *, force: bool = False, symbols: list[str] | None = None) -> None:
+    def _complete_stock_list_loaded(self) -> None:
+        if not self._page._active:
+            return
+        record_map = self._record_map()
+        self.on_rows_changed(record_map=record_map)
+        self.hydrate_from_disk(record_map=record_map)
+        if is_strategy_monitor_page(self._page.page_name):
+            self._apply_refresh_result()
+            if self._compute_enabled():
+                missing = self._symbols_needing_refresh(list(record_map), record_map)
+                if missing:
+                    QtCore.QTimer.singleShot(0, lambda: self.refresh(force=False, symbols=missing, record_map=record_map))
+            return
+        self.refresh(force=False, record_map=record_map)
+
+    def refresh(self, *, force: bool = False, symbols: list[str] | None = None, record_map: dict[str, PositionRecord] | None = None) -> None:
         if not self._page.config.show_watchlist_positions or not self._page._active:
             return
         panel = getattr(self._page, "position_panel", None)
@@ -284,7 +315,8 @@ class WatchlistPositionController:
                 self._apply_refresh_result()
             return
 
-        record_map = self._record_map()
+        if record_map is None:
+            record_map = self._record_map()
         all_symbols = list(record_map)
         if symbols is None:
             target = all_symbols
@@ -411,8 +443,9 @@ class WatchlistPositionController:
             self._page.position_cache.pop(vt, None)
         self.refresh(symbols=affected)
 
-    def on_rows_changed(self) -> None:
-        record_map = self._record_map()
+    def on_rows_changed(self, *, record_map: dict[str, PositionRecord] | None = None) -> None:
+        if record_map is None:
+            record_map = self._record_map()
         kept = set(record_map)
         stale = [vt for vt in list(self._page.position_cache) if vt not in kept]
         for vt in stale:
@@ -425,7 +458,13 @@ class WatchlistPositionController:
         added = current - previous
         self._last_position_symbols = current
         if added and previous:
+            if is_strategy_monitor_page(self._page.page_name):
+                if self._compute_enabled():
+                    self.refresh(symbols=list(added), force=True)
+                return
             self.refresh(symbols=list(added), force=True)
+            return
+        if is_strategy_monitor_page(self._page.page_name):
             return
         missing = self._symbols_needing_refresh(list(record_map), record_map)
         if missing:
@@ -442,3 +481,17 @@ class WatchlistPositionController:
             self.refresh(force=bool(needs))
         else:
             self._apply_refresh_result()
+        self._sync_strategy_stale_sweep()
+
+    def _sync_strategy_stale_sweep(self) -> None:
+        if not is_strategy_monitor_page(self._page.page_name):
+            return
+        refresh = getattr(self._page, "_strategy_refresh", None)
+        if refresh is None:
+            return
+        from vnpy_ashare.ui.quotes.page.session_lifecycle import _strategy_stale_sweep_enabled
+
+        if _strategy_stale_sweep_enabled(self._page):
+            refresh.start()
+        else:
+            refresh.stop()

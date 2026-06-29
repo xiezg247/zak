@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from sqlalchemy import select
+
 from vnpy_ashare.domain.trading.playbook import DisciplineCheckItem
-from vnpy_ashare.storage.connection import connect, init_app_db
+from vnpy_ashare.storage.repository.app import AppUserScopedRepository
+from vnpy_common.storage.tables import trading_playbook_discipline_daily as tpd
 
 DEFAULT_DISCIPLINE_CHECKS: tuple[tuple[str, str], ...] = (
     ("no_off_plan", "不在计划外开新仓"),
@@ -14,35 +17,45 @@ DEFAULT_DISCIPLINE_CHECKS: tuple[tuple[str, str], ...] = (
 )
 
 
+class DisciplineRepository(AppUserScopedRepository):
+    table = tpd
+
+    def load_checks(self, trade_date: str) -> tuple[DisciplineCheckItem, ...]:
+        day = trade_date[:10]
+        rows = self.fetchall(select(tpd.c.check_id, tpd.c.checked).where(self.scope(tpd.c.trade_date == day)))
+        checked_map = {str(row["check_id"]): bool(row["checked"]) for row in rows}
+        return tuple(
+            DisciplineCheckItem(check_id=check_id, label=label, checked=checked_map.get(check_id, False)) for check_id, label in DEFAULT_DISCIPLINE_CHECKS
+        )
+
+    def set_check(self, trade_date: str, check_id: str, checked: bool) -> None:
+        day = trade_date[:10]
+
+        def _write(conn) -> None:
+            self.delete_where(
+                conn,
+                self.scope((tpd.c.trade_date == day) & (tpd.c.check_id == check_id)),
+            )
+            self.insert_for_user(
+                conn,
+                trade_date=day,
+                check_id=check_id,
+                checked=int(checked),
+            )
+
+        self.run(_write)
+
+
+_repo = DisciplineRepository()
+
+
 def list_discipline_check_defs() -> tuple[tuple[str, str], ...]:
     return DEFAULT_DISCIPLINE_CHECKS
 
 
 def load_discipline_checks(trade_date: str) -> tuple[DisciplineCheckItem, ...]:
-    day = trade_date[:10]
-    init_app_db()
-    with connect() as conn:
-        rows = conn.execute(
-            """
-            SELECT check_id, checked
-            FROM trading_playbook_discipline_daily
-            WHERE trade_date = ?
-            """,
-            (day,),
-        ).fetchall()
-    checked_map = {str(row["check_id"]): bool(row["checked"]) for row in rows}
-    return tuple(DisciplineCheckItem(check_id=check_id, label=label, checked=checked_map.get(check_id, False)) for check_id, label in DEFAULT_DISCIPLINE_CHECKS)
+    return _repo.load_checks(trade_date)
 
 
 def set_discipline_check(trade_date: str, check_id: str, checked: bool) -> None:
-    day = trade_date[:10]
-    init_app_db()
-    with connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO trading_playbook_discipline_daily (trade_date, check_id, checked)
-            VALUES (?, ?, ?)
-            ON CONFLICT(trade_date, check_id) DO UPDATE SET checked = excluded.checked
-            """,
-            (day, check_id, int(checked)),
-        )
+    _repo.set_check(trade_date, check_id, checked)

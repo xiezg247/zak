@@ -8,10 +8,13 @@ from datetime import date, datetime, timedelta
 
 import tushare as ts
 from dotenv import load_dotenv
+from sqlalchemy import delete, select
 from vnpy.trader.setting import SETTINGS
 
-from vnpy_ashare.storage.connection import connect, get_meta, set_meta
+from vnpy_ashare.storage.repository.app import AppBaseRepository, MetaRepository
 from vnpy_common.paths import ENV_FILE
+from vnpy_common.storage.repository import bulk_upsert
+from vnpy_common.storage.tables import trade_calendar as tc
 
 TRADE_CAL_SYNCED_AT_KEY = "trade_calendar_synced_at"
 TRADE_CAL_RANGE_START_KEY = "trade_calendar_range_start"
@@ -20,6 +23,7 @@ CACHE_MAX_AGE = timedelta(days=7)
 DEFAULT_CAL_START = date(2019, 1, 1)
 
 _sync_lock = threading.Lock()
+_meta = MetaRepository()
 
 
 def _parse_date(value: str) -> date:
@@ -74,30 +78,70 @@ def _fetch_trade_calendar(start: date, end: date) -> list[tuple[str, int]]:
     return rows
 
 
-def _upsert_rows(rows: list[tuple[str, int]]) -> None:
-    if not rows:
-        return
-    with connect() as conn:
-        conn.executemany(
-            "INSERT INTO trade_calendar(cal_date, is_open) VALUES (?, ?) ON CONFLICT(cal_date) DO UPDATE SET is_open = excluded.is_open",
-            rows,
+class TradeCalendarRepository(AppBaseRepository):
+    table = tc
+
+    def upsert_rows(self, rows: list[tuple[str, int]]) -> None:
+        if not rows:
+            return
+        values = [{"cal_date": cal_date, "is_open": is_open} for cal_date, is_open in rows]
+
+        def _write(conn) -> None:
+            bulk_upsert(
+                conn,
+                self.table,
+                values,
+                conflict_columns=("cal_date",),
+                update_columns=("is_open",),
+            )
+
+        self.run(_write)
+
+    def cached_range(self) -> tuple[date | None, date | None]:
+        start_raw = _meta.get_value(TRADE_CAL_RANGE_START_KEY)
+        end_raw = _meta.get_value(TRADE_CAL_RANGE_END_KEY)
+        start = _parse_date(start_raw) if start_raw else None
+        end = _parse_date(end_raw) if end_raw else None
+        return start, end
+
+    def cache_is_fresh(self) -> bool:
+        synced_at_raw = _meta.get_value(TRADE_CAL_SYNCED_AT_KEY)
+        if not synced_at_raw:
+            return False
+        synced_at = datetime.fromisoformat(synced_at_raw)
+        return datetime.now() - synced_at < CACHE_MAX_AGE
+
+    def lookup(self, day: date) -> bool | None:
+        row = self.fetchone(select(tc.c.is_open).where(tc.c.cal_date == _format_date(day)))
+        if row is None:
+            return None
+        return bool(row[0])
+
+    def load_open_days(self, start: date, end: date) -> list[date]:
+        rows = self.fetchall(
+            select(tc.c.cal_date)
+            .where(
+                tc.c.cal_date >= _format_date(start),
+                tc.c.cal_date <= _format_date(end),
+                tc.c.is_open == 1,
+            )
+            .order_by(tc.c.cal_date)
+        )
+        return [_parse_date(str(row[0])) for row in rows]
+
+    def clear_cache(self) -> None:
+        def _write(conn) -> None:
+            conn.execute_stmt(delete(tc))
+
+        self.run(_write)
+        _meta.delete_keys(
+            TRADE_CAL_SYNCED_AT_KEY,
+            TRADE_CAL_RANGE_START_KEY,
+            TRADE_CAL_RANGE_END_KEY,
         )
 
 
-def _cached_range() -> tuple[date | None, date | None]:
-    start_raw = get_meta(TRADE_CAL_RANGE_START_KEY)
-    end_raw = get_meta(TRADE_CAL_RANGE_END_KEY)
-    start = _parse_date(start_raw) if start_raw else None
-    end = _parse_date(end_raw) if end_raw else None
-    return start, end
-
-
-def _cache_is_fresh() -> bool:
-    synced_at_raw = get_meta(TRADE_CAL_SYNCED_AT_KEY)
-    if not synced_at_raw:
-        return False
-    synced_at = datetime.fromisoformat(synced_at_raw)
-    return datetime.now() - synced_at < CACHE_MAX_AGE
+_repo = TradeCalendarRepository()
 
 
 def _range_covers(start: date, end: date, day: date) -> bool:
@@ -113,21 +157,21 @@ def sync_trade_calendar(start: date, end: date) -> int:
     if not rows:
         return 0
 
-    _upsert_rows(rows)
-    cached_start, cached_end = _cached_range()
+    _repo.upsert_rows(rows)
+    cached_start, cached_end = _repo.cached_range()
     new_start = start if cached_start is None else min(cached_start, start)
     new_end = end if cached_end is None else max(cached_end, end)
-    set_meta(TRADE_CAL_RANGE_START_KEY, _format_date(new_start))
-    set_meta(TRADE_CAL_RANGE_END_KEY, _format_date(new_end))
-    set_meta(TRADE_CAL_SYNCED_AT_KEY, datetime.now().isoformat())
+    _meta.upsert_value(TRADE_CAL_RANGE_START_KEY, _format_date(new_start))
+    _meta.upsert_value(TRADE_CAL_RANGE_END_KEY, _format_date(new_end))
+    _meta.upsert_value(TRADE_CAL_SYNCED_AT_KEY, datetime.now().isoformat())
     return len(rows)
 
 
 def ensure_calendar_covers(day: date) -> bool:
     """确保本地缓存覆盖 day；成功同步返回 True。"""
     with _sync_lock:
-        cached_start, cached_end = _cached_range()
-        needs_sync = cached_start is None or cached_end is None or not _range_covers(cached_start, cached_end, day) or not _cache_is_fresh()
+        cached_start, cached_end = _repo.cached_range()
+        needs_sync = cached_start is None or cached_end is None or not _range_covers(cached_start, cached_end, day) or not _repo.cache_is_fresh()
         if not needs_sync:
             return lookup_trading_day(day) is not None
 
@@ -145,18 +189,9 @@ def load_open_trading_days(start: date, end: date) -> list[date]:
     ensure_calendar_covers(start)
     ensure_calendar_covers(end)
 
-    with connect() as conn:
-        rows = conn.execute(
-            """
-            SELECT cal_date FROM trade_calendar
-            WHERE cal_date >= ? AND cal_date <= ? AND is_open = 1
-            ORDER BY cal_date
-            """,
-            (_format_date(start), _format_date(end)),
-        ).fetchall()
-
+    rows = _repo.load_open_days(start, end)
     if rows:
-        return [_parse_date(str(row[0])) for row in rows]
+        return rows
 
     days: list[date] = []
     current = start
@@ -169,14 +204,7 @@ def load_open_trading_days(start: date, end: date) -> list[date]:
 
 def lookup_trading_day(day: date) -> bool | None:
     """查询缓存；未命中返回 None。"""
-    with connect() as conn:
-        row = conn.execute(
-            "SELECT is_open FROM trade_calendar WHERE cal_date = ?",
-            (_format_date(day),),
-        ).fetchone()
-    if row is None:
-        return None
-    return bool(row[0])
+    return _repo.lookup(day)
 
 
 def previous_open_trading_day(day: date, *, max_lookback: int = 15) -> date | None:
@@ -197,13 +225,4 @@ def previous_open_trading_day(day: date, *, max_lookback: int = 15) -> date | No
 
 def clear_trade_calendar_cache() -> None:
     """测试用：清空交易日历缓存。"""
-    with connect() as conn:
-        conn.execute("DELETE FROM trade_calendar")
-        conn.execute(
-            "DELETE FROM meta WHERE key IN (?, ?, ?)",
-            (
-                TRADE_CAL_SYNCED_AT_KEY,
-                TRADE_CAL_RANGE_START_KEY,
-                TRADE_CAL_RANGE_END_KEY,
-            ),
-        )
+    _repo.clear_cache()

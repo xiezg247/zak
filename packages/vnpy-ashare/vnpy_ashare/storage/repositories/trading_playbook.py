@@ -4,8 +4,12 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+
 from vnpy_ashare.domain.trading.playbook import PlaybookSection, PlaybookSectionUpdate
-from vnpy_ashare.storage.connection import connect, init_app_db
+from vnpy_ashare.storage.repository.app import AppBaseRepository
+from vnpy_common.storage.tables import trading_playbook_sections as tps
 
 
 def _now_iso() -> str:
@@ -22,82 +26,83 @@ def _row_to_section(row) -> PlaybookSection:
     )
 
 
+class PlaybookRepository(AppBaseRepository):
+    table = tps
+
+    def count_sections(self) -> int:
+        row = self.fetchone(select(func.count()).select_from(tps))
+        return int(row[0]) if row else 0
+
+    def list_sections(self) -> tuple[PlaybookSection, ...]:
+        rows = self.fetchall(select(tps).order_by(tps.c.sort_order, tps.c.section_id))
+        return tuple(_row_to_section(row) for row in rows)
+
+    def upsert_sections(self, sections: tuple[PlaybookSection, ...]) -> None:
+        if not sections:
+            return
+        now = _now_iso()
+
+        def _write(conn) -> None:
+            for section in sections:
+                stmt = pg_insert(tps).values(
+                    section_id=section.section_id,
+                    title=section.title,
+                    body_md=section.body_md,
+                    collapsed=int(section.collapsed),
+                    sort_order=section.sort_order,
+                    updated_at=now,
+                )
+                stmt = stmt.on_conflict_do_update(
+                    index_elements=[tps.c.section_id],
+                    set_={
+                        "title": stmt.excluded.title,
+                        "body_md": stmt.excluded.body_md,
+                        "collapsed": stmt.excluded.collapsed,
+                        "sort_order": stmt.excluded.sort_order,
+                        "updated_at": stmt.excluded.updated_at,
+                    },
+                )
+                conn.execute_stmt(stmt)
+
+        self.run(_write)
+
+    def update_section(self, section_id: str, patch: PlaybookSectionUpdate) -> None:
+        if not self.exists_where(tps.c.section_id == section_id):
+            return
+        now = _now_iso()
+        if patch.collapsed is None:
+            self.update_matching({"body_md": patch.body_md, "updated_at": now}, tps.c.section_id == section_id)
+        else:
+            self.update_matching(
+                {"body_md": patch.body_md, "collapsed": int(patch.collapsed), "updated_at": now},
+                tps.c.section_id == section_id,
+            )
+
+    def set_collapsed(self, section_id: str, collapsed: bool) -> None:
+        self.update_matching(
+            {"collapsed": int(collapsed), "updated_at": _now_iso()},
+            tps.c.section_id == section_id,
+        )
+
+
+_repo = PlaybookRepository()
+
+
 def count_playbook_sections() -> int:
-    init_app_db()
-    with connect() as conn:
-        row = conn.execute("SELECT COUNT(*) AS n FROM trading_playbook_sections").fetchone()
-        return int(row["n"]) if row is not None else 0
+    return _repo.count_sections()
 
 
 def list_playbook_sections() -> tuple[PlaybookSection, ...]:
-    init_app_db()
-    with connect() as conn:
-        rows = conn.execute(
-            "SELECT * FROM trading_playbook_sections ORDER BY sort_order, section_id",
-        ).fetchall()
-        return tuple(_row_to_section(row) for row in rows)
+    return _repo.list_sections()
 
 
 def upsert_playbook_sections(sections: tuple[PlaybookSection, ...]) -> None:
-    if not sections:
-        return
-    init_app_db()
-    now = _now_iso()
-    with connect() as conn:
-        for section in sections:
-            conn.execute(
-                """
-                INSERT INTO trading_playbook_sections
-                    (section_id, title, body_md, collapsed, sort_order, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?)
-                ON CONFLICT(section_id) DO UPDATE SET
-                    title = excluded.title,
-                    body_md = excluded.body_md,
-                    collapsed = excluded.collapsed,
-                    sort_order = excluded.sort_order,
-                    updated_at = excluded.updated_at
-                """,
-                (
-                    section.section_id,
-                    section.title,
-                    section.body_md,
-                    int(section.collapsed),
-                    section.sort_order,
-                    now,
-                ),
-            )
+    _repo.upsert_sections(sections)
 
 
 def update_playbook_section(section_id: str, patch: PlaybookSectionUpdate) -> None:
-    init_app_db()
-    now = _now_iso()
-    with connect() as conn:
-        row = conn.execute(
-            "SELECT section_id FROM trading_playbook_sections WHERE section_id = ?",
-            (section_id,),
-        ).fetchone()
-        if row is None:
-            return
-        if patch.collapsed is None:
-            conn.execute(
-                "UPDATE trading_playbook_sections SET body_md = ?, updated_at = ? WHERE section_id = ?",
-                (patch.body_md, now, section_id),
-            )
-        else:
-            conn.execute(
-                """
-                UPDATE trading_playbook_sections
-                SET body_md = ?, collapsed = ?, updated_at = ?
-                WHERE section_id = ?
-                """,
-                (patch.body_md, int(patch.collapsed), now, section_id),
-            )
+    _repo.update_section(section_id, patch)
 
 
 def set_playbook_section_collapsed(section_id: str, collapsed: bool) -> None:
-    init_app_db()
-    with connect() as conn:
-        conn.execute(
-            "UPDATE trading_playbook_sections SET collapsed = ?, updated_at = ? WHERE section_id = ?",
-            (int(collapsed), _now_iso(), section_id),
-        )
+    _repo.set_collapsed(section_id, collapsed)

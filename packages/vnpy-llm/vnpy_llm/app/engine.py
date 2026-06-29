@@ -11,7 +11,7 @@ from vnpy.trader.ui import QtCore
 
 from vnpy_common.ai.access import warn_missing_ai_bridges
 from vnpy_llm.chat.session_surface import SessionSurfaceStore, Surface
-from vnpy_llm.chat.store import ChatMessage, ChatSession, ChatStore
+from vnpy_llm.chat.store import ChatMessage, ChatRepository, ChatSession
 from vnpy_llm.config.settings import LlmConfig
 from vnpy_llm.gateway.agent_gateway import AgentGateway
 from vnpy_llm.gateway.tool_registry import ToolRegistry
@@ -76,7 +76,7 @@ class LlmEngine(BaseEngine):
         return self._gateway._cancel_requested
 
     @property
-    def store(self) -> ChatStore:
+    def store(self) -> ChatRepository:
         return self._gateway.store
 
     @property

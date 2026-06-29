@@ -15,6 +15,7 @@ from vnpy_ashare.ui.components.splitter_utils import (
     set_splitter_sizes_quiet,
     splitter_total_height,
 )
+from vnpy_ashare.ui.quotes.page.roles import STRATEGY_MONITOR_PAGE
 from vnpy_ashare.ui.quotes.page.run_log import sync_run_output_expansion
 from vnpy_ashare.ui.quotes.page.run_output_state import load_run_output_expanded, run_output_panel
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
@@ -211,6 +212,27 @@ def _normalize_saved_sizes(page: WatchlistHost, splitter: QtWidgets.QSplitter, s
     return clamp_primary_sizes(result, total=total, primary_min=TABLE_MIN_HEIGHT)
 
 
+def _apply_strategy_monitor_splitter_sizes(page: WatchlistHost, splitter: QtWidgets.QSplitter) -> None:
+    signal_panel = page.signal_panel
+    position_panel = page.position_panel
+    total = splitter_total_height(splitter)
+    if total < 120:
+        return
+    saved = load_center_splitter_sizes()
+    if len(saved) == splitter.count() and sum(saved) >= 240:
+        set_splitter_sizes_quiet(splitter, saved)
+        return
+    signal_h = SIGNAL_PANEL_DEFAULT_HEIGHT
+    if signal_panel is not None and not signal_panel.is_expanded():
+        signal_h = SIGNAL_PANEL_COLLAPSED_HEIGHT
+    position_h = POSITION_PANEL_DEFAULT_HEIGHT
+    if position_panel is not None and not position_panel.is_expanded():
+        position_h = POSITION_PANEL_COLLAPSED_HEIGHT
+    remaining = max(total - signal_h - position_h, 240)
+    half = remaining // 2
+    set_splitter_sizes_quiet(splitter, [half, total - half])
+
+
 def apply_center_splitter_sizes(page: WatchlistHost, *, _retry: int = 0) -> None:
     splitter = center_splitter(page)
     if splitter is None:
@@ -221,6 +243,10 @@ def apply_center_splitter_sizes(page: WatchlistHost, *, _retry: int = 0) -> None
             50,
             lambda: apply_center_splitter_sizes(page, _retry=_retry + 1),
         )
+        return
+
+    if page.page_name == STRATEGY_MONITOR_PAGE:
+        _apply_strategy_monitor_splitter_sizes(page, splitter)
         return
 
     configure_center_splitter(splitter)
@@ -294,13 +320,13 @@ def restore_center_splitter(page: WatchlistHost) -> None:
         if normalized and sum(normalized) >= 320:
             set_splitter_sizes_quiet(splitter, normalized)
             if signal_panel is not None:
-                signal_panel.render_panel()
+                signal_panel.schedule_render_panel()
             if position_panel is not None:
                 position_panel.render_panel()
             return
-    apply_center_splitter_sizes(page)
+    QtCore.QTimer.singleShot(0, lambda: apply_center_splitter_sizes(page))
     if signal_panel is not None:
-        signal_panel.render_panel()
+        signal_panel.schedule_render_panel()
     if position_panel is not None:
         position_panel.render_panel()
 

@@ -9,7 +9,6 @@ from unittest.mock import patch
 from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.data.bar_health import BarMeta, find_gaps, inspect_bar_gaps
-from vnpy_ashare.storage.connection import init_app_db
 from vnpy_ashare.storage.repositories.symbol_suspend import (
     clear_symbol_suspend_cache,
     load_suspend_days,
@@ -19,7 +18,6 @@ from vnpy_ashare.storage.repositories.symbol_suspend import (
 
 class SymbolSuspendStoreTests(unittest.TestCase):
     def setUp(self) -> None:
-        init_app_db()
         clear_symbol_suspend_cache()
 
     def tearDown(self) -> None:

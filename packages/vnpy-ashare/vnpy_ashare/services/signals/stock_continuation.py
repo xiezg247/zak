@@ -9,6 +9,7 @@ from vnpy.trader.engine import MainEngine
 
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.app.engine_access import get_sector_flow_service
+from vnpy_ashare.data.download_concurrency import continuation_batch_max_workers, run_parallel_map
 from vnpy_ashare.domain.market.flow_pattern import classify_flow_pattern_values
 from vnpy_ashare.domain.market.sector_flow import SectorFlowOutlookDay, SectorFlowOutlookRow
 from vnpy_ashare.domain.symbols.stock import lookup_by_vt_symbol
@@ -315,8 +316,7 @@ def build_continuation_batch(
     industry_map = get_stock_industry_map() if include_sector_context else {}
     sector_outlook_by_name = _load_sector_outlook_by_name(main_engine) if include_sector_context else {}
 
-    result: dict[str, StockContinuationSnapshot] = {}
-    for vt_symbol in vt_symbols:
+    def _build_one(vt_symbol: str) -> tuple[str, StockContinuationSnapshot | None]:
         snapshot = lookup_by_vt_symbol(signal_cache, vt_symbol)
         moneyflow_values: list[float] | None = None
         if include_moneyflow:
@@ -329,9 +329,14 @@ def build_continuation_batch(
             industry=industry,
             sector_outlook=sector_outlook,
         )
-        if continuation is not None:
-            result[vt_symbol] = continuation
-    return result
+        return vt_symbol, continuation
+
+    if not vt_symbols:
+        return {}
+
+    workers = continuation_batch_max_workers(item_count=len(vt_symbols))
+    pairs = run_parallel_map(vt_symbols, _build_one, max_workers=workers)
+    return {vt_symbol: continuation for vt_symbol, continuation in pairs if continuation is not None}
 
 
 def format_continuation_context_extra(continuation: StockContinuationSnapshot | None) -> str:

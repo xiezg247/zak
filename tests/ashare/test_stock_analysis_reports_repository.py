@@ -3,29 +3,15 @@
 from __future__ import annotations
 
 import json
-import tempfile
 import unittest
-from pathlib import Path
-from unittest.mock import patch
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.storage.connection import init_app_db
+from tests.ashare.pg_unittest import PgStorageTestCase
 from vnpy_ashare.storage.repositories import stock_analysis_reports as repo
 
 
-class StockAnalysisReportsRepositoryTests(unittest.TestCase):
-    def setUp(self) -> None:
-        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self.db_path = Path(self._tmp.name)
-        self._patcher = patch("vnpy_ashare.storage.connection._db_path", return_value=self.db_path)
-        self._patcher.start()
-        init_app_db()
-
-    def tearDown(self) -> None:
-        self._patcher.stop()
-        self.db_path.unlink(missing_ok=True)
-
+class StockAnalysisReportsRepositoryTests(PgStorageTestCase):
     def test_create_list_and_delete_report(self) -> None:
         context = json.dumps({"scope": "overview", "summary": "PE 分位 20%"}, ensure_ascii=False)
         created = repo.create_report(

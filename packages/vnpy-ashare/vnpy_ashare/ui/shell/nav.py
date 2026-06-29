@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from pydantic import Field
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
+from vnpy_ashare.ui.shell.shortcuts import NAV_SHORTCUTS
 from vnpy_ashare.ui.styles.colors import ACCENT_COLOR, NAV_MUTED_COLOR
 from vnpy_common.domain.base import FrozenModel
 from vnpy_common.ui.theme.manager import theme_manager
@@ -31,6 +32,7 @@ APP_NAV_GROUPS: tuple[NavGroup, ...] = (
         entries=(
             NavEntry(key="home", label="守则"),
             NavEntry(key="watchlist", label="自选"),
+            NavEntry(key="strategy_monitor", label="策略"),
             NavEntry(key="market", label="市场"),
             NavEntry(key="sector_flow", label="板块资金"),
             NavEntry(key="radar", label="雷达"),
@@ -41,12 +43,6 @@ APP_NAV_GROUPS: tuple[NavGroup, ...] = (
     ),
     NavGroup(entries=(NavEntry(key="info_feed", label="信息流"),)),
     NavGroup(entries=(NavEntry(key="ai_assistant", label="AI 助手"),)),
-    NavGroup(
-        entries=(
-            NavEntry(key="cta_backtest", label="策略回测"),
-            NavEntry(key="batch_backtest", label="回测对比"),
-        ),
-    ),
 )
 
 APP_NAV_ENTRIES: tuple[NavEntry, ...] = tuple(entry for group in APP_NAV_GROUPS for entry in group.entries)
@@ -60,23 +56,13 @@ BACKSTAGE_ENTRIES: tuple[NavEntry, ...] = (
 
 BACKSTAGE_DIALOG_KEYS: frozenset[str] = frozenset(entry.key for entry in BACKSTAGE_ENTRIES)
 
-NAV_SHORTCUTS: dict[str, str] = {
-    "home": "Ctrl+1",
-    "watchlist": "Ctrl+2",
-    "market": "Ctrl+3",
-    "sector_flow": "Ctrl+4",
-    "radar": "Ctrl+5",
-    "screener": "Ctrl+6",
-    "info_feed": "Ctrl+Shift+F",
-    "ai_assistant": "Ctrl+7",
-    "cta_backtest": "Ctrl+8",
-    "batch_backtest": "Ctrl+9",
-}
+# 菜单栏「回测」入口（不在侧栏展示；均为弹窗，非主内容页）
+BACKTEST_ENTRIES: tuple[NavEntry, ...] = (
+    NavEntry(key="cta_backtest", label="策略回测"),
+    NavEntry(key="batch_backtest", label="回测对比"),
+)
 
-BACKSTAGE_SHORTCUTS: dict[str, str] = {
-    "scheduler": "Ctrl+0",
-    "local": "Ctrl+Shift+L",
-}
+BACKTEST_DIALOG_KEYS: frozenset[str] = frozenset(entry.key for entry in BACKTEST_ENTRIES)
 
 
 def _tinted_icon(
@@ -129,6 +115,14 @@ def _draw_home(painter: QtGui.QPainter, size: int) -> None:
     painter.drawRoundedRect(m, m + 4, size - m * 2, size - m * 2 - 2, 3, 3)
     painter.drawLine(size // 2, m + 10, size // 2, size - m - 6)
     painter.drawLine(m + 8, size // 2 + 2, size - m - 8, size // 2 + 2)
+
+
+def _draw_strategy_monitor(painter: QtGui.QPainter, size: int) -> None:
+    m = 4
+    painter.drawRoundedRect(m, m + 2, size - m * 2, size // 2 - m, 2, 2)
+    painter.drawRoundedRect(m, size // 2 + 2, size - m * 2, size // 2 - m - 2, 2, 2)
+    painter.drawLine(m + 6, m + 10, size - m - 6, m + 10)
+    painter.drawLine(m + 6, size // 2 + 10, size - m - 6, size // 2 + 10)
 
 
 def _draw_local(painter: QtGui.QPainter, size: int) -> None:
@@ -242,6 +236,7 @@ _ICON_DRAWERS: dict[str, Callable[[QtGui.QPainter, int], None]] = {
     "sector_flow": _draw_sector_flow,
     "radar": _draw_radar,
     "watchlist": _draw_watchlist,
+    "strategy_monitor": _draw_strategy_monitor,
     "screener": _draw_screener,
     "info_feed": _draw_info_feed,
     "auto_screener": _draw_auto_screener,
