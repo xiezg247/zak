@@ -46,8 +46,9 @@ if TYPE_CHECKING:
     from vnpy_ashare.app.engine import AshareEngine
 
 logger = logging.getLogger(__name__)
-_MAX_RUN_LOG = 200
-_MAX_RUN_DETAIL_LINES = 400
+_MAX_RUN_LOG = 20
+_MAX_RUN_DETAIL_LINES = 48
+_UI_RUN_LOG_LIMIT = 20
 
 
 def order_run_log_records(records: list[JobRunRecord]) -> list[JobRunRecord]:
@@ -271,7 +272,7 @@ class TaskSchedulerManager:
         self._refresh_status_cache()
         return [self._status[job_id] for job_id in self._jobs]
 
-    def list_run_log(self, *, limit: int = _MAX_RUN_LOG) -> list[JobRunRecord]:
+    def list_run_log(self, *, limit: int = _UI_RUN_LOG_LIMIT) -> list[JobRunRecord]:
         if limit <= 0:
             return []
         records = list(self._run_log)
@@ -416,6 +417,9 @@ class TaskSchedulerManager:
         record.message = message
         record.success = success if not skipped else True
         record.skipped = skipped
+        record.detail_lines = [
+            line for line in record.detail_lines if line.startswith("[开始]") or line.startswith("[结束]")
+        ]
 
     def run_now(self, job_id: str) -> bool:
         if job_id not in self._jobs:

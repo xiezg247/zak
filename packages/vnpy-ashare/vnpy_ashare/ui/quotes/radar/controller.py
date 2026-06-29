@@ -41,6 +41,7 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
     list_radar_cards_for_mode,
     list_radar_groups_for_mode,
     radar_card_group,
+    split_radar_items_by_load_priority,
 )
 from vnpy_ashare.quotes.radar.radar_full_refresh_prefs import save_radar_full_refresh_every
 from vnpy_ashare.quotes.radar.radar_horizon import OUTLOOK_FORCE_RECOMPUTE_CARD_IDS
@@ -103,6 +104,7 @@ class RadarController(QtCore.QObject):
         self._group_worker: RadarGroupLoadWorker | None = None
         self._prefetch_worker: RadarGroupLoadWorker | None = None
         self._deferred_group_items: list[tuple[str, dict[str, object]]] = []
+        self._deferred_tier_batches: list[list[tuple[str, dict[str, object]]]] = []
         self._prefetch_mode: str | None = None
         self._prefetch_siblings: list[str] = []
         self._retired_workers: list[QtCore.QThread] = []
@@ -272,6 +274,7 @@ class RadarController(QtCore.QObject):
         self._cancel_all_workers()
         self._clear_all_card_loading()
         self._deferred_group_items.clear()
+        self._deferred_tier_batches.clear()
         self._prefetch_siblings.clear()
         self._prefetch_mode = None
         self._refresh_queue.clear()
@@ -760,17 +763,26 @@ class RadarController(QtCore.QObject):
     ) -> None:
         if not skip_viewport_split:
             self._deferred_group_items.clear()
+            self._deferred_tier_batches.clear()
             self._prefetch_siblings.clear()
             self._cancel_prefetch_worker()
-        if not skip_viewport_split and len(items) >= _RADAR_GROUP_LOAD_MIN_CARDS:
+
+        working_items = items
+        if not skip_viewport_split:
+            priority_batches = split_radar_items_by_load_priority(items)
+            if len(priority_batches) > 1:
+                self._deferred_tier_batches = priority_batches[1:]
+                working_items = priority_batches[0]
+
+        if not skip_viewport_split and len(working_items) >= _RADAR_GROUP_LOAD_MIN_CARDS:
             visible_ids = set(self._board.visible_card_ids_for_current_group())
-            priority = [(card_id, kwargs) for card_id, kwargs in items if card_id in visible_ids]
-            deferred = [(card_id, kwargs) for card_id, kwargs in items if card_id not in visible_ids]
+            priority = [(card_id, kwargs) for card_id, kwargs in working_items if card_id in visible_ids]
+            deferred = [(card_id, kwargs) for card_id, kwargs in working_items if card_id not in visible_ids]
             if priority and deferred:
                 self._deferred_group_items = deferred
                 self._run_group_worker(priority)
                 return
-        self._run_group_worker(items)
+        self._run_group_worker(working_items)
 
     def _run_group_worker(self, items: list[tuple[str, dict[str, object]]]) -> None:
         card_ids = frozenset(card_id for card_id, _kwargs in items)
@@ -817,6 +829,10 @@ class RadarController(QtCore.QObject):
             deferred = self._deferred_group_items
             self._deferred_group_items = []
             self._start_group_load(deferred, skip_viewport_split=True)
+            return
+        if self._deferred_tier_batches:
+            next_batch = self._deferred_tier_batches.pop(0)
+            self._start_group_load(next_batch, skip_viewport_split=True)
             return
         self._schedule_sibling_prefetch()
 

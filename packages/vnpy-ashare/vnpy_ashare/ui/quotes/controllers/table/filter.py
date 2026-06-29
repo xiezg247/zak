@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.domain.data.bar_health import BarHealthStatus
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.ui.quotes.controllers.table.base import TableControllerBase
 from vnpy_ashare.ui.quotes.page.config import MAX_DISPLAY_ROWS
@@ -25,19 +24,7 @@ class TableFilterMixin(TableControllerBase):
         elif page._local_total == 0 and keyword:
             page.status_label.setText(f"未找到匹配「{keyword}」的本地标的")
         else:
-            matched = page.display_stocks
-            stale = sum(
-                1
-                for item in matched
-                if page.bar_list_status.get(
-                    (item.symbol, item.exchange),
-                    BarHealthStatus.UNKNOWN,
-                )
-                in (BarHealthStatus.STALE, BarHealthStatus.GAPS)
-            )
             status = page._pagination.format_local_status()
-            if stale:
-                status += f"，本页 {stale} 只需补全"
             page.status_label.setText(status)
         page._local.update_batch_toolbar_buttons()
 
@@ -125,18 +112,7 @@ class TableFilterMixin(TableControllerBase):
             label = page._local_scope_label()
             status = f"暂无本地{label}，请在自选页下载"
         elif page.config.use_local_table:
-            stale = sum(
-                1
-                for item in matched
-                if page.bar_list_status.get(
-                    (item.symbol, item.exchange),
-                    BarHealthStatus.UNKNOWN,
-                )
-                in (BarHealthStatus.STALE, BarHealthStatus.GAPS)
-            )
             status = f"{page.page_name}  共 {len(matched)} 只{extra}"
-            if stale:
-                status += f"，{stale} 只需补全"
             page._local.update_batch_toolbar_buttons()
         elif page.page_name == STRATEGY_MONITOR_PAGE:
             status = f"自选池 {len(matched)} 只{extra}"

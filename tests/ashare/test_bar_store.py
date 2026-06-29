@@ -15,6 +15,7 @@ from vnpy_ashare.data.bar_store import (
     iter_bar_overviews,
     load_period_bars,
 )
+from vnpy_ashare.domain.data.bar import PeriodBarOverview
 
 
 class BarStoreTests(unittest.TestCase):
@@ -82,6 +83,7 @@ class BarStoreTests(unittest.TestCase):
                 count=900,
             ),
         ]
+        iter_bar_overviews(scope="daily")
 
         overview = get_scope_overview("600519", Exchange.SSE, "daily")
         self.assertIsNotNone(overview)
@@ -133,13 +135,30 @@ class BarStoreTests(unittest.TestCase):
             ),
         ]
 
+        iter_bar_overviews(scope="daily")
         get_scope_overview("600519", Exchange.SSE, "daily")
         get_scope_overview("600519", Exchange.SSE, "daily")
         database.get_bar_overview.assert_called_once()
 
         invalidate_bar_overview_cache()
+        iter_bar_overviews(scope="daily")
         get_scope_overview("600519", Exchange.SSE, "daily")
         self.assertEqual(database.get_bar_overview.call_count, 2)
+
+    @patch("vnpy_ashare.storage.repositories.bar_overview.fetch_scope_bar_overview")
+    def test_get_scope_overview_without_cache_uses_single_query(self, fetch_mock) -> None:
+        expected = PeriodBarOverview(
+            symbol="600519",
+            exchange=Exchange.SSE,
+            period="daily",
+            start=datetime(2020, 1, 2),
+            end=datetime(2026, 6, 5),
+            count=1280,
+        )
+        fetch_mock.return_value = expected
+        overview = get_scope_overview("600519", Exchange.SSE, "daily")
+        self.assertEqual(overview, expected)
+        fetch_mock.assert_called_once_with("600519", Exchange.SSE, "daily")
 
 
 if __name__ == "__main__":

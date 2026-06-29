@@ -16,6 +16,12 @@ from vnpy_common.ui.theme.build_extra import build_scheduler_table_stylesheet
 from vnpy_common.ui.theme.manager import theme_manager
 
 
+def _prevent_dialog_default_button(button: QtWidgets.QPushButton) -> None:
+    """QDialog 内普通按钮默认 autoDefault，点击可能误 accept 关闭父弹窗。"""
+    button.setAutoDefault(False)
+    button.setDefault(False)
+
+
 class _JobSettingsDialog(QtWidgets.QDialog):
     def __init__(
         self,
@@ -207,6 +213,7 @@ class SchedulerJobsWidget(QtWidgets.QWidget):
 
         if not embedded:
             refresh_button = QtWidgets.QPushButton("刷新")
+            _prevent_dialog_default_button(refresh_button)
             refresh_button.clicked.connect(self.refresh_table)
             button_row = QtWidgets.QHBoxLayout()
             button_row.addStretch()
@@ -234,7 +241,8 @@ class SchedulerJobsWidget(QtWidgets.QWidget):
     def start_monitoring(self) -> None:
         if self._scheduler is None or self._monitoring:
             return
-        self._scheduler.add_listener(self._on_scheduler_event)
+        if not self._embedded:
+            self._scheduler.add_listener(self._on_scheduler_event)
         self._fallback_timer.start()
         self._monitoring = True
         self.refresh_table()
@@ -242,7 +250,8 @@ class SchedulerJobsWidget(QtWidgets.QWidget):
     def stop_monitoring(self) -> None:
         if not self._monitoring or self._scheduler is None:
             return
-        self._scheduler.remove_listener(self._on_scheduler_event)
+        if not self._embedded:
+            self._scheduler.remove_listener(self._on_scheduler_event)
         self._fallback_timer.stop()
         self._monitoring = False
 
@@ -350,6 +359,12 @@ class SchedulerJobsWidget(QtWidgets.QWidget):
         self.table.setColumnWidth(6, 196)
 
     def _request_refresh(self, _job_id: str) -> None:
+        if self._embedded:
+            page = self._page()
+            schedule = getattr(page, "_schedule_table_refresh", None)
+            if schedule is not None:
+                schedule()
+                return
         QtCore.QTimer.singleShot(0, self, self._request_refresh_slot)
 
     def _request_refresh_slot(self) -> None:
@@ -368,12 +383,14 @@ class SchedulerJobsWidget(QtWidgets.QWidget):
         self._refreshing = True
         try:
             statuses = self._scheduler.list_status()
-            if self.table.rowCount() != len(statuses):
+            resize_rows = self.table.rowCount() != len(statuses)
+            if resize_rows:
                 self.table.setRowCount(len(statuses))
 
             for row, status in enumerate(statuses):
                 self._update_row(row, status)
-            self.table.resizeRowsToContents()
+            if resize_rows:
+                self.table.resizeRowsToContents()
             if self._embedded:
                 self._apply_embedded_column_widths()
             self._check_manual_run_finished()
@@ -432,11 +449,13 @@ class SchedulerJobsWidget(QtWidgets.QWidget):
         run_button = QtWidgets.QPushButton("▶ 立即执行")
         run_button.setObjectName("ActionButton")
         run_button.setMinimumWidth(92)
+        _prevent_dialog_default_button(run_button)
         run_button.clicked.connect(lambda _checked=False, bound_job_id=job_id: self._run_now(bound_job_id))
 
         settings_button = QtWidgets.QPushButton("设置")
         settings_button.setObjectName("SecondaryButton")
         settings_button.setMinimumWidth(52)
+        _prevent_dialog_default_button(settings_button)
         settings_button.clicked.connect(lambda _checked=False, bound_job_id=job_id: self._open_settings(bound_job_id))
 
         action_layout.addWidget(run_button)
@@ -488,7 +507,8 @@ class SchedulerJobsWidget(QtWidgets.QWidget):
         name = status.name if status is not None else job_id
         if guard is not None:
             self._manual_run_job_id = job_id
-            guard.begin(f"正在执行：{name}…", widgets=self._lock_widgets(), on_cancel=None)
+            # 仅底部进度提示，不锁表格/关窗；任务在引擎调度器后台继续。
+            guard.begin(f"正在执行：{name}…", widgets=[], on_cancel=None)
 
     def _open_settings(self, job_id: str) -> None:
         if self._scheduler is None:

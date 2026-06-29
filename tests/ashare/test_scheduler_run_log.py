@@ -25,6 +25,18 @@ class JobProgressTests(unittest.TestCase):
         self.assertEqual(lines[0], "hello")
         self.assertEqual(lines[1], "600519.SSE (2/5)")
 
+    def test_job_progress_samples_large_batches(self) -> None:
+        lines: list[str] = []
+        reset = bind_job_log(lines.append)
+        try:
+            for index in range(1, 501):
+                job_progress(index, 500, "600519.SSE")
+        finally:
+            reset()
+        self.assertIn("600519.SSE (1/500)", lines)
+        self.assertIn("600519.SSE (500/500)", lines)
+        self.assertLess(len(lines), 60)
+
 
 class SchedulerRunLogTests(unittest.TestCase):
     def test_wrap_job_emits_progress_lines(self) -> None:
@@ -42,9 +54,7 @@ class SchedulerRunLogTests(unittest.TestCase):
         self.assertEqual(len(records), 1)
         record = records[0]
         self.assertFalse(record.running)
-        self.assertIn("step-1", record.detail_lines)
-        self.assertIn("step-2", record.detail_lines)
-        self.assertIn("[结束] 成功", record.detail_lines[-1])
+        self.assertEqual(record.detail_lines, ["[开始] 同步 A 股列表", "[结束] 成功 · done"])
 
 
 class RunLogOrderTests(unittest.TestCase):

@@ -430,9 +430,12 @@ QFormLayout QLabel {{
 """
 
 
+_SCHEDULER_RUNNING_DETAIL_LINES = 24
+
+
 def format_scheduler_run_log_html(t: ThemeTokens, records: Sequence[SchedulerRunLogRecord]) -> str:
     if not records:
-        return f'<p style="color:{t.text_muted};margin:0;">暂无执行记录。</p>'
+        return f'<p style="color:{t.text_muted};margin:0;">暂无最近执行记录。</p>'
 
     lines: list[str] = []
     for record in records:
@@ -456,8 +459,8 @@ def format_scheduler_run_log_html(t: ThemeTokens, records: Sequence[SchedulerRun
             "</p>"
         )
         detail_lines = getattr(record, "detail_lines", None) or []
-        if detail_lines:
-            visible = detail_lines[-120:]
+        if detail_lines and record.running:
+            visible = detail_lines[-_SCHEDULER_RUNNING_DETAIL_LINES:]
             omitted = len(detail_lines) - len(visible)
             detail_body = "<br/>".join(html.escape(line) for line in visible)
             if omitted > 0:

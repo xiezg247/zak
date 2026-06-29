@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import time
+
 from vnpy.event import EventEngine
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.app.engine import APP_NAME, AshareEngine
 from vnpy_ashare.scheduler.manager import TaskSchedulerManager
+from vnpy_ashare.ui.quotes.page.config import SCHEDULER_UI_LOG_DEBOUNCE_MS, SCHEDULER_UI_TABLE_DEBOUNCE_MS
 from vnpy_ashare.ui.scheduler.scheduler_jobs_widget import SchedulerJobsWidget
 from vnpy_common.ui.feedback import PageToastHost, TaskGuard
 from vnpy_common.ui.theme.build_extra import format_scheduler_empty_html, format_scheduler_run_log_html
@@ -30,7 +33,16 @@ class SchedulerPageWidget(QtWidgets.QWidget):
         self._scheduler: TaskSchedulerManager | None = None
         self._scheduler_unavailable = False
         self._log_listener = self._on_scheduler_event
+        self._last_log_refresh_at = 0.0
+        self._log_debounce = QtCore.QTimer(self)
+        self._log_debounce.setSingleShot(True)
+        self._log_debounce.setInterval(SCHEDULER_UI_LOG_DEBOUNCE_MS)
+        self._log_debounce.timeout.connect(self._flush_log_refresh)
+        self._table_debounce = QtCore.QTimer(self)
+        self._table_debounce.setSingleShot(True)
+        self._table_debounce.setInterval(SCHEDULER_UI_TABLE_DEBOUNCE_MS)
         self._build_ui()
+        self._table_debounce.timeout.connect(self._jobs_widget.refresh_table)
         theme_manager().register_callback(self._on_theme_changed)
 
     def _on_theme_changed(self, _tokens: ThemeTokens) -> None:
@@ -53,7 +65,7 @@ class SchedulerPageWidget(QtWidgets.QWidget):
         title.setObjectName("SchedulerPageTitle")
         hint = QtWidgets.QLabel(
             "生产环境建议独立运行 cli.py quotes collect；行情采集仅在 A 股交易时段（9:30–11:30、13:00–15:00）自动执行。"
-            "关闭本窗口后，正在运行的任务仍会在后台继续。"
+            "任务由调度器在后台执行，可随时关闭本窗口，再次打开可查看进度与日志。"
         )
         hint.setObjectName("SchedulerHint")
         hint.setWordWrap(True)
@@ -76,7 +88,7 @@ class SchedulerPageWidget(QtWidgets.QWidget):
         log_layout = QtWidgets.QVBoxLayout(log_panel)
         log_layout.setContentsMargins(14, 12, 14, 14)
         log_layout.setSpacing(8)
-        self._log_title = QtWidgets.QLabel("执行日志")
+        self._log_title = QtWidgets.QLabel("最近执行")
         self._log_title.setObjectName("SchedulerSectionLabel")
         log_layout.addWidget(self._log_title)
 
@@ -94,7 +106,7 @@ class SchedulerPageWidget(QtWidgets.QWidget):
         splitter.addWidget(log_panel)
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 1)
-        splitter.setSizes([320, 360])
+        splitter.setSizes([380, 240])
         root.addWidget(splitter, stretch=1)
 
         self._toast = PageToastHost(self)
@@ -135,6 +147,8 @@ class SchedulerPageWidget(QtWidgets.QWidget):
             running = [status.name for status in self._scheduler.list_status() if status.running]
         self._jobs_widget.abandon_manual_run_ui()
         self._task_guard.end()
+        self._log_debounce.stop()
+        self._table_debounce.stop()
         self._jobs_widget.stop_monitoring()
         if self._scheduler is not None:
             self._scheduler.remove_listener(self._log_listener)
@@ -143,7 +157,28 @@ class SchedulerPageWidget(QtWidgets.QWidget):
         return running
 
     def _on_scheduler_event(self, _job_id: str) -> None:
-        QtCore.QTimer.singleShot(0, self, self._refresh_all)
+        # 调度器回调来自 APScheduler 工作线程，须切回 UI 线程再触碰 Qt 控件。
+        QtCore.QTimer.singleShot(0, self, self._handle_scheduler_event)
+
+    def _handle_scheduler_event(self) -> None:
+        self._schedule_log_refresh()
+        self._schedule_table_refresh()
+
+    def _schedule_log_refresh(self) -> None:
+        interval_sec = SCHEDULER_UI_LOG_DEBOUNCE_MS / 1000
+        now = time.monotonic()
+        if now - self._last_log_refresh_at >= interval_sec:
+            self._flush_log_refresh()
+            return
+        if not self._log_debounce.isActive():
+            self._log_debounce.start()
+
+    def _flush_log_refresh(self) -> None:
+        self._last_log_refresh_at = time.monotonic()
+        self._refresh_logs()
+
+    def _schedule_table_refresh(self) -> None:
+        self._table_debounce.start()
 
     def _refresh_all(self) -> None:
         self._jobs_widget.refresh_table()
@@ -153,7 +188,10 @@ class SchedulerPageWidget(QtWidgets.QWidget):
         if self._scheduler is None:
             return
         records = self._scheduler.list_run_log()
-        self._log_title.setText(f"执行日志 · {len(records)} 条" if records else "执行日志")
+        if records:
+            self._log_title.setText(f"最近执行 · {len(records)} 条")
+        else:
+            self._log_title.setText("最近执行")
         self._log_view.setHtml(format_scheduler_run_log_html(theme_manager().tokens(), records))
         scrollbar = self._log_view.verticalScrollBar()
         scrollbar.setValue(scrollbar.maximum())

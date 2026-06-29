@@ -29,6 +29,17 @@ def job_log(message: str) -> None:
 
 
 def job_progress(current: int, total: int, label: str = "") -> None:
-    """格式化进度并写入任务日志。"""
+    """格式化进度并写入任务日志（大批量任务自动抽样，避免 UI 刷新风暴）。"""
+    if total <= 0:
+        return
+    if current <= 1 or current >= total:
+        emit = True
+    elif total <= 25:
+        emit = True
+    else:
+        step = max(1, total // 40)
+        emit = current % step == 0
+    if not emit:
+        return
     prefix = f"{label} " if label else ""
     job_log(f"{prefix}({current}/{total})")

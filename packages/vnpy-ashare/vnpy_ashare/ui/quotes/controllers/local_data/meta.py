@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from vnpy_ashare.config.runtime import format_vt_symbol_cn
-from vnpy_ashare.data.bar_store import is_overview_cache_warmed
 from vnpy_ashare.domain.symbols.stock import StockItem
-from vnpy_ashare.services.bar import bar_meta_from_overview, get_scope_overview, invalidate_bar_overview_cache, iter_bar_overviews, list_status
+from vnpy_ashare.services.bar import bar_meta_from_overview, invalidate_bar_overview_cache, iter_bar_overviews
+from vnpy_ashare.storage.repositories.bar_overview import fetch_scope_bar_overviews_for_keys
 from vnpy_ashare.ui.quotes.controllers.local_data.base import LocalDataControllerBase
 from vnpy_ashare.ui.quotes.workers.quotes_workers import InvalidBarCleanupWorker
 
@@ -20,22 +20,22 @@ class LocalDataMetaMixin(LocalDataControllerBase):
         page.bar_list_status = {}
 
     def ensure_meta_for_items(self, items: list[StockItem]) -> None:
-        """按当前页标的懒加载 K 线概览，避免全量扫描卡死 UI。"""
-        if not is_overview_cache_warmed():
-            return
+        """按当前页标的批量加载 K 线概览（数据库按 key 查询，不预热全库）。"""
         page = self._p
+        if not items:
+            return
+        keys = [(item.symbol, item.exchange) for item in items]
+        overviews = fetch_scope_bar_overviews_for_keys(keys, page._local_scope)
         for item in items:
             key = (item.symbol, item.exchange)
-            overview = get_scope_overview(item.symbol, item.exchange, page._local_scope)
+            overview = overviews.get(key)
             if overview is None:
                 page.downloaded_keys.discard(key)
                 page.bar_meta.pop(key, None)
                 page.bar_list_status.pop(key, None)
                 continue
             page.downloaded_keys.add(key)
-            meta = bar_meta_from_overview(overview)
-            page.bar_meta[key] = meta
-            page.bar_list_status[key] = list_status(meta)
+            page.bar_meta[key] = bar_meta_from_overview(overview)
 
     def refresh_meta(self, *, invalidate_overview: bool = True) -> None:
         page = self._p
@@ -47,10 +47,8 @@ class LocalDataMetaMixin(LocalDataControllerBase):
         rows = bar_svc.iter_overviews(page._local_scope) if bar_svc else self._fallback_overviews(page._local_scope)
         for row in rows:
             key = (row.symbol, row.exchange)
-            meta = bar_meta_from_overview(row)
             page.downloaded_keys.add(key)
-            page.bar_meta[key] = meta
-            page.bar_list_status[key] = list_status(meta)
+            page.bar_meta[key] = bar_meta_from_overview(row)
 
     @staticmethod
     def _fallback_overviews(scope: str):
@@ -62,15 +60,14 @@ class LocalDataMetaMixin(LocalDataControllerBase):
         page = self._p
         if not page.config.use_local_table:
             return
-        # Worker 已预热 overview 缓存，勿 invalidate 后在主线程全量重建。
+        # Worker 在后台按页查询概览；主线程仅批量拉取当前页元数据。
+        self.dismiss_gap_check()
         self.refresh_meta(invalidate_overview=False)
         page._local_filter_keyword = page.search_edit.text().strip().lower()
         page._table.apply_local_page_display()
         item = page.current_item
         if item is not None and (item.symbol, item.exchange) in page.downloaded_keys:
             page.show_kline(item)
-            if page.config.show_fill_button and self.is_daily_scope():
-                self.check_bar_gaps(item)
 
     def schedule_invalid_bar_cleanup(self) -> None:
         """后台清理无效日 K 概览，避免进入本地页时在主线程扫描全库。"""

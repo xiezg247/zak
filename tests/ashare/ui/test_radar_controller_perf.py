@@ -135,27 +135,34 @@ def test_group_load_splits_viewport_priority(qapp: QtWidgets.QApplication) -> No
     page = QtWidgets.QWidget()
     board = MagicMock()
     board.current_mode.return_value = "statistical"
-    board.current_group.return_value = "leader"
-    board.visible_card_ids_for_current_group.return_value = ["market_emotion", "leader_pick"]
+    board.current_group.return_value = "discovery"
+    board.visible_card_ids_for_current_group.return_value = [
+        "discovery_limit_ladder",
+        "discovery_limit_break",
+    ]
 
     with patch.object(RadarController, "_setup_auto_refresh_timers"):
         controller = RadarController(page, board, resonance_panel=MagicMock())
 
     controller._run_group_worker = MagicMock()
     items = [
-        ("market_emotion", {}),
-        ("leader_pick", {}),
-        ("watchlist_short_term", {}),
-        ("sector_theme", {}),
+        ("discovery_limit_ladder", {}),
+        ("discovery_limit_break", {}),
+        ("discovery_volume_surge", {}),
+        ("discovery_moneyflow_intraday", {}),
     ]
     controller._start_group_load(items)
     controller._run_group_worker.assert_called_once()
     first_batch = controller._run_group_worker.call_args.args[0]
-    assert {card_id for card_id, _kwargs in first_batch} == {"market_emotion", "leader_pick"}
-    assert {card_id for card_id, _kwargs in controller._deferred_group_items} == {
-        "watchlist_short_term",
-        "sector_theme",
+    assert {card_id for card_id, _kwargs in first_batch} == {
+        "discovery_limit_ladder",
+        "discovery_limit_break",
     }
+    assert {card_id for card_id, _kwargs in controller._deferred_group_items} == {
+        "discovery_volume_surge",
+        "discovery_moneyflow_intraday",
+    }
+    assert not controller._deferred_tier_batches
 
 
 def test_schedule_sibling_prefetch_queues_other_groups(qapp: QtWidgets.QApplication) -> None:
@@ -257,6 +264,68 @@ def test_show_cached_cards_staggers_apply(qapp: QtWidgets.QApplication) -> None:
     controller._show_cached_cards(["market_emotion", "leader_pick"])
     board.apply_card.assert_called_once()
     assert controller._pending_cache_apply_queue == ["leader_pick"]
+
+
+def test_start_group_load_splits_leader_priority(qapp: QtWidgets.QApplication) -> None:
+    from vnpy_ashare.ui.quotes.radar.controller import RadarController
+
+    page = QtWidgets.QWidget()
+    board = MagicMock()
+    board.visible_card_ids_for_current_group.return_value = {
+        "market_emotion",
+        "leader_pick",
+        "watchlist_short_term",
+    }
+
+    with patch.object(RadarController, "_setup_auto_refresh_timers"):
+        controller = RadarController(page, board, resonance_panel=MagicMock())
+
+    controller._run_group_worker = MagicMock()
+    items = [
+        ("market_emotion", {}),
+        ("leader_pick", {}),
+        ("watchlist_short_term", {}),
+    ]
+    controller._start_group_load(items)
+
+    controller._run_group_worker.assert_called_once()
+    first_batch = controller._run_group_worker.call_args.args[0]
+    assert [card_id for card_id, _kwargs in first_batch] == ["leader_pick"]
+    assert len(controller._deferred_tier_batches) == 2
+    assert [card_id for card_id, _kwargs in controller._deferred_tier_batches[0]] == ["watchlist_short_term"]
+    assert [card_id for card_id, _kwargs in controller._deferred_tier_batches[1]] == ["market_emotion"]
+
+
+def test_on_group_loaded_drains_tier_batches_before_prefetch(qapp: QtWidgets.QApplication) -> None:
+    from vnpy_ashare.quotes.radar.loaders import RadarCardData
+    from vnpy_ashare.ui.quotes.radar.controller import RadarController
+    from vnpy_ashare.ui.quotes.radar.worker import RadarGroupLoadWorker
+
+    page = QtWidgets.QWidget()
+    board = MagicMock()
+    board.visible_card_ids_for_current_group.return_value = {"leader_pick"}
+
+    with patch.object(RadarController, "_setup_auto_refresh_timers"):
+        controller = RadarController(page, board, resonance_panel=MagicMock())
+
+    controller._deferred_tier_batches = [[("watchlist_short_term", {})]]
+    controller._schedule_sibling_prefetch = MagicMock()
+    controller._start_group_load = MagicMock()
+    worker = MagicMock(spec=RadarGroupLoadWorker)
+    controller._group_worker = worker
+
+    data = RadarCardData(
+        card_id="leader_pick",
+        title="选股·龙头",
+        subtitle="",
+        rows=(),
+        empty_message="",
+        updated_at="10:00",
+    )
+    controller._on_group_loaded({"leader_pick": data}, {}, worker=worker)
+
+    controller._start_group_load.assert_called_once_with([("watchlist_short_term", {})], skip_viewport_split=True)
+    controller._schedule_sibling_prefetch.assert_not_called()
 
 
 def test_quote_only_load_skips_resonance_panel_sync(qapp: QtWidgets.QApplication) -> None:

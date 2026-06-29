@@ -103,8 +103,12 @@ def get_scope_overview(
     scope: str,
 ) -> PeriodBarOverview | None:
     _, interval = _interval_for_scope(scope)
-    cache = _ensure_overview_cache()
-    return cache.get(interval, {}).get((symbol, exchange))
+    with _overview_cache_lock:
+        if _overview_by_interval is not None:
+            return _overview_by_interval.get(interval, {}).get((symbol, exchange))
+    from vnpy_ashare.storage.repositories.bar_overview import fetch_scope_bar_overview
+
+    return fetch_scope_bar_overview(symbol, exchange, scope)
 
 
 def load_scope_bars(

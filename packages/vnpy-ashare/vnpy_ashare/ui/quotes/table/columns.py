@@ -70,7 +70,6 @@ LOCAL_TABLE_HEADERS: list[str] = [
     "起始",
     "结束",
     "K线数",
-    "状态",
 ]
 
 
@@ -81,7 +80,6 @@ def build_local_data_row(
     start: str,
     end: str,
     count: str,
-    status: str,
 ) -> list[str]:
     return [
         index_text,
@@ -91,7 +89,6 @@ def build_local_data_row(
         start,
         end,
         count,
-        status,
     ]
 
 

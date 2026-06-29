@@ -113,7 +113,7 @@ class TableSelectionMixin(TableControllerBase):
             page._selected_gap_result = None
             if page.config.show_kline:
                 page.show_kline(item)
-            if page.config.show_fill_button and page._is_daily_local_scope():
+            if page.config.show_fill_button and page._is_daily_local_scope() and not page.config.use_local_pagination:
                 page._check_bar_gaps(item)
             if page.config.show_depth_panel:
                 page.refresh_depth()

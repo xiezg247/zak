@@ -71,12 +71,7 @@ class SubscriptionPanel(QtWidgets.QWidget):
         self._list.clear()
         restore_row = 0
         for index, sub in enumerate(self._rows):
-            cursor = self._service.get_subscription_cursor(sub.id)
-            status = "启用" if sub.enabled else "停用"
-            sync_hint = cursor.get("last_ok_at") or cursor.get("last_error") or "未同步"
-            if isinstance(sync_hint, str) and len(sync_hint) > 18:
-                sync_hint = f"{sync_hint[:16]}…"
-            item = QtWidgets.QListWidgetItem(f"{sub.display_name}\n{status} · {sync_hint}")
+            item = QtWidgets.QListWidgetItem(sub.display_name)
             item.setData(QtCore.Qt.ItemDataRole.UserRole, sub.id)
             self._list.addItem(item)
             if sub.id == current_id:

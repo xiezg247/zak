@@ -152,6 +152,25 @@ def list_radar_cards_for_group(mode: RadarCardMode, group_key: RadarGroupKey) ->
     return tuple(spec for spec in RADAR_CARD_SPECS if spec.mode == mode and RADAR_CARD_GROUP.get(spec.id) == group_key)
 
 
+# 龙头分组首屏：leader_pick 最先，market_emotion 最后（工具栏已有情绪 chip）
+RADAR_CARD_LOAD_PRIORITY: dict[str, int] = {
+    "leader_pick": 0,
+    "watchlist_short_term": 1,
+    "market_emotion": 2,
+}
+
+
+def split_radar_items_by_load_priority(
+    items: list[tuple[str, dict[str, object]]],
+) -> list[list[tuple[str, dict[str, object]]]]:
+    """按卡片优先级拆成多批；未列出的卡片优先级 0，同批一起加载。"""
+    tiers: dict[int, list[tuple[str, dict[str, object]]]] = {}
+    for card_id, kwargs in items:
+        tier = RADAR_CARD_LOAD_PRIORITY.get(card_id, 0)
+        tiers.setdefault(tier, []).append((card_id, kwargs))
+    return [tiers[k] for k in sorted(tiers.keys())]
+
+
 SCENARIO_VARIANTS: tuple[RadarVariant, ...] = (
     RadarVariant(key="scenario_bull", label="偏多情景"),
     RadarVariant(key="scenario_volatile", label="高波动"),

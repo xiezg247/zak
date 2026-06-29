@@ -6,6 +6,7 @@ from vnpy.event import EventEngine
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
+from vnpy_ashare.ui.scheduler.scheduler_jobs_widget import _prevent_dialog_default_button
 from vnpy_ashare.ui.scheduler.scheduler_page import SchedulerPageWidget
 from vnpy_common.ui.dialog_shell import setup_responsive_dialog
 from vnpy_common.ui.feedback import page_notify
@@ -43,7 +44,24 @@ class SchedulerDialog(QtWidgets.QDialog):
         layout.setSpacing(0)
         layout.addWidget(self._page, stretch=1)
 
+        close_button = QtWidgets.QPushButton("关闭")
+        close_button.setObjectName("SecondaryButton")
+        close_button.setMinimumWidth(88)
+        _prevent_dialog_default_button(close_button)
+        close_button.clicked.connect(self.close)
+
+        footer = QtWidgets.QWidget()
+        footer.setObjectName("SchedulerDialogFooter")
+        footer_row = QtWidgets.QHBoxLayout(footer)
+        footer_row.setContentsMargins(16, 8, 16, 12)
+        footer_row.addStretch(1)
+        footer_row.addWidget(close_button)
+        layout.addWidget(footer)
+
         theme_manager().bind_stylesheet(self, extra=build_scheduler_page_stylesheet)
+
+    def accept(self) -> None:
+        """非模态工具窗：子按钮勿触发 QDialog.accept 导致窗口被关闭。"""
 
     def showEvent(self, event: QtGui.QShowEvent) -> None:
         super().showEvent(event)
@@ -51,6 +69,7 @@ class SchedulerDialog(QtWidgets.QDialog):
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         running_names = self._page.deactivate()
+        event.accept()
         super().closeEvent(event)
         if running_names:
             names = "、".join(running_names)

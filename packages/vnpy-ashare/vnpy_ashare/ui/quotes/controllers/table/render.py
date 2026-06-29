@@ -160,13 +160,12 @@ class TableRenderMixin(TableControllerBase):
         page = self._p
         key = (item.symbol, item.exchange)
         meta = page.bar_meta.get(key)
-        status = page.bar_list_status.get(key, list_status(meta))
         minute = not page._is_daily_local_scope()
         return [
             format_meta_datetime(meta.start if meta else None, minute=minute),
             format_meta_datetime(meta.end if meta else None, minute=minute),
             str(meta.count) if meta else "—",
-            status_label(status),
+            status_label(page.bar_list_status.get(key, list_status(meta))),
         ]
 
     def _quote_sort_key(
@@ -348,9 +347,7 @@ class TableRenderMixin(TableControllerBase):
 
     def _build_local_row_cells(self, row: int, item: StockItem) -> list[QuoteCell]:
         page = self._p
-        key = (item.symbol, item.exchange)
-        meta = page.bar_meta.get(key)
-        status = page.bar_list_status.get(key, list_status(meta))
+        meta = page.bar_meta.get((item.symbol, item.exchange))
         minute = not page._is_daily_local_scope()
         values = build_local_data_row(
             item,
@@ -358,16 +355,12 @@ class TableRenderMixin(TableControllerBase):
             start=format_meta_datetime(meta.start if meta else None, minute=minute),
             end=format_meta_datetime(meta.end if meta else None, minute=minute),
             count=str(meta.count) if meta else "—",
-            status=status_label(status),
         )
-        status_col = len(values) - 1
         cells: list[QuoteCell] = []
         for col, text in enumerate(values):
-            cell_color = self._status_color(status) if col == status_col else None
             cells.append(
                 QuoteCell(
                     text=text,
-                    color=cell_color,
                     stock_item=item if col == 0 else None,
                 )
             )
