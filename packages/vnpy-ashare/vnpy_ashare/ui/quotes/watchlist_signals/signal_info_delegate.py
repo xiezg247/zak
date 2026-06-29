@@ -1,34 +1,16 @@
-"""信号区「理由」列委托：绘制可点击文字，替代逐行 QToolButton。"""
+"""信号区「理由」列委托：仅处理点击，绘制走 Model 预计算单元格。"""
 
 from __future__ import annotations
 
-from vnpy.trader.ui import QtCore, QtGui, QtWidgets
+from vnpy.trader.ui import QtCore, QtWidgets
 
 IndexType = QtCore.QModelIndex | QtCore.QPersistentModelIndex
 
 
 class SignalInfoColumnDelegate(QtWidgets.QStyledItemDelegate):
-    """最后一列显示「理由」，单击打开详情。"""
+    """最后一列「理由」；文本与样式由 Worker 写入 QuoteCell，主线程仅处理点击。"""
 
     reason_requested = QtCore.Signal(int)
-
-    def paint(
-        self,
-        painter: QtGui.QPainter,
-        option: QtWidgets.QStyleOptionViewItem,
-        index: IndexType,
-    ) -> None:
-        opt = QtWidgets.QStyleOptionViewItem(option)
-        self.initStyleOption(opt, index)
-        opt.text = "理由"
-        opt.displayAlignment = QtCore.Qt.AlignmentFlag.AlignCenter
-        widget = opt.widget
-        if widget is not None:
-            style = widget.style()
-            if style is not None:
-                style.drawControl(QtWidgets.QStyle.ControlElement.CE_ItemViewItem, opt, painter, widget)
-                return
-        super().paint(painter, opt, index)
 
     def editorEvent(
         self,

@@ -79,6 +79,15 @@ ENV_CONFIG_SPECS: tuple[ConfigFieldSpec, ...] = (
     ),
     ConfigFieldSpec(key="QUOTE_COLLECT_INTERVAL", label="行情采集间隔（秒）", group="Redis 行情", default="15", kind="int"),
     ConfigFieldSpec(
+        key="ZAK_QUOTE_COLLECT_MODE",
+        label="行情采集部署",
+        group="Redis 行情",
+        default="embedded",
+        kind="choice",
+        choices=("embedded", "external"),
+        description="embedded=Scheduler 内 collect；external=独立进程采集，Scheduler 不调度 collect_quotes",
+    ),
+    ConfigFieldSpec(
         key="ZAK_PERF_PROFILE",
         label="性能预设",
         group="性能优化",

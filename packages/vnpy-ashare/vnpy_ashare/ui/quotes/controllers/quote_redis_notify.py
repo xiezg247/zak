@@ -61,4 +61,9 @@ class QuoteRedisNotifyController:
             return
         if quote_l1_enabled():
             clear_quote_l1_cache()
+        from vnpy_ashare.quotes.core.market_snapshot_hub import clear_process_quote_snapshot
+        from vnpy_ashare.quotes.core.quote_rows import clear_market_quote_rows_cache
+
+        clear_process_quote_snapshot()
+        clear_market_quote_rows_cache()
         page._actions.refresh_quotes_rest()

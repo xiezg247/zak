@@ -154,7 +154,9 @@ def load_screening_quote_snapshot_uncached() -> MarketQuotesSnapshot:
     - 仍无数据时：尝试 Redis 陈旧快照
     """
     if is_ashare_trading_session():
-        return load_intraday_market_snapshot(enrich_factors=True)
+        from vnpy_ashare.screener.data.quotes_loader import load_market_quote_rows
+
+        return load_market_quote_rows(enrich_factors=True)
 
     rows, trade_date = fetch_daily_basic_with_fallback()
     if rows:
@@ -173,7 +175,9 @@ def load_screening_quote_snapshot_uncached() -> MarketQuotesSnapshot:
             source="tushare",
         )
 
-    return load_intraday_market_snapshot(enrich_factors=True)
+    from vnpy_ashare.screener.data.quotes_loader import load_market_quote_rows
+
+    return load_market_quote_rows(enrich_factors=True)
 
 
 def fetch_fundamental_screening_rows() -> tuple[list[dict[str, Any]], str, str]:

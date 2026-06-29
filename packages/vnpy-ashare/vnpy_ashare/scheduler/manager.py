@@ -21,6 +21,7 @@ from vnpy_ashare.jobs.bars.download import batch_download_universe_daily_bars
 from vnpy_ashare.jobs.catalog import COLLECT_QUOTES_JOB_ID, MANUAL_FORCE_JOB_IDS
 from vnpy_ashare.jobs.core.progress import bind_job_log
 from vnpy_ashare.jobs.core.result import JobResult
+from vnpy_ashare.quotes.core.collect_mode import scheduler_collect_quotes_enabled
 from vnpy_ashare.jobs.runners import (
     collect_quotes_interval_seconds,
     run_collect_quotes,
@@ -136,6 +137,11 @@ class TaskSchedulerManager:
         )
 
     def _schedule_collect_quotes(self, *, prefer_immediate: bool = False) -> None:
+        if not scheduler_collect_quotes_enabled():
+            logger.info(
+                "ZAK_QUOTE_COLLECT_MODE=external，Scheduler 不调度 collect_quotes（请用独立进程采集）"
+            )
+            return
         cfg = self._get_job_config(COLLECT_QUOTES_JOB_ID)
         if not cfg.enabled:
             return

@@ -79,6 +79,16 @@ while true; do uv run zak job run collect_quotes; sleep 30; done
 
 GUI 客户端开启 `ZAK_QUOTE_REDIS_NOTIFY=1` 后，收到 Pub/Sub 推送即刷新，可拉长 `_quote_timer` 间隔。
 
+### 采集部署收敛
+
+| 角色 | `.env` |
+|------|--------|
+| Leader 独立采集进程 | `ZAK_PERF_PROFILE=leader` + `ZAK_QUOTE_COLLECT_MODE=external` + `ZAK_RUN_SCHEDULER=true` |
+| GUI 同机 Leader（内嵌采集） | `ZAK_PERF_PROFILE=leader`，`ZAK_QUOTE_COLLECT_MODE=embedded`（默认） |
+| 纯 GUI 客户端 | `ZAK_PERF_PROFILE=client` + `ZAK_QUOTE_REDIS_NOTIFY=1` |
+
+`external` 时 Scheduler **不调度** `collect_quotes`，避免与独立进程双采集。
+
 ## 运行时 tracing
 
 热路径已接入 `vnpy_common.perf_trace`（`ZAK_PERF_TRACE=1`）：

@@ -209,8 +209,9 @@ TickFlow → collect_quotes → Redis (~5k HASH + 10× ZSET 全量重建)
    应用层按 symbol 分组；策略信号用 numpy 向量化 MA/突破。
 
 2. **索引**  
-   - 复合索引：`(interval, symbol, exchange, datetime DESC)` 或 VeighNa 已有主键对齐  
-   - 定期 `ANALYZE`；大表可考虑 BRIN（按 datetime）  
+   - Alembic `005_dbbardata_perf` / `006_dbbardata_perf_indexes`：日 K 部分索引 + BRIN（`cli.py db upgrade`）  
+   - VeighNa 已有唯一索引 `(symbol, exchange, interval, datetime)`  
+   - 定期 `ANALYZE`（migration 内已执行；大表可盘后手动再跑）  
 
 3. **分区（可选，数据量 > 千万行）**  
    - 按 `datetime` 范围分区；历史分区只读  
@@ -310,7 +311,7 @@ TickFlow → collect_quotes → Redis (~5k HASH + 10× ZSET 全量重建)
 - [x] `purge_stale_cache` 清理 cache schema 过期行  
 - [x] Redis 读路径：`ZAK_REDIS_QUOTE_BLOB=1`；短 field key 随 BLOB 默认启用（`COMPACT` 可单独关闭）  
 - [x] L1 一致性 `meta:seq` + 异步 enrich Job（`enrich_market_quotes`）  
-- [x] K 线 tail 进程内 LRU（`ZAK_BARS_TAIL_LRU_SIZE`）  
+- [x] K 线 `dbbardata` 日 K 索引（`005` + `006`：symbol/exchange/datetime、批量 IN、BRIN）  
 - [x] 全市场涨幅序 Redis LIST（`ZAK_RANK_ORDERED_LIST=1`）  
 - [x] Tab deactivate 取消行情 Worker（`QuotesRefreshWorker.request_cancel`）  
 - [x] Redis JSON blob + MGET 批量读（`ZAK_REDIS_QUOTE_BLOB=1`）  

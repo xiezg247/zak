@@ -52,12 +52,16 @@ def _load_from_l1(*, enrich_factors: bool) -> MarketQuotesSnapshot | None:
         rows = _rows_from_quote_map(quotes)
         if not rows:
             return None
-        return MarketQuotesSnapshot(
+        snapshot = MarketQuotesSnapshot(
             rows=rows,
             updated_at=l1_get_updated_at(),
             total=len(rows),
             source="l1",
         )
+        from vnpy_ashare.quotes.core.market_snapshot_hub import publish_market_snapshot
+
+        publish_market_snapshot(snapshot)
+        return snapshot
 
 
 def load_market_quote_rows(*, enrich_factors: bool = True) -> MarketQuotesSnapshot:
@@ -85,9 +89,13 @@ def load_market_quote_rows(*, enrich_factors: bool = True) -> MarketQuotesSnapsh
         if not rows:
             raise MarketQuotesLoadError("Redis 中无有效行情快照，请先运行行情采集。")
 
-        return MarketQuotesSnapshot(
+        snapshot = MarketQuotesSnapshot(
             rows=rows,
             updated_at=store.get_updated_at(),
             total=len(rows),
             source="quote",
         )
+        from vnpy_ashare.quotes.core.market_snapshot_hub import publish_market_snapshot
+
+        publish_market_snapshot(snapshot)
+        return snapshot
