@@ -34,9 +34,7 @@ class TushareClientTests(unittest.TestCase):
 
     def test_query_retries_transient_network_error(self) -> None:
         pro = MagicMock()
-        err = requests.exceptions.ConnectionError(
-            "HTTPConnectionPool(host='api.waditu.com', port=80): Failed to resolve 'api.waditu.com'"
-        )
+        err = requests.exceptions.ConnectionError("HTTPConnectionPool(host='api.waditu.com', port=80): Failed to resolve 'api.waditu.com'")
         original_query = MagicMock(side_effect=[err, err, {"ok": True}])
         pro.query = original_query
         wrapped = _wrap_query_with_transient_retry(pro)

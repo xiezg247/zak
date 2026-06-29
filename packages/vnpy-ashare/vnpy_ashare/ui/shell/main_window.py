@@ -63,6 +63,7 @@ from vnpy_ashare.ui.shell.main_window_pages import (
     get_or_create_page,
     nav_index_for_key,
     open_backstage_dialog,
+    open_backtest_menu_dialog,
     open_data_manager_dialog,
     open_local_data_dialog,
     open_notes_center_dialog,
@@ -81,14 +82,19 @@ from vnpy_ashare.ui.shell.main_window_scheduler import (
     schedule_deferred_watchlist_prewarm,
 )
 from vnpy_ashare.ui.shell.nav import (
-    APP_NAV_ENTRIES,
     APP_NAV_GROUPS,
     BACKSTAGE_ENTRIES,
-    BACKSTAGE_SHORTCUTS,
-    NAV_SHORTCUTS,
+    BACKTEST_ENTRIES,
     SidebarNav,
 )
 from vnpy_ashare.ui.shell.settings.dialog import show_settings_dialog
+from vnpy_ashare.ui.shell.shortcuts import (
+    BACKSTAGE_SHORTCUTS,
+    BACKTEST_SHORTCUTS,
+    NOTES_CENTER_SHORTCUT,
+    bind_main_window_shortcuts,
+    format_shortcuts_help,
+)
 from vnpy_common.startup_profile import profiler
 from vnpy_common.ui.feedback import PageToastHost, page_notify, show_info_dialog
 from vnpy_common.ui.qt_helpers import restore_geometry_on_screen
@@ -190,14 +196,21 @@ class AshareMainWindow(MainWindow):
         notes_menu = bar.addMenu("笔记")
         notes_center_action = notes_menu.addAction("笔记中心…")
         notes_center_action.triggered.connect(lambda: open_notes_center_dialog(self))
-        notes_center_action.setShortcut(QtGui.QKeySequence("Ctrl+Shift+N"))
+        notes_center_action.setShortcut(QtGui.QKeySequence(NOTES_CENTER_SHORTCUT))
         self.addAction(notes_center_action)
+
+        backtest_menu = bar.addMenu("回测")
+        for entry in BACKTEST_ENTRIES:
+            action = backtest_menu.addAction(f"{entry.label}…")
+            action.triggered.connect(lambda _checked=False, key=entry.key: open_backtest_menu_dialog(self, key))
+            shortcut = BACKTEST_SHORTCUTS.get(entry.key)
+            if shortcut:
+                action.setShortcut(QtGui.QKeySequence(shortcut))
+                self.addAction(action)
 
         tools_menu = bar.addMenu("工具")
         self._ai_toggle_action = tools_menu.addAction("显示/隐藏 AI 悬浮球")
-        self._ai_toggle_action.setShortcuts([QtGui.QKeySequence("Ctrl+L"), QtGui.QKeySequence("Meta+L")])
         self._ai_toggle_action.triggered.connect(self._toggle_floating_orb)
-        self.addAction(self._ai_toggle_action)
         ai_tools_action = tools_menu.addAction("AI 工具能力…")
         ai_tools_action.triggered.connect(lambda: open_ai_tools_dialog(self))
         audit_action = tools_menu.addAction("AI 工具审计…")
@@ -304,34 +317,15 @@ class AshareMainWindow(MainWindow):
         schedule_deferred_scheduler_start(self)
 
     def _show_shortcuts_help(self) -> None:
-        lines = [
-            "页面切换",
-            *(f"  {NAV_SHORTCUTS.get(entry.key, '—'):8}  {entry.label}" for entry in APP_NAV_ENTRIES),
-            "",
-            "后台（弹窗）",
-            *(f"  {BACKSTAGE_SHORTCUTS.get(entry.key, '—'):8}  {entry.label}" for entry in BACKSTAGE_ENTRIES),
-            "",
-            "全局",
-            "  Ctrl+F    聚焦当前页搜索框",
-            "  Ctrl+L    显示/隐藏 AI 悬浮球",
-            "  Ctrl+Shift+N  笔记中心",
-        ]
-        show_info_dialog(self, "键盘快捷键", "\n".join(lines), monospace=True)
+        show_info_dialog(self, "键盘快捷键", format_shortcuts_help(), monospace=True)
 
     def _bind_nav_shortcuts(self) -> None:
-        for index, entry in enumerate(APP_NAV_ENTRIES):
-            shortcut = NAV_SHORTCUTS.get(entry.key)
-            if not shortcut:
-                continue
-            action = QtGui.QAction(f"打开{entry.label}", self)
-            action.setShortcut(QtGui.QKeySequence(shortcut))
-            action.triggered.connect(lambda _checked=False, i=index: self._show_page(i))
-            self.addAction(action)
-
-        focus_search = QtGui.QAction("聚焦搜索", self)
-        focus_search.setShortcut(QtGui.QKeySequence("Ctrl+F"))
-        focus_search.triggered.connect(self._focus_quotes_search)
-        self.addAction(focus_search)
+        bind_main_window_shortcuts(
+            self,
+            show_page=self._show_page,
+            focus_quotes_search=self._focus_quotes_search,
+            toggle_floating_orb=self._toggle_floating_orb,
+        )
 
     def _focus_quotes_search(self) -> None:
         key = self._current_key

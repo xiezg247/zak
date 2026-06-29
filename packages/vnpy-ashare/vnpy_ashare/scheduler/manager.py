@@ -417,9 +417,7 @@ class TaskSchedulerManager:
         record.message = message
         record.success = success if not skipped else True
         record.skipped = skipped
-        record.detail_lines = [
-            line for line in record.detail_lines if line.startswith("[开始]") or line.startswith("[结束]")
-        ]
+        record.detail_lines = [line for line in record.detail_lines if line.startswith("[开始]") or line.startswith("[结束]")]
 
     def run_now(self, job_id: str) -> bool:
         if job_id not in self._jobs:

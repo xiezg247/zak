@@ -1,6 +1,6 @@
 # 雷达页
 
-`Ctrl+5`。盘面扫描、共振选股与 Hub 快捷入口。龙头细则见 [雷达选龙头](./radar-leader-screening.md)。代码：`ui/quotes/radar/`、`quotes/radar/`。
+`Ctrl+6`。盘面扫描、共振选股与 Hub 快捷入口。龙头细则见 [雷达选龙头](./radar-leader-screening.md)。代码：`ui/quotes/radar/`、`quotes/radar/`。
 
 ---
 

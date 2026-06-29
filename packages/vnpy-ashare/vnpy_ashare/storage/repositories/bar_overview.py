@@ -172,10 +172,7 @@ class BarOverviewRepository(AppBaseRepository):
             return conn.execute(sql, tuple(params)).fetchall()
 
         rows = self.run(_query)
-        return {
-            (str(row["symbol"]), Exchange(str(row["exchange"]))): _row_to_overview(row, period=period)
-            for row in rows
-        }
+        return {(str(row["symbol"]), Exchange(str(row["exchange"]))): _row_to_overview(row, period=period) for row in rows}
 
 
 _repo = BarOverviewRepository()

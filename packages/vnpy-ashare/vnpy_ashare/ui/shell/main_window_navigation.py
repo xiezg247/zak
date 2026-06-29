@@ -7,13 +7,21 @@ from typing import TYPE_CHECKING
 from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore
 
-from vnpy_ashare.ui.shell.main_window_pages import nav_index_for_key, show_page_by_key
+from vnpy_ashare.ui.shell.main_window_pages import (
+    nav_index_for_key,
+    open_backtest_menu_dialog,
+    show_page_by_key,
+)
+from vnpy_ashare.ui.shell.nav import BACKTEST_DIALOG_KEYS
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.shell.main_window import AshareMainWindow
 
 
 def navigate_to_page(win: AshareMainWindow, key: str) -> None:
+    if key in BACKTEST_DIALOG_KEYS:
+        open_backtest_menu_dialog(win, key)
+        return
     nav_index = nav_index_for_key(win, key)
     if nav_index is not None:
         win._show_page(nav_index)

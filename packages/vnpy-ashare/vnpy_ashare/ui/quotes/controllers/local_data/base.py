@@ -34,11 +34,7 @@ class LocalDataControllerBase:
     def should_auto_check_gaps(self) -> bool:
         """分页本地页不自动扫描断层，由用户通过补缺/断层修复按钮处理。"""
         page = self._p
-        return (
-            page.config.show_fill_button
-            and self.is_daily_scope()
-            and not page.config.use_local_pagination
-        )
+        return page.config.show_fill_button and self.is_daily_scope() and not page.config.use_local_pagination
 
     def dismiss_gap_check(self) -> None:
         """翻页/重载列表时放弃进行中的断层扫描。"""

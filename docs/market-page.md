@@ -1,6 +1,6 @@
 # 市场页
 
-`Ctrl+3`。全市场广度、排行、涨停池；情绪周期数据源之一。代码：`ui/quotes/`、`quotes/market/`。
+`Ctrl+4`。全市场广度、排行、涨停池；情绪周期数据源之一。代码：`ui/quotes/`、`quotes/market/`。
 
 ---
 

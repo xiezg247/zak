@@ -11,7 +11,7 @@
 
 - **看盘**：守则（Playbook）/ 自选 / 市场 / 板块资金 / 雷达；TickFlow 行情与五档、Redis 涨幅榜、分 K 图表
 - **选股**：条件选股（规则 + 方案）与多因子配方（定时收件箱）；硬过滤、导出 CSV、行业分布与 diff；详见 [docs/screener-hub-guide.md](docs/screener-hub-guide.md)
-- **信息流**：B 站 UP 订阅时间线（`Ctrl+Shift+F`）；见 [docs/info-feed.md](docs/info-feed.md)
+- **信息流**：B 站 UP 订阅时间线（`Ctrl+8`）；见 [docs/info-feed.md](docs/info-feed.md)
 - **回测**：`AShareTemplate`（T+1、整手、只做多）；看盘联动、批量回测与回测对比
 - **AI**：悬浮球 + Dock + 全屏；Agent Skills + MCP；**投研团队**（`/team 600519` 并行分析）；多会话、流式停止、配置热重载
 - **运维**：定时任务、本地 K 线健康检测与补全；系统配置页编辑 `.env` / `vt_setting.json` 并分级热加载（见 [docs/config-hot-reload.md](docs/config-hot-reload.md)）

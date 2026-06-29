@@ -1,6 +1,6 @@
 # 选股 Hub 使用指南
 
-`Ctrl+6`：「条件选股」+「多因子配方」双 Tab，共用硬过滤与结果区。技术说明见 [盘中选股](./intraday-screening.md)。
+`Ctrl+7`：「条件选股」+「多因子配方」双 Tab，共用硬过滤与结果区。技术说明见 [盘中选股](./intraday-screening.md)。
 
 ---
 

@@ -27,6 +27,7 @@ from vnpy_ashare.domain.ai.actions import (
     AI_ACTION_ORB_ATTENTION,
     normalize_ai_action,
 )
+from vnpy_ashare.ui.shell.main_window_pages import open_backtest_dialog, open_batch_backtest_dialog
 from vnpy_common.ui.feedback import page_notify
 
 if TYPE_CHECKING:
@@ -73,13 +74,7 @@ def on_open_backtest_event(win: AshareMainWindow, event: Event) -> None:
 
 
 def handle_open_backtest(win: AshareMainWindow, data: BacktestRequest) -> None:
-    index = win._nav_index_for_key("cta_backtest")
-    if index is None:
-        return
-    win._show_page(index)
-    widget = win._page_widgets.get("cta_backtest")
-    if widget is not None and hasattr(widget, "apply_vt_symbol"):
-        widget.apply_vt_symbol(data.vt_symbol, source_page=data.source_page)
+    open_backtest_dialog(win, data)
 
 
 def on_open_batch_backtest_event(win: AshareMainWindow, event: Event) -> None:
@@ -88,13 +83,7 @@ def on_open_batch_backtest_event(win: AshareMainWindow, event: Event) -> None:
 
 
 def handle_open_batch_backtest(win: AshareMainWindow, data: BatchBacktestViewRequest) -> None:
-    index = win._nav_index_for_key("batch_backtest")
-    if index is None:
-        return
-    win._show_page(index)
-    widget = win._page_widgets.get("batch_backtest")
-    if widget is not None and hasattr(widget, "show_batch"):
-        widget.show_batch(data.batch_id)
+    open_batch_backtest_dialog(win, data)
 
 
 def on_fill_screener_event(win: AshareMainWindow, event: Event) -> None:

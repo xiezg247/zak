@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from pydantic import Field
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
+from vnpy_ashare.ui.shell.shortcuts import NAV_SHORTCUTS
 from vnpy_ashare.ui.styles.colors import ACCENT_COLOR, NAV_MUTED_COLOR
 from vnpy_common.domain.base import FrozenModel
 from vnpy_common.ui.theme.manager import theme_manager
@@ -42,12 +43,6 @@ APP_NAV_GROUPS: tuple[NavGroup, ...] = (
     ),
     NavGroup(entries=(NavEntry(key="info_feed", label="信息流"),)),
     NavGroup(entries=(NavEntry(key="ai_assistant", label="AI 助手"),)),
-    NavGroup(
-        entries=(
-            NavEntry(key="cta_backtest", label="策略回测"),
-            NavEntry(key="batch_backtest", label="回测对比"),
-        ),
-    ),
 )
 
 APP_NAV_ENTRIES: tuple[NavEntry, ...] = tuple(entry for group in APP_NAV_GROUPS for entry in group.entries)
@@ -61,24 +56,13 @@ BACKSTAGE_ENTRIES: tuple[NavEntry, ...] = (
 
 BACKSTAGE_DIALOG_KEYS: frozenset[str] = frozenset(entry.key for entry in BACKSTAGE_ENTRIES)
 
-NAV_SHORTCUTS: dict[str, str] = {
-    "home": "Ctrl+1",
-    "watchlist": "Ctrl+2",
-    "strategy_monitor": "Ctrl+Shift+2",
-    "market": "Ctrl+3",
-    "sector_flow": "Ctrl+4",
-    "radar": "Ctrl+5",
-    "screener": "Ctrl+6",
-    "info_feed": "Ctrl+Shift+F",
-    "ai_assistant": "Ctrl+7",
-    "cta_backtest": "Ctrl+8",
-    "batch_backtest": "Ctrl+9",
-}
+# 菜单栏「回测」入口（不在侧栏展示；均为弹窗，非主内容页）
+BACKTEST_ENTRIES: tuple[NavEntry, ...] = (
+    NavEntry(key="cta_backtest", label="策略回测"),
+    NavEntry(key="batch_backtest", label="回测对比"),
+)
 
-BACKSTAGE_SHORTCUTS: dict[str, str] = {
-    "scheduler": "Ctrl+0",
-    "local": "Ctrl+Shift+L",
-}
+BACKTEST_DIALOG_KEYS: frozenset[str] = frozenset(entry.key for entry in BACKTEST_ENTRIES)
 
 
 def _tinted_icon(

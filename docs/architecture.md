@@ -7,7 +7,7 @@
 ## 1. 主窗口
 
 继承 `vnpy.trader.ui.MainWindow`：左侧导航 + `StackedWidget` 内容区，可选 AI Dock。  
-导航：`ui/shell/nav.py`（`APP_NAV_GROUPS` + 后台菜单）。
+导航：`ui/shell/nav.py`（`APP_NAV_GROUPS` 侧栏 + 菜单栏「回测」「后台」弹窗）。
 
 领域模型：`StockItem`、`QuoteSnapshot`（非 vnpy `TickData`）。
 
@@ -49,7 +49,7 @@ misc/     持仓异动
 | 自选/市场/雷达 | `ui/quotes/` |
 | 板块资金 | `ui/sector_flow/` |
 | 选股 Hub | `ui/screener/pages/screener_hub_page.py` |
-| 回测 | `ui/backtest/` |
+| 回测 | `ui/backtest/`（菜单栏弹窗，见 `ui/backtest/dialog.py`） |
 | 信息流 | `ui/features/info_feed/` |
 
 自选页组合：主表 + 信号区 + 持仓区（见 [自选页说明](./watchlist.md)）。

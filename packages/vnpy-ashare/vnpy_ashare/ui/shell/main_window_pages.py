@@ -13,6 +13,7 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.ai.ui.page import AiPageWidget
 from vnpy_ashare.app.deferred_apps import ensure_cta_backtester_app, ensure_data_manager_app
+from vnpy_ashare.ui.backtest.dialog import show_backtest_dialog, show_batch_backtest_dialog
 from vnpy_ashare.ui.backtest.pages.batch_backtest_page import BatchBacktestPageWidget
 from vnpy_ashare.ui.features.info_feed.page import InfoFeedPageWidget
 from vnpy_ashare.ui.features.notes_center.open import show_notes_center_dialog
@@ -25,9 +26,13 @@ from vnpy_ashare.ui.shell.local.dialog import show_local_data_dialog
 from vnpy_ashare.ui.shell.manager.dialog import show_data_manager_dialog
 from vnpy_ashare.ui.shell.page_shell import MarketPageWidget, RadarPageWidget, StrategyMonitorPageWidget, WatchlistPageWidget
 from vnpy_common.ui.theme.build_extra import build_info_feed_stylesheet
+from vnpy_common.ui.theme.manager import theme_manager
 
 if TYPE_CHECKING:
+    from vnpy_ashare.app.events import BacktestRequest, BatchBacktestViewRequest
     from vnpy_ashare.ui.shell.main_window import AshareMainWindow
+
+BACKTEST_WIDGET_KEYS: frozenset[str] = frozenset({"cta_backtest", "batch_backtest"})
 
 _QuotesPageFactory = Callable[[MainEngine, EventEngine], QtWidgets.QWidget]
 
@@ -59,9 +64,34 @@ def nav_index_for_key(win: AshareMainWindow, key: str) -> int | None:
     return None
 
 
-def get_or_create_page(win: AshareMainWindow, key: str) -> QtWidgets.QWidget | None:
+def get_or_create_backtest_widget(win: AshareMainWindow, key: str) -> QtWidgets.QWidget | None:
+    if key not in BACKTEST_WIDGET_KEYS:
+        return None
     if key == DEFERRED_CTA_PAGE_KEY:
         ensure_cta_backtester_app(win.main_engine)
+    if key in win._page_widgets:
+        return win._page_widgets[key]
+
+    widget: QtWidgets.QWidget | None = None
+    if key in VNPY_WIDGETS:
+        module_path, class_name = VNPY_WIDGETS[key]
+        ui_module: ModuleType = import_module(module_path)
+        widget_class = getattr(ui_module, class_name)
+        widget = widget_class(win.main_engine, win.event_engine)
+    elif key == "batch_backtest":
+        widget = BatchBacktestPageWidget(win.main_engine, win.event_engine)
+
+    if widget is not None:
+        win._page_widgets[key] = widget
+        win.widgets[key] = widget
+        theme_manager().bind_stylesheet(widget)
+
+    return widget
+
+
+def get_or_create_page(win: AshareMainWindow, key: str) -> QtWidgets.QWidget | None:
+    if key in BACKTEST_WIDGET_KEYS:
+        return None
     if key in win._page_widgets:
         return win._page_widgets[key]
 
@@ -71,11 +101,6 @@ def get_or_create_page(win: AshareMainWindow, key: str) -> QtWidgets.QWidget | N
         widget = QUOTES_WIDGETS[key](win.main_engine, win.event_engine)
     elif key in SHELL_PAGE_WIDGETS:
         widget = SHELL_PAGE_WIDGETS[key](win.main_engine, win.event_engine)
-    elif key in VNPY_WIDGETS:
-        module_path, class_name = VNPY_WIDGETS[key]
-        ui_module: ModuleType = import_module(module_path)
-        widget_class = getattr(ui_module, class_name)
-        widget = widget_class(win.main_engine, win.event_engine)
     elif key == "ai_assistant":
         page = AiPageWidget(win.main_engine, win.event_engine)
         page.collapse_to_dock.connect(win._return_to_floating_mode)
@@ -85,8 +110,6 @@ def get_or_create_page(win: AshareMainWindow, key: str) -> QtWidgets.QWidget | N
         widget.open_scheduler_requested.connect(lambda: open_scheduler_dialog(win))
     elif key == "info_feed":
         widget = InfoFeedPageWidget(win.main_engine, win.event_engine)
-    elif key == "batch_backtest":
-        widget = BatchBacktestPageWidget(win.main_engine, win.event_engine)
 
     if widget is not None:
         win._page_widgets[key] = widget
@@ -218,6 +241,37 @@ def open_backstage_dialog(win: AshareMainWindow, key: str) -> None:
         open_local_data_dialog(win)
 
 
+def open_backtest_menu_dialog(win: AshareMainWindow, key: str) -> None:
+    if key == "cta_backtest":
+        open_backtest_dialog(win)
+    elif key == "batch_backtest":
+        open_batch_backtest_dialog(win)
+
+
+def open_backtest_dialog(win: AshareMainWindow, request: BacktestRequest | None = None) -> None:
+    widget = get_or_create_backtest_widget(win, "cta_backtest")
+    if widget is None:
+        return
+
+    def _apply_request() -> None:
+        if request is not None and hasattr(widget, "apply_vt_symbol"):
+            widget.apply_vt_symbol(request.vt_symbol, source_page=request.source_page)
+
+    show_backtest_dialog(widget, parent=win, on_present=_apply_request)
+
+
+def open_batch_backtest_dialog(win: AshareMainWindow, request: BatchBacktestViewRequest | None = None) -> None:
+    widget = get_or_create_backtest_widget(win, "batch_backtest")
+    if widget is None:
+        return
+
+    def _apply_request() -> None:
+        if request is not None and hasattr(widget, "show_batch"):
+            widget.show_batch(request.batch_id)
+
+    show_batch_backtest_dialog(widget, parent=win, on_present=_apply_request)
+
+
 def open_scheduler_dialog(win: AshareMainWindow) -> None:
     show_scheduler_dialog(win.main_engine, win.event_engine, parent=win)
 
@@ -254,6 +308,9 @@ def try_open_vnpy_widget(win: AshareMainWindow, widget_class: type[QtWidgets.QWi
         "CtaBacktester": "cta_backtest",
     }
     key = name_map.get(name)
+    if key == "cta_backtest":
+        open_backtest_dialog(win)
+        return True
     if key:
         nav_index = nav_index_for_key(win, key)
         if nav_index is not None:
