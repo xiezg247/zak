@@ -505,6 +505,7 @@ class DataLoaderController:
         page._load_generation += 1
         generation = page._load_generation
         scope_key = page.config.scope_key
+        local_paged_load = page.config.use_local_pagination and scope_key == "已下载"
 
         if scope_key == "全部A股" and not self._universe_exists():
             page.all_stocks = []
@@ -514,15 +515,20 @@ class DataLoaderController:
             return
 
         loading_text = f"正在加载{page.page_name}…"
-        if not self._begin_loader_task(
-            loading_text,
-            worker_attr="_load_worker",
-            lock_table=True,
-        ):
-            return
-        page._show_market_loading(loading_text)
-        page.status_label.setText(loading_text)
-        page.quote_table_model.set_row_count(0)
+        if local_paged_load:
+            if page._task_guard.active:
+                return
+            page.status_label.setText(f"正在加载第 {page._market_page + 1} 页…")
+        else:
+            if not self._begin_loader_task(
+                loading_text,
+                worker_attr="_load_worker",
+                lock_table=True,
+            ):
+                return
+            page._show_market_loading(loading_text)
+            page.status_label.setText(loading_text)
+            page.quote_table_model.set_row_count(0)
 
         if page.config.use_local_pagination and scope_key == "已下载":
             offset = page._market_page * page.config.local_page_size
@@ -556,10 +562,11 @@ class DataLoaderController:
                     page._local_total = len(result)
                 else:
                     return
-                if page._finish_cancellable_task(cancelled_message="加载已取消"):
+                if not local_paged_load:
+                    if page._finish_cancellable_task(cancelled_message="加载已取消"):
+                        page._hide_market_loading()
+                        return
                     page._hide_market_loading()
-                    return
-                page._hide_market_loading()
                 if page.config.use_local_pagination:
                     page._pagination.set_visible()
                     page._pagination.update_controls()
@@ -600,10 +607,11 @@ class DataLoaderController:
             try:
                 if generation != page._load_generation or not page._active:
                     return
-                if page._finish_cancellable_task(cancelled_message="加载已取消"):
+                if not local_paged_load:
+                    if page._finish_cancellable_task(cancelled_message="加载已取消"):
+                        page._hide_market_loading()
+                        return
                     page._hide_market_loading()
-                    return
-                page._hide_market_loading()
                 page.status_label.setText(f"加载失败: {msg}")
                 page._toast.error(msg)
             finally:

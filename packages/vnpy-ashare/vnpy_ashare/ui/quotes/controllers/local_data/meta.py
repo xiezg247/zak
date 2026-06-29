@@ -65,9 +65,6 @@ class LocalDataMetaMixin(LocalDataControllerBase):
         self.refresh_meta(invalidate_overview=False)
         page._local_filter_keyword = page.search_edit.text().strip().lower()
         page._table.apply_local_page_display()
-        item = page.current_item
-        if item is not None and (item.symbol, item.exchange) in page.downloaded_keys:
-            page.show_kline(item)
 
     def schedule_invalid_bar_cleanup(self) -> None:
         """后台清理无效日 K 概览，避免进入本地页时在主线程扫描全库。"""

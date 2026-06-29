@@ -59,7 +59,18 @@ def load_daily_bars_tail(
     lookback_bars: int = PATTERN_LOOKBACK_BARS,
 ) -> list[BarData]:
     """按 overview 尾部加载日 K，供形态规则使用。"""
-    overview = get_scope_overview(symbol, exchange, "daily")
+    return load_scope_bars_tail(symbol, exchange, "daily", lookback_bars=lookback_bars)
+
+
+def load_scope_bars_tail(
+    symbol: str,
+    exchange: Exchange,
+    scope: str,
+    *,
+    lookback_bars: int,
+) -> list[BarData]:
+    """按 overview 尾部窗口加载 K 线，避免全区间扫库。"""
+    overview = get_scope_overview(symbol, exchange, scope)
     if overview is None:
         return []
 
@@ -69,7 +80,7 @@ def load_daily_bars_tail(
     if start < overview.start:
         start = overview.start
 
-    bars = load_scope_bars(symbol, exchange, "daily", start, end)
+    bars = load_scope_bars(symbol, exchange, scope, start, end)
     if len(bars) > lookback_bars:
         return bars[-lookback_bars:]
     return bars

@@ -6,15 +6,17 @@ from vnpy.trader.constant import Interval
 from vnpy.trader.database import get_database
 from vnpy.trader.ui import QtCore
 
-from vnpy_ashare.data.bar_access import get_scope_overview, load_scope_bars
+from vnpy_ashare.data.bar_access import get_scope_overview
 from vnpy_ashare.data.bar_health import BarMeta, inspect_bar_gaps
+from vnpy_ashare.data.pattern_bars import load_daily_bars_tail, load_scope_bars_tail
 from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.domain.time.calendar import last_trading_day
+from vnpy_ashare.ui.quotes.page.config import LOCAL_CHART_DAILY_LOOKBACK_BARS, LOCAL_CHART_MINUTE_LOOKBACK_BARS
 from vnpy_ashare.ui.quotes.workers.quotes_workers.models import LoadedBars
 
 
 class BarsLoadWorker(QtCore.QThread):
-    """加载单标的日 K（bar_access）。"""
+    """加载单标的日 K 尾部窗口（本地图表）。"""
 
     finished = QtCore.Signal(object)
     failed = QtCore.Signal(str)
@@ -34,12 +36,10 @@ class BarsLoadWorker(QtCore.QThread):
                 self.finished.emit(None)
                 return
 
-            bars = load_scope_bars(
+            bars = load_daily_bars_tail(
                 self.item.symbol,
                 self.item.exchange,
-                "daily",
-                overview.start,
-                overview.end,
+                lookback_bars=LOCAL_CHART_DAILY_LOOKBACK_BARS,
             )
             result = LoadedBars(
                 item=self.item,
@@ -53,7 +53,7 @@ class BarsLoadWorker(QtCore.QThread):
 
 
 class ScopeBarsLoadWorker(QtCore.QThread):
-    """加载单标的指定 scope（daily / 分 K）K 线。"""
+    """加载单标的指定 scope 尾部 K 线（本地图表）。"""
 
     finished = QtCore.Signal(object)
     failed = QtCore.Signal(str)
@@ -74,12 +74,11 @@ class ScopeBarsLoadWorker(QtCore.QThread):
                 self.finished.emit(None)
                 return
 
-            bars = load_scope_bars(
+            bars = load_scope_bars_tail(
                 self.item.symbol,
                 self.item.exchange,
                 self.scope,
-                overview.start,
-                overview.end,
+                lookback_bars=LOCAL_CHART_MINUTE_LOOKBACK_BARS,
             )
             result = LoadedBars(
                 item=self.item,
