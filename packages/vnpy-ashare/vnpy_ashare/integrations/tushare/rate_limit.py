@@ -107,4 +107,4 @@ def rate_limit_retry_delay(attempt: int) -> float:
 
 def transient_retry_delay(attempt: int) -> float:
     """网络错误退避：1s → 2s → 4s（上限 8s）。"""
-    return min(8.0, 1.0 * (2**attempt))
+    return min(8.0, float(2**attempt))

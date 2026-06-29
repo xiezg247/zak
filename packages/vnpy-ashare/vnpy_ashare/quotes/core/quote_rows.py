@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import threading
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import Any, TypeGuard
 
 from vnpy_ashare.domain.market.quote_row import (
     QuoteRow,
@@ -21,7 +21,7 @@ _lock = threading.Lock()
 _rows: list[QuoteRow] = []
 
 
-def _is_quote_row_list(rows: QuoteRowsLike) -> bool:
+def _is_quote_row_list(rows: QuoteRowsLike) -> TypeGuard[list[QuoteRow]]:
     return isinstance(rows, list) and (not rows or all(isinstance(row, QuoteRow) for row in rows))
 
 

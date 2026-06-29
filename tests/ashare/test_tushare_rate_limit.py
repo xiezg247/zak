@@ -10,7 +10,6 @@ from vnpy_ashare.integrations.tushare.rate_limit import (
     SlidingWindowLimiter,
     acquire_tushare,
     is_rate_limited,
-    is_transient_network_error,
 )
 
 
