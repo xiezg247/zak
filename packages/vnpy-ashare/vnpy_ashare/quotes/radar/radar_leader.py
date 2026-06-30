@@ -206,6 +206,42 @@ def _amount_rank_in_group(rows: QuoteRowsLike) -> dict[str, float]:
     return result
 
 
+def _batch_leader_parts_polars(
+    rows: QuoteRowsLike,
+    *,
+    max_net_mf: float = 0.0,
+    sector_strength_bonus: float = 1.0,
+    resonance_bonus: float = 0.0,
+) -> list[dict[str, float]]:
+    """Polars 批量计算可向量化的龙头分项（不可向量化的 seal_quality / seal_time 仍需 Python 逐行）。"""
+    import polars as pl
+
+    row_dicts = [row.to_dict() if hasattr(row, 'to_dict') else dict(row) for row in rows]
+    df = pl.DataFrame(row_dicts, infer_schema_length=max(len(row_dicts), 1))
+    limit_times = pl.col("limit_times").cast(pl.Float64, strict=False).fill_null(0.0)
+    amount_col = pl.col("amount").cast(pl.Float64, strict=False).fill_null(0.0)
+    net_mf_col = pl.col("net_mf_amount").cast(pl.Float64, strict=False).fill_null(0.0)
+
+    amount_rank = (amount_col.rank(method="max") / pl.len()).fill_null(0.5)
+    norm_limit = (limit_times.clip(0.0, 5.0) / 5.0)
+    norm_limit = pl.when(limit_times <= 0.0).then(0.2).otherwise(norm_limit.clip(0.0, 1.0))
+
+    if max_net_mf <= 0:
+        norm_mf = pl.when(net_mf_col > 0).then(0.5).otherwise(0.0)
+    else:
+        norm_mf = (net_mf_col / max_net_mf).clip(0.0, 1.0)
+    norm_mf = pl.when(net_mf_col <= 0).then(0.0).otherwise(norm_mf)
+
+    df = df.with_columns(
+        norm_limit.alias("_norm_limit_times"),
+        amount_rank.alias("_amount_rank"),
+        norm_mf.alias("_norm_net_mf"),
+        pl.lit(_clamp01(sector_strength_bonus)).alias("_sector_strength"),
+        pl.lit(_clamp01(resonance_bonus)).alias("_resonance"),
+    )
+    return [dict(row) for row in df.iter_rows(named=True)]
+
+
 def compute_leader_score(
     row: QuoteRowLike,
     *,
@@ -286,27 +322,28 @@ def rank_sector_group_full(
     if not group_rows:
         return []
 
-    amount_ranks = _amount_rank_in_group(group_rows)
+    weights = leader_score_weights_for_stage(emotion_stage)
     max_mf = max(abs(float(row.get("net_mf_amount") or 0)) for row in group_rows)
     bonus = 1.0
     if strong_sectors is not None and sector_name:
         bonus = 1.0 if sector_name in strong_sectors else 0.55
 
+    batch_parts = _batch_leader_parts_polars(
+        group_rows, max_net_mf=max_mf, sector_strength_bonus=bonus,
+    )
+
     scored: list[tuple[QuoteRow, float, float]] = []
-    for row in group_rows:
+    for idx, row in enumerate(group_rows):
         coerced = coerce_quote_row(row)
-        vt = str(coerced.get("vt_symbol") or "")
-        score = compute_leader_score(
-            coerced,
-            amount_rank=amount_ranks.get(vt, 0.5),
-            sector_strength_bonus=bonus,
-            max_net_mf=max_mf,
-            emotion_stage=emotion_stage,
-        )
+        parts = batch_parts[idx]
+        parts["seal_quality"] = _seal_quality_proxy(coerced)
+        parts["seal_time"] = _clamp01(float(coerced.get("seal_time_score") or seal_time_score(str(coerced.get("first_time") or ""))))
+        score = sum(parts.get(key, 0) * weights.get(key, 0) for key in weights) * 100.0
+        leader_score = round(max(0.0, min(100.0, score)), 1)
         boards = float(coerced.get("limit_times") or 0)
         if boards < 1 and is_at_limit_board(coerced):
             boards = 1.0
-        scored.append((coerced, score, boards))
+        scored.append((coerced, leader_score, boards))
 
     scored.sort(
         key=lambda item: (item[1], item[2], float(item[0].get("change_pct") or 0)),
@@ -333,7 +370,7 @@ def rank_sector_group_full(
         if include_breakdown:
             entry["score_breakdown"] = compute_leader_score_breakdown(
                 row,
-                amount_rank=amount_ranks.get(vt, 0.5),
+                amount_rank=batch_parts[index].get("_amount_rank", 0.5),
                 sector_strength_bonus=bonus,
                 max_net_mf=max_mf,
                 emotion_stage=emotion_stage,
@@ -361,27 +398,27 @@ def rank_sector_leaders(
             continue
         grouped.setdefault(key, []).append(coerce_quote_row(row))
 
+    weights = leader_score_weights_for_stage(emotion_stage)
     ranked: list[LeaderScoredRow] = []
     for group_name, group_rows in grouped.items():
-        amount_ranks = _amount_rank_in_group(group_rows)
+        bonus = 1.0 if (strong_sectors is None or group_name in strong_sectors) else 0.55
         max_mf = max(abs(float(row.get("net_mf_amount") or 0)) for row in group_rows)
+        batch_parts = _batch_leader_parts_polars(
+            group_rows, max_net_mf=max_mf, sector_strength_bonus=bonus,
+        )
+
         scored: list[tuple[QuoteRow, float, float]] = []
-        for row in group_rows:
-            vt = str(row.get("vt_symbol") or "")
-            bonus = 1.0
-            if strong_sectors is not None:
-                bonus = 1.0 if group_name in strong_sectors else 0.55
-            score = compute_leader_score(
-                row,
-                amount_rank=amount_ranks.get(vt, 0.5),
-                sector_strength_bonus=bonus,
-                max_net_mf=max_mf,
-                emotion_stage=emotion_stage,
-            )
+        for idx, row in enumerate(group_rows):
+            parts = batch_parts[idx]
+            parts["seal_quality"] = _seal_quality_proxy(row)
+            parts["seal_time"] = _clamp01(float(row.get("seal_time_score") or seal_time_score(str(row.get("first_time") or ""))))
+            score = sum(parts.get(key, 0) * weights.get(key, 0) for key in weights) * 100.0
+            leader_score = round(max(0.0, min(100.0, score)), 1)
             boards = float(row.get("limit_times") or 0)
             if boards < 1 and is_at_limit_board(row):
                 boards = 1.0
-            scored.append((row, score, boards))
+            scored.append((row, leader_score, boards))
+
         scored.sort(key=lambda item: (item[1], item[2], float(item[0].get("change_pct") or 0)), reverse=True)
 
         for index, (row, score, boards) in enumerate(scored[:max_per_sector]):

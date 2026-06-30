@@ -4,13 +4,11 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable
-from typing import Any
 
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
 from vnpy_ashare.data.bar_access import iter_bar_overviews
 from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.data.pattern_bars import pattern_load_max_workers
-from vnpy_ashare.domain.market.quote_row import coerce_quote_row
 from vnpy_ashare.domain.radar.horizon import HorizonScanResult
 from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.domain.time.china import format_china_datetime_minute
@@ -34,8 +32,8 @@ from vnpy_ashare.quotes.radar.radar_horizon_stats import HorizonScanStats
 from vnpy_ashare.quotes.radar.radar_pool import collect_outlook_exclusion_vt_symbols, name_map_for_symbols
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
+from vnpy_ashare.screener.engine.frame import row_to_dict
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters
-from vnpy_ashare.screener.preset.rules import _quote_liquidity_key
 
 HORIZON_PREFILTER_TOP = 600
 _DAILY_K_READY_TTL_SEC = 60.0
@@ -118,32 +116,44 @@ def prefilter_horizon_universe(
     filtered = apply_recipe_filters(list(snapshot.rows))
     min_bars = horizon_min_signal_bars(config)
     k_ready = collect_daily_k_ready_vt_symbols(min_bars, config=config)
-    candidates: list[dict[str, Any]] = []
-    for row in filtered:
-        vt_symbol = str(row.get("vt_symbol") or "").strip()
-        if not vt_symbol or vt_symbol in exclusion:
-            continue
-        if vt_symbol not in k_ready:
-            continue
-        candidates.append(coerce_quote_row(row).to_dict())
 
-    excluded_count = len(exclusion)
-    if not candidates:
+    import polars as pl
+
+    # Polars 向量化：排除 + 日K达标 + 流动性排序
+    payloads = [row_to_dict(row) for row in filtered]
+    df = pl.DataFrame(payloads, infer_schema_length=max(len(payloads), 1))
+    if "vt_symbol" not in df.columns:
+        return [], HorizonScanStats(scanned_total=scanned_total, excluded_count=len(exclusion), prefilter_total=0, refined_total=0, kline_missing=0)
+
+    vt_col = pl.col("vt_symbol").cast(pl.Utf8, strict=False).fill_null("")
+    df = df.filter(
+        vt_col.str.len_chars() > 0,
+        ~vt_col.is_in(list(exclusion)),
+        vt_col.is_in(list(k_ready)),
+    )
+    if df.is_empty():
         return [], HorizonScanStats(
             scanned_total=scanned_total,
-            excluded_count=excluded_count,
+            excluded_count=len(exclusion),
             prefilter_total=0,
             refined_total=0,
             kline_missing=0,
         )
 
-    ranked = sorted(candidates, key=_quote_liquidity_key, reverse=True)
+    liq = pl.max_horizontal(
+        pl.col("volume").cast(pl.Float64, strict=False).fill_null(0.0),
+        pl.col("amount").cast(pl.Float64, strict=False).fill_null(0.0),
+        pl.col("total_mv").cast(pl.Float64, strict=False).fill_null(0.0),
+        pl.col("circ_mv").cast(pl.Float64, strict=False).fill_null(0.0),
+        pl.col("turnover_rate").cast(pl.Float64, strict=False).fill_null(0.0),
+    ).alias("_liq")
+    ranked = df.with_columns(liq).sort("_liq", descending=True, nulls_last=True)
     cap = max(1, min(int(max_items), HORIZON_PREFILTER_TOP))
-    prefilter = [str(row.get("vt_symbol") or "").strip() for row in ranked[:cap]]
+    prefilter = ranked.head(cap).select(vt_col).to_series().to_list()
     prefilter = [vt for vt in prefilter if vt]
     return prefilter, HorizonScanStats(
         scanned_total=scanned_total,
-        excluded_count=excluded_count,
+        excluded_count=len(exclusion),
         prefilter_total=len(prefilter),
         refined_total=0,
         kline_missing=0,

@@ -23,7 +23,16 @@ def snapshot_rows_to_dataframe(rows: Sequence[Any]) -> pl.DataFrame:
     if not rows:
         return pl.DataFrame()
     payloads = [row_to_dict(row) for row in rows]
-    return pl.DataFrame(payloads, infer_schema_length=max(len(payloads), 1))
+    df = pl.DataFrame(payloads, infer_schema_length=max(len(payloads), 1))
+    # 确保 change_pct / pct_chg 均存在且无 null，防止下游 QuoteRow 校验失败
+    for col, other in (("change_pct", "pct_chg"), ("pct_chg", "change_pct")):
+        if col in df.columns:
+            df = df.with_columns(pl.col(col).fill_null(0.0))
+        elif other in df.columns:
+            df = df.with_columns(pl.col(other).fill_null(0.0).alias(col))
+        else:
+            df = df.with_columns(pl.lit(0.0).alias(col))
+    return df
 
 
 def attach_industry_columns(

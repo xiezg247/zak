@@ -27,6 +27,10 @@ def card_snapshot_max_age_sec(card_id: str) -> float:
         return 60.0
     if card_id.startswith("sector_"):
         return 180.0
+    if card_id.startswith("watchlist_") or card_id == "position_risk":
+        return 60.0
+    if card_id.startswith("outlook_"):
+        return 300.0
     return _DEFAULT_MAX_AGE_SEC
 
 
@@ -40,6 +44,8 @@ def radar_card_variant_key(card_id: str, variants: dict[str, str]) -> str:
         return str(variants.get("sector_flow_hot_variant") or "")
     if card_id == "discovery_limit_ladder":
         return str(variants.get("limit_ladder_variant") or "")
+    if card_id in ("outlook_scenario", "outlook_predict"):
+        return str(variants.get("scenario_variant") or "")
     return ""
 
 

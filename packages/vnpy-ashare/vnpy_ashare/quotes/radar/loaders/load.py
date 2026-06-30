@@ -79,6 +79,13 @@ RADAR_SNAPSHOT_CARD_IDS = frozenset(
         "discovery_limit_break",
         "sector_theme",
         "sector_flow_hot",
+        "watchlist_short_term",
+        "watchlist_intraday",
+        "position_risk",
+        "outlook_watch",
+        "outlook_hold",
+        "outlook_scenario",
+        "outlook_predict",
     }
 )
 

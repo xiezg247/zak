@@ -27,24 +27,41 @@ _STRONG_INDUSTRY_TOP = 5
 _MIN_CHANGE_ALL_MARKET = 7.0
 
 
+class _LeaderPoolMeta:
+    """候选池附带元数据，避免 load_leader_pick 重复计算 sector 分布。"""
+
+    __slots__ = ("strong_industries", "strong_concepts", "hot_concepts")
+
+    def __init__(
+        self,
+        strong_industries: set[str] | None = None,
+        strong_concepts: set[str] | None = None,
+        hot_concepts: list[str] | None = None,
+    ) -> None:
+        self.strong_industries = strong_industries or set()
+        self.strong_concepts = strong_concepts or set()
+        self.hot_concepts = hot_concepts or []
+
+
 def build_leader_candidate_pool(
     *,
     variant: LeaderPickVariant = "mainline",
     pool_size: int = 80,
-) -> tuple[list[QuoteRow | dict[str, Any]], int]:
-    """构建龙头评分候选池；返回 (candidates, total_scanned)。"""
+) -> tuple[list[QuoteRow | dict[str, Any]], int, _LeaderPoolMeta]:
+    """构建龙头评分候选池；返回 (candidates, total_scanned, pool_meta)。"""
     peeked = peek_leader_candidate_pool(variant=variant, pool_size=pool_size)
     if peeked is not None:
-        return peeked
+        cands, total = peeked
+        return cands, total, _LeaderPoolMeta()
 
     try:
         snapshot = load_screening_quote_snapshot()
     except MarketQuotesLoadError:
-        return [], 0
+        return [], 0, _LeaderPoolMeta()
 
     enriched, hot_concepts = attach_sector_fields(snapshot.rows)
     if not enriched:
-        return [], snapshot.total
+        return [], snapshot.total, _LeaderPoolMeta(hot_concepts=hot_concepts)
 
     if variant == "mainline":
         hits, _total = run_sector_strength(max(pool_size, 40), weight=1.0)
@@ -59,8 +76,9 @@ def build_leader_candidate_pool(
                 pool_rows.append(row)
         attach_first_time_fields(pool_rows)
         store_leader_candidate_pool(variant=variant, pool_size=pool_size, candidates=pool_rows, total=snapshot.total)
-        return pool_rows, snapshot.total
+        return pool_rows, snapshot.total, _LeaderPoolMeta(hot_concepts=hot_concepts)
 
+    # all_market: 同时计算 sector 分布，供 load_leader_pick 复用
     distribution = compute_sector_distribution(enriched, top_n=10, min_stocks=3)
     concept_distribution = compute_sector_distribution(enriched, top_n=10, min_stocks=3, sector_field="concept")
     strong = {str(item["industry"]) for item in distribution[:_STRONG_INDUSTRY_TOP]}
@@ -94,7 +112,11 @@ def build_leader_candidate_pool(
     trimmed = candidates[:pool_size]
     attach_first_time_fields(trimmed)
     store_leader_candidate_pool(variant=variant, pool_size=pool_size, candidates=trimmed, total=snapshot.total)
-    return trimmed, snapshot.total
+    return trimmed, snapshot.total, _LeaderPoolMeta(
+        strong_industries=strong,
+        strong_concepts=strong_concepts,
+        hot_concepts=hot_concepts,
+    )
 
 
 def rank_leader_pool(
@@ -119,7 +141,7 @@ def rank_leader_pool(
 
 
 def load_leader_pick(spec: RadarCardSpec, *, variant: LeaderPickVariant = "mainline") -> RadarCardData:
-    candidates, total = build_leader_candidate_pool(variant=variant, pool_size=max(spec.top_n * 6, 40))
+    candidates, total, pool_meta = build_leader_candidate_pool(variant=variant, pool_size=max(spec.top_n * 6, 40))
     if not candidates:
         return RadarCardData(
             card_id=spec.id,
@@ -131,12 +153,20 @@ def load_leader_pick(spec: RadarCardSpec, *, variant: LeaderPickVariant = "mainl
             total_count=total,
         )
 
-    enriched, hot_concepts = attach_sector_fields(candidates)
-    pool = enriched or candidates
-    industry_distribution = compute_sector_distribution(pool, top_n=8, min_stocks=3)
-    concept_distribution = compute_sector_distribution(pool, top_n=8, min_stocks=3, sector_field="concept")
-    strong_industries = {str(item["industry"]) for item in industry_distribution[:5]}
-    strong_concepts = {str(item["concept"]) for item in concept_distribution[:5]} | set(hot_concepts)
+    # 池已含行业/概念字段，无需重复 attach_sector_fields
+    pool = candidates
+    hot_concepts = pool_meta.hot_concepts
+
+    if variant == "mainline":
+        # mainline 候选来自板块强度维度，按池内 sector 分布识别最强的行业/概念
+        industry_distribution = compute_sector_distribution(pool, top_n=8, min_stocks=3)
+        concept_distribution = compute_sector_distribution(pool, top_n=8, min_stocks=3, sector_field="concept")
+        strong_industries = {str(item["industry"]) for item in industry_distribution[:5]}
+        strong_concepts = {str(item["concept"]) for item in concept_distribution[:5]} | set(hot_concepts)
+    else:
+        # all_market: 复用 pool_meta 中已算好的 sector 分布
+        strong_industries = pool_meta.strong_industries
+        strong_concepts = pool_meta.strong_concepts
 
     cycle = load_emotion_cycle_snapshot(fetch_if_missing=False)
     emotion_stage = cycle.stage if cycle is not None else None
