@@ -7,7 +7,7 @@
 ## 布局
 
 ```text
-工具栏：刷新 / 自动刷新 / 共振总览 / 问 AI
+工具栏：情绪 chip（五阶段 / gate）/ 刷新 / 自动刷新 / 共振总览 / 问 AI
 盘面统计（3 列）：龙头、发现卡、自选卡、板块·主线、持仓·风控…
 前瞻展望（3 列）：未来·关注/可持/情景/预测（波段辅助，非打板主池）
 共振侧栏：跨卡加权 Top N → Hub「雷达共振」/ 加自选
@@ -15,13 +15,14 @@
 
 `RADAR_GRID_COLUMNS = 3`。单击行联动看盘；问 AI → `build_radar_ai_prompt`（含情绪阶段）。
 
+**盘面·环境**：顶栏情绪 chip 展示五阶段与 gate（`load_market_emotion`）；不在 `RADAR_CARD_SPECS` 网格内，不参与共振加权。
+
 ---
 
 ## 主要卡片
 
 | card_id | 标题 | 刷新 |
 |---------|------|------|
-| `market_emotion` | 盘面·环境 | 60s（不参与共振） |
 | `leader_pick` | 选股·龙头 | 手动 |
 | `discovery_limit_ladder` | 发现·连板梯队 | 60s |
 | `discovery_limit_break` | 发现·炸板断板 | 60s |

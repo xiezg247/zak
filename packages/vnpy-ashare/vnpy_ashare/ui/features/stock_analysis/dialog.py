@@ -418,6 +418,8 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         scope = _TAB_SCOPES.get(index)
         if scope is None or scope in self._loaded_scopes:
             return
+        if scope == "financial":
+            sync_financials = True
         self._start_load(scope=scope, sync_financials=sync_financials)
 
     def _refresh_current_tab(self) -> None:
@@ -723,7 +725,7 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         while self._pending_scopes:
             scope = self._pending_scopes.pop(0)
             if scope not in self._loaded_scopes:
-                self._start_load(scope=scope, sync_financials=False)
+                self._start_load(scope=scope, sync_financials=(scope == "financial"))
                 return
 
     def _on_failed(self, message: str) -> None:

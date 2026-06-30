@@ -34,6 +34,8 @@ LLM **不直接**调 `mcp_*`；综合诊断经 `diagnose_stock` Skill。
 | 回测解读 | `get_backtest_result` 等 | vnpy-backtest | — |
 | 情绪 / 择时 / 能不能做 | `get_emotion_cycle` | vnpy-sentiment | — |
 | 恐贪指数 | `get_ashare_fear_greed_index` | vnpy-sentiment | enrichment 控制入列 |
+| 雷达盘面 / 共振 | `get_radar_snapshot` | vnpy-radar | 须先刷新雷达页 |
+| 龙头卡快照（只读） | `get_leader_pick_snapshot` | vnpy-radar | 不落库；`mainline` / `all_market` |
 | 龙头 / 连板池 | `run_leader_screen` | vnpy-screening | 依赖雷达刷新 |
 | 短线盘中上下文 | `get_short_term_watchlist` | vnpy-watchlist | — |
 | 次日计划 | `propose_trading_plan` | vnpy-trading | 确认后写入 |

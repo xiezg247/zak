@@ -29,6 +29,7 @@ from vnpy_ashare.services.stock.profile import (
     sync_disclosure_calendar,
     sync_valuation_history,
 )
+from vnpy_ashare.services.financial import bundle_has_local_data
 from vnpy_ashare.services.stock.short_term import build_short_term_profile
 from vnpy_ashare.storage.repositories.valuation import ValuationRow, list_valuation_history
 from vnpy_common.domain.base import MutableModel
@@ -157,11 +158,14 @@ class StockAnalysisService(BaseService):
 
     def _load_financial(self, payload: StockAnalysisPayload, *, sync_financials: bool) -> None:
         financial = self.engine.financial_service
+        sync_result = None
         if sync_financials:
             bundle, sync_result = financial.get_or_sync(payload.vt_symbol)
-            payload.financial_bundle = bundle
-            payload.financial_sync = sync_result
-            if sync_result and sync_result.warnings:
-                payload.warnings.extend(sync_result.warnings)
         else:
-            payload.financial_bundle = financial.get_bundle(payload.vt_symbol)
+            bundle = financial.get_bundle(payload.vt_symbol)
+            if not bundle_has_local_data(bundle):
+                bundle, sync_result = financial.get_or_sync(payload.vt_symbol)
+        payload.financial_bundle = bundle
+        payload.financial_sync = sync_result
+        if sync_result and sync_result.warnings:
+            payload.warnings.extend(sync_result.warnings)

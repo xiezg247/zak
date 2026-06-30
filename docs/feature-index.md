@@ -60,3 +60,4 @@
 | 回测联动、批量对比 | [策略回测](./backtest-ux.md) |
 | 配置热加载 | [配置分级热加载](./config-hot-reload.md) |
 | 数据流触发 | [数据流与触发方式](./data-flow.md) |
+| cache schema 过期清理 | [性能优化 §Phase 1](./performance-optimization.md)（`purge_stale_cache`，默认可在定时任务页启用） |

@@ -71,6 +71,7 @@ class TestSchedulerConfig(unittest.TestCase):
         self.assertIn("prefetch_concept_board", job_ids)
         self.assertIn("warm_market_summary", job_ids)
         self.assertIn("warm_watchlist_strategy_cache", job_ids)
+        self.assertIn("purge_stale_cache", job_ids)
         self.assertNotIn("batch_download", job_ids)
 
     def test_new_job_config_roundtrip(self) -> None:
@@ -127,6 +128,7 @@ class TestSchedulerConfig(unittest.TestCase):
             config.batch_fill_stale.cron_hour * 60 + config.batch_fill_stale.cron_minute,
             config.warm_watchlist_strategy_cache.cron_hour * 60 + config.warm_watchlist_strategy_cache.cron_minute,
             config.fill_focus_pool_minute.cron_hour * 60 + config.fill_focus_pool_minute.cron_minute,
+            config.purge_stale_cache.cron_hour * 60 + config.purge_stale_cache.cron_minute,
         ]
         for earlier, later in zip(minutes, minutes[1:], strict=False):
             self.assertGreaterEqual(later - earlier, 5)

@@ -299,6 +299,16 @@ def sync_watchlist_financials(
     return ok, skipped, [summary, *messages[:8]]
 
 
+def bundle_has_local_data(bundle: FinancialBundle | None) -> bool:
+    """本地是否已有可用财报（快照或任一原始报表）。"""
+    if bundle is None:
+        return False
+    if bundle.snapshots:
+        return True
+    reports = bundle.reports or {}
+    return any(reports.get(report_type) for report_type in REPORT_TYPES)
+
+
 def load_financial_bundle(vt_symbol: str, *, periods: int = 12) -> FinancialBundle | None:
     item = parse_stock_symbol(vt_symbol)
     if item is None:

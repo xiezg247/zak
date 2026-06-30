@@ -10,7 +10,7 @@
 | 选股 | 条件选股、多因子配方、标杆对标、NL 解析；见 [选股 Hub](./screener-hub-guide.md)、[盘中选股](./intraday-screening.md) |
 | 回测 | `AShareTemplate`（T+1、整手、只做多）；批量对比，见 [策略回测](./backtest-ux.md) |
 | AI | Skills + MCP；悬浮球、Dock、全屏，见 [AI 数据路由](./ai-data-routing.md) |
-| 运维 | 定时任务、K 线健康检测与补全、配置同步 |
+| 运维 | 定时任务、K 线健康检测与补全、配置热加载（见 [config-hot-reload](./config-hot-reload.md)） |
 
 ## 左侧导航
 

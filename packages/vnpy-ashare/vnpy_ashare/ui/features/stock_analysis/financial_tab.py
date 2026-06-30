@@ -6,7 +6,7 @@ from typing import Any
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.services.financial import FinancialBundle, FinancialSnapshotRow
+from vnpy_ashare.services.financial import FinancialBundle, FinancialSnapshotRow, bundle_has_local_data
 from vnpy_ashare.services.stock.context import build_financial_quality_hints
 from vnpy_common.ui.data_table import configure_data_table
 from vnpy_common.ui.panel_widgets import configure_document_tab_widget, content_card, hint_label, section_title, tab_page
@@ -345,8 +345,9 @@ class FinancialAnalysisTab(QtWidgets.QWidget):
         self._main_business.render_reports(product_reports=[], region_reports=[], show_empty_hint=False)
 
     def show_bundle(self, bundle: FinancialBundle | None, *, sync_message: str = "") -> None:
-        if bundle is None:
-            self._status.setText(sync_message or "暂无财报数据（请配置 TUSHARE_TOKEN 后刷新）")
+        if bundle is None or not bundle_has_local_data(bundle):
+            empty_hint = sync_message or "暂无财报数据（请配置 TUSHARE_TOKEN 后点击「刷新」同步）"
+            self._status.setText(empty_hint)
             self._quality_label.setText("")
             self._snapshot_table.setRowCount(0)
             self._income.render_reports([])

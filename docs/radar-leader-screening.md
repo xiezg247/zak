@@ -9,8 +9,7 @@
 | card_id | 标题 | 要点 |
 |---------|------|------|
 | `leader_pick` | 选股·龙头 | 主线龙一/龙二；`mainline` / `all_market` |
-| `discovery_limit_ladder` | 发现·连板梯队 | 按 `limit_times` 分层 |
-| `discovery_first_board` | 发现·首板人气 | 封板时间 + 成交额 |
+| `discovery_limit_ladder` | 发现·连板梯队 | 按 `limit_times` 分层；变体 `first_board` = 首板人气（封板时间 + 成交额） |
 | `sector_theme` | 板块·主线 | `leaders_tiered` 按板块梯队 |
 
 | 标签 | 代号 | 说明 |

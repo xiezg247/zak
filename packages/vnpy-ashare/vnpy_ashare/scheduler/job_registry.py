@@ -20,6 +20,7 @@ from vnpy_ashare.jobs.catalog import (
     ENRICH_MARKET_QUOTES_JOB_ID,
     JOBS_BY_ID,
 )
+from vnpy_ashare.jobs.cache.purge_stale import purge_stale_cache_job
 from vnpy_ashare.jobs.core.result import JobResult
 from vnpy_ashare.jobs.financial.disclosure import sync_disclosure_calendar_job
 from vnpy_ashare.jobs.financial.sync import sync_watchlist_financials_job
@@ -300,5 +301,14 @@ def build_scheduler_jobs(runners: SchedulerJobRunners) -> dict[str, SchedulerJob
                 seconds=max(cfg.interval_seconds, BILIBILI_SYNC_INTERVAL_SECONDS),
             ),
             schedule_text_builder=lambda cfg: f"每天 08:00–20:00 每 {max(cfg.interval_seconds, BILIBILI_SYNC_INTERVAL_SECONDS) // 60} 分钟",
+        ),
+        "purge_stale_cache": SchedulerJobMeta(
+            job_id="purge_stale_cache",
+            name=specs["purge_stale_cache"].name,
+            description=specs["purge_stale_cache"].description,
+            runner=purge_stale_cache_job,
+            config_attr=specs["purge_stale_cache"].config_attr,
+            schedule_builder=_weekly_cron_trigger,
+            schedule_text_builder=lambda cfg: _workday_schedule_text(cfg, suffix="（建议在策略缓存预热与分钟 K 补全之后）"),
         ),
     }
