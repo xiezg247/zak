@@ -46,7 +46,7 @@ class _LeaderPoolMeta:
 def build_leader_candidate_pool(
     *,
     variant: LeaderPickVariant = "mainline",
-    pool_size: int = 80,
+    pool_size: int = 50,
 ) -> tuple[list[QuoteRow | dict[str, Any]], int, _LeaderPoolMeta]:
     """构建龙头评分候选池；返回 (candidates, total_scanned, pool_meta)。"""
     peeked = peek_leader_candidate_pool(variant=variant, pool_size=pool_size)
@@ -141,7 +141,7 @@ def rank_leader_pool(
 
 
 def load_leader_pick(spec: RadarCardSpec, *, variant: LeaderPickVariant = "mainline") -> RadarCardData:
-    candidates, total, pool_meta = build_leader_candidate_pool(variant=variant, pool_size=max(spec.top_n * 6, 40))
+    candidates, total, pool_meta = build_leader_candidate_pool(variant=variant, pool_size=max(spec.top_n * 4, 30))
     if not candidates:
         return RadarCardData(
             card_id=spec.id,

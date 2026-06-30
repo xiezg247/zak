@@ -23,7 +23,7 @@ def radar_source_payload(row: QuoteRowLike | ScreenerResultRow) -> dict[str, Any
 
 def discovery_pool_size(top_n: int) -> int:
     """发现卡多取候选，硬过滤 ST 后仍能凑满 top_n。"""
-    return min(max(top_n * 5, top_n + 12), 80)
+    return min(max(top_n * 5, top_n + 12), 50)
 
 
 def screener_metric(row: dict[str, Any]) -> tuple[str, str, str, str]:

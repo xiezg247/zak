@@ -76,11 +76,27 @@ def _hit_to_row(hit: PredictHit, *, name_map: dict[str, str], quote_row: QuoteRo
     )
 
 
-def scan_predict(*, top_n: int = 8) -> PredictScanResult:
-    """全市场粗筛后做预测排序。"""
-    excluded = collect_outlook_exclusion_vt_symbols()
-    prefilter, stats = prefilter_horizon_universe(excluded)
-    quote_rows = _quote_rows_for_prefilter(prefilter)
+def scan_predict(
+    *,
+    top_n: int = 8,
+    prefilter: list[str] | None = None,
+    base_stats: HorizonScanStats | None = None,
+    quote_rows: list[QuoteRow] | None = None,
+) -> PredictScanResult:
+    """全市场粗筛后做预测排序。
+
+    若传入 prefilter / base_stats / quote_rows 则复用已有数据（如来自 run_horizon_outlook_scan_with_predict），
+    否则独立粗筛。
+    """
+    if prefilter is None or base_stats is None:
+        excluded = collect_outlook_exclusion_vt_symbols()
+        prefilter, stats = prefilter_horizon_universe(excluded)
+    else:
+        stats = base_stats
+
+    if quote_rows is None:
+        quote_rows = _quote_rows_for_prefilter(prefilter)
+
     hits, variant, model_label = rank_predict_hits(quote_rows, top_n=top_n)
     name_map = name_map_for_symbols([hit.vt_symbol for hit in hits])
     row_by_vt = quote_rows_by_vt_symbol(quote_rows)
@@ -101,11 +117,23 @@ def scan_predict(*, top_n: int = 8) -> PredictScanResult:
     )
 
 
-def scan_predict_baseline(*, top_n: int = 8) -> PredictScanResult:
+def scan_predict_baseline(
+    *,
+    top_n: int = 8,
+    prefilter: list[str] | None = None,
+    base_stats: HorizonScanStats | None = None,
+    quote_rows: list[QuoteRow] | None = None,
+) -> PredictScanResult:
     """仅统计基线（测试 / 对照）。"""
-    excluded = collect_outlook_exclusion_vt_symbols()
-    prefilter, stats = prefilter_horizon_universe(excluded)
-    quote_rows = _quote_rows_for_prefilter(prefilter)
+    if prefilter is None or base_stats is None:
+        excluded = collect_outlook_exclusion_vt_symbols()
+        prefilter, stats = prefilter_horizon_universe(excluded)
+    else:
+        stats = base_stats
+
+    if quote_rows is None:
+        quote_rows = _quote_rows_for_prefilter(prefilter)
+
     hits = [_baseline_to_hit(hit) for hit in rank_baseline_predict(quote_rows)[: max(1, int(top_n))]]
     name_map = name_map_for_symbols([hit.vt_symbol for hit in hits])
     row_by_vt = quote_rows_by_vt_symbol(quote_rows)

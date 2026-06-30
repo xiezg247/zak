@@ -35,7 +35,7 @@ from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.engine.frame import row_to_dict
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters
 
-HORIZON_PREFILTER_TOP = 600
+HORIZON_PREFILTER_TOP = 200
 _DAILY_K_READY_TTL_SEC = 60.0
 _daily_k_ready_cache: tuple[int, float, set[str]] | None = None
 
@@ -241,7 +241,12 @@ def scan_horizon_variant(
             matched.sort(key=lambda snap: outlook_sort_key(snap, variant=variant))
         top_matched = matched[:top_n]
         name_map = name_map_for_symbols([snap.vt_symbol for snap in top_matched])
-        metrics_list = scenario_metrics if scenario_metrics is not None else batch_build_scenario_metrics(prefilter, snapshots)
+        # 仅对已匹配标的计算情景标签，避免全量 prefilter 的冗余 scenario_metrics 计算
+        top_vt_set = {snap.vt_symbol for snap in top_matched}
+        if scenario_metrics is not None:
+            metrics_list = [m for m in scenario_metrics if m.snapshot.vt_symbol in top_vt_set]
+        else:
+            metrics_list = batch_build_scenario_metrics(list(top_vt_set), snapshots)
         scenario_hints: dict[str, str] = {}
         for metrics in metrics_list:
             hint = classify_scenario_hint(metrics)
@@ -312,10 +317,61 @@ def run_horizon_outlook_scan(
             prefilter=prefilter,
             snapshots=snapshots,
             base_stats=base_stats,
-            scenario_metrics=scenario_metrics if variant in SCENARIO_VARIANTS else None,
+            scenario_metrics=scenario_metrics,
         )
         results.append(result)
     return tuple(results)
+
+
+def run_horizon_outlook_scan_with_predict(
+    *,
+    top_n: int = 8,
+    variants: tuple[str, ...] = HORIZON_SCAN_VARIANTS,
+) -> "tuple[PredictScanResult, tuple[HorizonScanResult, ...]]":
+    """一次粗筛 + 批量算信号，产出关注/可持/情景/预测，统一复用粗筛池与行情数据。"""
+    from vnpy_ashare.quotes.radar.predict.predict_cache import put_predict_cache
+    from vnpy_ashare.quotes.radar.predict.predict_scan import (
+        _quote_rows_for_prefilter,
+        scan_predict,
+    )
+
+    exclusion = collect_outlook_exclusion_vt_symbols()
+    prefilter, base_stats = prefilter_horizon_universe(exclusion)
+    cfg = load_outlook_signal_config().normalized()
+    snapshots = batch_build_signal_snapshots(prefilter, config=cfg)
+    scenario_metrics = batch_build_scenario_metrics(prefilter, snapshots)
+
+    results: list[HorizonScanResult] = []
+    for variant in variants:
+        result = scan_horizon_variant(
+            variant,
+            top_n=top_n,
+            config=cfg,
+            exclusion=exclusion,
+            prefilter=prefilter,
+            snapshots=snapshots,
+            base_stats=base_stats,
+            scenario_metrics=scenario_metrics,
+        )
+        results.append(result)
+
+    # 预测扫描复用同一粗筛池，避免重复 prefilter_horizon_universe + load_screening_quote_snapshot
+    quote_rows = _quote_rows_for_prefilter(prefilter)
+    predict = scan_predict(
+        top_n=top_n,
+        prefilter=prefilter,
+        base_stats=base_stats,
+        quote_rows=quote_rows,
+    )
+    put_predict_cache(
+        variant=predict.variant,
+        rows=predict.rows,
+        stats=predict.stats,
+        model_label=predict.model_label,
+        computed_at=predict.computed_at,
+    )
+
+    return predict, tuple(results)
 
 
 def cache_entry_from_scan(result: HorizonScanResult) -> HorizonCacheEntry:

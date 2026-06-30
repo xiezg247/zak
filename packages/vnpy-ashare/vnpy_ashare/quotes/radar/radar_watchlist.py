@@ -177,19 +177,36 @@ def _compute_scenario_hints(
     vt_symbols: list[str],
     *,
     config: WatchlistSignalConfig | None = None,
+    snapshots: dict[str, SignalSnapshot] | None = None,
 ) -> dict[str, str]:
-    """为 Top N 异动标的计算轻量 5 日统计情景（非价格预测）。"""
+    """为 Top N 异动标的计算轻量 5 日统计情景（非价格预测）。
+
+    snapshots 可从 compute_signal_transitions(return_snapshots=True) 传入，避免重复 load_scope_bars。
+    """
     if not vt_symbols:
         return {}
+    if snapshots is not None and all(vt in snapshots for vt in vt_symbols):
+        return _scenario_hints_from_snapshots(vt_symbols, snapshots)
     cfg = (config or load_watchlist_signal_config()).normalized()
-    snapshots: dict[str, SignalSnapshot] = {}
+    built: dict[str, SignalSnapshot] = {}
     for vt_symbol in vt_symbols:
-        snapshot = build_signal_snapshot(vt_symbol, config=cfg)
-        if snapshot is not None:
-            snapshots[vt_symbol] = snapshot
-    if not snapshots:
+        if snapshots is not None and vt_symbol in snapshots:
+            built[vt_symbol] = snapshots[vt_symbol]
+        else:
+            snapshot = build_signal_snapshot(vt_symbol, config=cfg)
+            if snapshot is not None:
+                built[vt_symbol] = snapshot
+    if not built:
         return {}
-    metrics_list = batch_build_scenario_metrics(list(snapshots.keys()), snapshots)
+    return _scenario_hints_from_snapshots(list(built.keys()), built)
+
+
+def _scenario_hints_from_snapshots(
+    vt_symbols: list[str],
+    snapshots: dict[str, SignalSnapshot],
+) -> dict[str, str]:
+    """从已有 SignalSnapshot 计算情景标签（不重新加载日K）。"""
+    metrics_list = batch_build_scenario_metrics(vt_symbols, snapshots)
     hints: dict[str, str] = {}
     for metrics in metrics_list:
         hint = classify_scenario_hint(metrics)
@@ -289,8 +306,9 @@ def load_watchlist_intraday(spec: RadarCardSpec) -> RadarCardData:
 
     config = load_watchlist_signal_config()
     transitions: dict[str, str] = {}
+    signal_snapshots: dict[str, SignalSnapshot] = {}
     try:
-        transitions = compute_signal_transitions(candidates, config=config, max_compute=12)
+        transitions, signal_snapshots = compute_signal_transitions(candidates, config=config, max_compute=12, return_snapshots=True)  # type: ignore[assignment]
     except Exception:
         transitions = {}
 
@@ -311,6 +329,7 @@ def load_watchlist_intraday(spec: RadarCardSpec) -> RadarCardData:
         scenario_hints = _compute_scenario_hints(
             [vt_symbol for vt_symbol, _row, _score, _transition in top_scored],
             config=config,
+            snapshots=signal_snapshots,
         )
     except Exception:
         scenario_hints = {}

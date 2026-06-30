@@ -13,7 +13,6 @@ from vnpy_ashare.quotes.radar.radar_watchlist import (
     _row_from_quote,
     _score_candidates,
     enrich_quotes_with_moneyflow,
-    load_watchlist_signal_config,
 )
 
 
@@ -33,7 +32,6 @@ def load_watchlist_short_term(spec: RadarCardSpec) -> RadarCardData:
             updated_at=format_china_datetime_minute(),
         )
 
-    _ = load_watchlist_signal_config()
     quotes_by_vt = enrich_quotes_with_moneyflow(_quotes_for_candidates(candidates))
     name_map = name_map_for_symbols(candidates)
     has_any_quote = any(_has_quote_data(row) for row in quotes_by_vt.values())

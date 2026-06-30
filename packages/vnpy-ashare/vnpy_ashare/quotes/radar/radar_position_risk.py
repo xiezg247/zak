@@ -64,6 +64,8 @@ def load_position_risk(spec: RadarCardSpec) -> RadarCardData:
         )
 
     name_map = build_symbol_name_map()
+    # 一次 merge_row_quotes 调用批量获取所有持仓行情，避免双层循环中逐只重复查询
+    quote_rows: dict[str, dict[str, Any]] = {}
     evaluated: list[tuple[PositionRecord, OvernightExitEvaluation, tuple[int, int]]] = []
     for row in rows_db:
         exchange = Exchange(str(row["exchange"]))
@@ -80,6 +82,7 @@ def load_position_risk(spec: RadarCardSpec) -> RadarCardData:
             plan_pct=row.get("plan_pct"),  # type: ignore[arg-type]
         )
         quote_row = merge_row_quotes({"vt_symbol": record.vt_symbol})
+        quote_rows[record.vt_symbol] = quote_row
         quote = quote_snapshot_from_row(quote_row, tickflow_symbol=symbol)
         evaluation = evaluate_overnight_exit(record, quote=quote)
         evaluated.append((record, evaluation, _evaluation_rank(evaluation)))
@@ -88,7 +91,7 @@ def load_position_risk(spec: RadarCardSpec) -> RadarCardData:
     radar_rows: list[RadarRow] = []
     triggered = near = 0
     for record, evaluation, _rank in evaluated[: spec.top_n]:
-        quote_row = merge_row_quotes({"vt_symbol": record.vt_symbol})
+        quote_row = quote_rows[record.vt_symbol]
         change_raw = quote_row.get("change_pct")
         change_pct = float(change_raw) if isinstance(change_raw, (int, float)) else None
         price_raw = quote_row.get("last_price") or quote_row.get("close")

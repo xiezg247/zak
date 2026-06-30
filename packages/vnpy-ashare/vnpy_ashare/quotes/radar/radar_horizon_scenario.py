@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from vnpy_ashare.data.bar_access import load_scope_bars
 from vnpy_ashare.data.download_concurrency import run_parallel_map
@@ -13,6 +13,9 @@ from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot, signal_is_fresh, signal_missing_kline
 from vnpy_ashare.quotes.radar.radar_horizon_rules import _has_near_unlock, last_price_for_snapshot
 from vnpy_ashare.quotes.radar.radar_models import RadarRow, merge_row_quotes
+
+# 日K加载起始偏移：25 根用于波动率计算，60 交易日 ≈ 90 天
+_BAR_START_LOOKBACK = timedelta(days=90)
 
 SCENARIO_VARIANTS: frozenset[str] = frozenset(
     {"scenario_bull", "scenario_volatile", "scenario_bear"},
@@ -43,7 +46,7 @@ def _estimate_bar_stats(
         item.symbol,
         item.exchange,
         "daily",
-        datetime(1990, 1, 1),
+        datetime.now() - _BAR_START_LOOKBACK,
         datetime.now(),
     )
     if len(bars) < 12:

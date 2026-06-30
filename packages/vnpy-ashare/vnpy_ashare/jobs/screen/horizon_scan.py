@@ -7,8 +7,7 @@ from datetime import time
 from vnpy_ashare.domain.time.calendar import is_trading_day
 from vnpy_ashare.domain.time.china import china_now
 from vnpy_ashare.jobs.core.result import JobResult
-from vnpy_ashare.quotes.radar.predict.predict_scan import run_predict_scan
-from vnpy_ashare.quotes.radar.radar_horizon_scan import run_horizon_outlook_scan
+from vnpy_ashare.quotes.radar.radar_horizon_scan import run_horizon_outlook_scan_with_predict
 
 
 def run_horizon_outlook_scan_job(*, force: bool = False) -> JobResult:
@@ -29,9 +28,7 @@ def run_horizon_outlook_scan_job(*, force: bool = False) -> JobResult:
             )
 
     try:
-        results = run_horizon_outlook_scan()
-
-        predict = run_predict_scan()
+        predict, results = run_horizon_outlook_scan_with_predict()
     except Exception as ex:
         return JobResult(success=False, message=f"雷达展望扫描失败：{ex}")
 

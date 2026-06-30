@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from strategies.signals import build_signal_payload_for_strategy
@@ -11,6 +11,9 @@ from vnpy_ashare.data.bar_access import load_scope_bars
 from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.domain.trading.signal_snapshot import SignalKind, SignalSnapshot, signal_missing_kline
 from vnpy_ashare.storage.cache.watchlist_signal_cache import WatchlistSignalDiskCache
+
+# 日K加载起始偏移：60 根 + slow_window 检查 ≈ 80 交易日，90 天足够覆盖
+_BAR_START_LOOKBACK = timedelta(days=90)
 
 
 def payload_to_snapshot(payload: dict[str, Any]) -> SignalSnapshot:
@@ -56,7 +59,7 @@ def build_signal_snapshot(
         item.symbol,
         item.exchange,
         "daily",
-        datetime(1990, 1, 1),
+        datetime.now() - _BAR_START_LOOKBACK,
         datetime.now(),
     )
     if len(bars) < slow_window + 5:
@@ -71,7 +74,7 @@ def build_signal_snapshot(
             }
         )
 
-    lookback = min(120, len(bars))
+    lookback = min(60, len(bars))
     tail = bars[-lookback:]
     payload = build_signal_payload_for_strategy(
         cfg.class_name,
@@ -121,18 +124,27 @@ def compute_signal_transitions(
     *,
     config: WatchlistSignalConfig | None = None,
     max_compute: int = 20,
-) -> dict[str, str]:
-    """对比磁盘缓存与现算信号，返回 vt_symbol → 跃迁文案。"""
+    return_snapshots: bool = False,
+) -> dict[str, str] | tuple[dict[str, str], dict[str, SignalSnapshot]]:
+    """对比磁盘缓存与现算信号，返回 vt_symbol → 跃迁文案。
+
+    return_snapshots=True 时返回 (transitions, snapshots)，调用方可复用已构建的
+    SignalSnapshot 避免后续重复 load_scope_bars。
+    """
     if not vt_symbols:
-        return {}
+        return ({}, {}) if return_snapshots else {}
     cfg = (config or load_watchlist_signal_config()).normalized()
     cached = load_cached_signals(vt_symbols, config=cfg)
     transitions: dict[str, str] = {}
+    snapshots: dict[str, SignalSnapshot] = {}
     for vt_symbol in vt_symbols[: max(1, int(max_compute))]:
         after = build_signal_snapshot(vt_symbol, config=cfg)
         if after is None or signal_missing_kline(after):
             continue
+        snapshots[vt_symbol] = after
         label = transition_label(cached.get(vt_symbol), after)
         if label:
             transitions[vt_symbol] = label
+    if return_snapshots:
+        return transitions, snapshots
     return transitions
