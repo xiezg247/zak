@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from vnpy.trader.ui import QtWidgets
 
@@ -10,7 +10,7 @@ from vnpy_ashare.ui.quotes.features.watchlist.toolbar import append_watchlist_st
 from vnpy_ashare.ui.quotes.page.roles import STRATEGY_MONITOR_PAGE
 
 
-def test_strategy_monitor_toolbar_omits_signal_and_emotion() -> None:
+def test_strategy_monitor_toolbar_omits_signal_panel() -> None:
     page = MagicMock()
     page.page_name = STRATEGY_MONITOR_PAGE
     page.config.show_watchlist_signals = True
@@ -23,18 +23,13 @@ def test_strategy_monitor_toolbar_omits_signal_and_emotion() -> None:
     toolbar = QtWidgets.QHBoxLayout()
     more_actions: list[tuple[str, object]] = []
 
-    with patch(
-        "vnpy_ashare.ui.quotes.features.watchlist.toolbar.EmotionCycleChip",
-    ) as emotion_cls:
-        append_watchlist_strategy_toolbar_actions(
-            page,
-            toolbar,
-            more_actions,
-            policy=None,
-            show_backtest_in_toolbar=False,
-            show_diagnose_in_toolbar=False,
-        )
-        emotion_cls.assert_not_called()
+    append_watchlist_strategy_toolbar_actions(
+        page,
+        toolbar,
+        more_actions,
+        policy=None,
+        show_backtest_in_toolbar=False,
+        show_diagnose_in_toolbar=False,
+    )
 
     page.add_signal_panel_button.assert_not_called()
-    assert page.emotion_cycle_chip is not page.add_signal_panel_button

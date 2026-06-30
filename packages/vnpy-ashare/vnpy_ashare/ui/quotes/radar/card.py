@@ -5,7 +5,6 @@ from __future__ import annotations
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.domain.time.market_hours import ashare_market_phase, ashare_market_phase_label
-from vnpy_ashare.quotes.market.emotion_cycle_subtitle import append_emotion_cycle_to_subtitle
 from vnpy_ashare.quotes.radar.loaders import RadarCardData, RadarRow, compute_radar_resonance
 from vnpy_ashare.quotes.radar.outlook_strategy_prefs import (
     load_outlook_strategy_class,
@@ -417,7 +416,7 @@ class RadarCardWidget(QtWidgets.QFrame):
         self._refresh_button.setEnabled(True)
         self._refresh_menu_button.setEnabled(True)
         self._subtitle.setText(
-            append_emotion_cycle_to_subtitle(data.subtitle) if data.card_id.startswith(("discovery_", "leader_", "sector_")) else data.subtitle,
+            data.subtitle,
         )
         hint = str(data.ai_hint or "").strip()
         if hint:

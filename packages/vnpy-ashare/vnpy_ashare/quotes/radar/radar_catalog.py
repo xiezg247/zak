@@ -76,7 +76,6 @@ RADAR_SECTOR_REFRESH_OPTIONS: tuple[RadarRefreshOption, ...] = (
 )
 
 CARD_REFRESH_OPTIONS: dict[str, tuple[RadarRefreshOption, ...]] = {
-    "market_emotion": RADAR_DISCOVERY_REFRESH_OPTIONS,
     "discovery_volume_surge": RADAR_DISCOVERY_REFRESH_OPTIONS,
     "discovery_moneyflow_intraday": RADAR_DISCOVERY_REFRESH_OPTIONS,
     "discovery_limit_ladder": RADAR_DISCOVERY_REFRESH_OPTIONS,
@@ -118,7 +117,6 @@ _DEFAULT_GROUP_BY_MODE: dict[RadarCardMode, RadarGroupKey] = {
 }
 
 RADAR_CARD_GROUP: dict[str, RadarGroupKey] = {
-    "market_emotion": "leader",
     "leader_pick": "leader",
     "watchlist_short_term": "leader",
     "discovery_limit_ladder": "discovery",
@@ -152,11 +150,10 @@ def list_radar_cards_for_group(mode: RadarCardMode, group_key: RadarGroupKey) ->
     return tuple(spec for spec in RADAR_CARD_SPECS if spec.mode == mode and RADAR_CARD_GROUP.get(spec.id) == group_key)
 
 
-# 龙头分组首屏：leader_pick 最先，market_emotion 最后（工具栏已有情绪 chip）
+# 龙头分组首屏：leader_pick 最先加载
 RADAR_CARD_LOAD_PRIORITY: dict[str, int] = {
     "leader_pick": 0,
     "watchlist_short_term": 1,
-    "market_emotion": 2,
 }
 
 
@@ -178,7 +175,6 @@ SCENARIO_VARIANTS: tuple[RadarVariant, ...] = (
 )
 
 RADAR_CARD_SPECS: tuple[RadarCardSpec, ...] = (
-    RadarCardSpec(id="market_emotion", title="盘面·环境", category="discovery", top_n=6, auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS),
     RadarCardSpec(id="leader_pick", title="选股·龙头", category="screen", top_n=12),
     RadarCardSpec(id="watchlist_short_term", title="自选·短线关注", category="watchlist", top_n=10, auto_refresh_ms=RADAR_WATCHLIST_AUTO_REFRESH_MS),
     RadarCardSpec(

@@ -24,13 +24,11 @@ DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS: dict[str, float] = {
 
 RADAR_CARDS_EXCLUDED_FROM_RESONANCE: frozenset[str] = frozenset(
     {
-        "market_emotion",
         "discovery_limit_break",
     }
 )
 
 _WEIGHT_LABELS: dict[str, str] = {
-    "market_emotion": "盘面·环境",
     "discovery_volume_surge": "发现·放量异动",
     "discovery_moneyflow_intraday": "发现·资金异动",
     "discovery_limit_ladder": "发现·连板梯队",

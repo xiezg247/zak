@@ -1500,6 +1500,75 @@ QScrollArea#HomeScroll {{
 QWidget#HomeBody {{
     background-color: transparent;
 }}
+QTabWidget#HomePlaybookTabBar::pane {{
+    border: none;
+    background-color: transparent;
+    top: 0;
+}}
+QTabWidget#HomePlaybookTabBar > QTabBar {{
+    border: none;
+    background: transparent;
+    qproperty-drawBase: 0;
+}}
+QTabWidget#HomePlaybookTabBar > QTabBar::tab {{
+    background-color: transparent;
+    color: {t.text_muted};
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    margin-right: 4px;
+}}
+QTabWidget#HomePlaybookTabBar > QTabBar::tab:selected {{
+    color: {t.accent};
+    border-bottom: 2px solid {t.accent};
+    font-weight: 600;
+}}
+QTabWidget#HomePlaybookTabBar > QTabBar::tab:hover {{
+    color: {t.text_primary};
+}}
+QScrollArea#HomeTabScroll {{
+    background-color: transparent;
+    border: none;
+}}
+QFrame#PlaybookRuleTable {{
+    background-color: {t.panel_bg};
+    border: 1px solid {t.panel_border};
+    border-radius: 8px;
+}}
+QLabel#PlaybookRuleTableTitle {{
+    color: {t.text_primary};
+    font-size: 13px;
+    font-weight: 600;
+}}
+QTableWidget#PlaybookRuleTableView {{
+    background-color: transparent;
+    border: none;
+    gridline-color: {t.panel_border};
+    font-size: 12px;
+    color: {t.text_primary};
+}}
+QTableWidget#PlaybookRuleTableView::item {{
+    padding: 6px 8px;
+}}
+QFrame#PlaybookRuleTable QHeaderView::section {{
+    background-color: {t.depth_bg};
+    color: {t.text_secondary};
+    border: none;
+    border-bottom: 1px solid {t.panel_border};
+    padding: 6px 8px;
+    font-size: 11px;
+    font-weight: 600;
+}}
+QLabel#PlaybookRulesNote {{
+    color: {t.text_secondary};
+    background-color: {t.depth_bg};
+    border-left: 3px solid {t.accent};
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 12px;
+}}
 QLabel#HomePageTitle {{
     color: {t.text_primary};
     font-size: 21px;

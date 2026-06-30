@@ -34,7 +34,6 @@ from vnpy_ashare.ui.quotes.features.watchlist.toolbar_policy import (
     watchlist_toolbar_group3_visible,
     watchlist_toolbar_policy,
 )
-from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_chip import EmotionCycleChip
 from vnpy_ashare.ui.quotes.market_overview.industry_filter_combo import IndustryFilterCombo
 from vnpy_ashare.ui.quotes.page.config import (
     load_market_auto_refresh_pref,
@@ -727,8 +726,6 @@ class QuotesPageShell:
         toolbar.addWidget(page.refresh_radar_all_button)
         toolbar.addWidget(page.radar_leader_button)
         toolbar.addWidget(page.radar_ai_button)
-        page.emotion_cycle_chip = EmotionCycleChip(page)
-        toolbar.addWidget(page.emotion_cycle_chip)
         toolbar.addStretch(1)
 
         toolbar_host = QtWidgets.QWidget()

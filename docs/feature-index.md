@@ -8,7 +8,7 @@
 
 | 能力 | 文档 |
 |------|------|
-| Playbook 首屏、对照条、纪律 checklist | [交易体系 §1.3](./trading-system.md#13-守则-playbook默认首屏) |
+| Playbook 首屏 Tab 规则表格 | [交易体系 §1.3](./trading-system.md#13-守则-playbook默认首屏) |
 | 次日交易计划、计划内校验 | [交易计划](./trading-plan-journal.md) |
 | 笔记流水复盘 | [看盘页个股笔记](./stock-notes.md) |
 

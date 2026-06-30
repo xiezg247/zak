@@ -18,7 +18,6 @@ class LayoutPresetSpec:
     select_all_group: bool
     force_table_view: bool
     show_add_signal_toolbar: bool
-    show_emotion_chips: bool = True
     splitter_table_ratio: float | None = None
 
 
@@ -36,7 +35,6 @@ PRESET_SPECS: dict[LayoutPresetId, LayoutPresetSpec] = {
         select_all_group=False,
         force_table_view=False,
         show_add_signal_toolbar=False,
-        show_emotion_chips=True,
         splitter_table_ratio=0.4,
     ),
 }

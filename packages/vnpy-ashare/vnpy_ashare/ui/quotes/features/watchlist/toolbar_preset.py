@@ -8,12 +8,6 @@ from vnpy_ashare.ui.quotes.page.roles import is_strategy_monitor_page
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 
-def _sync_emotion_chip_visibility(page: WatchlistHost, *, visible: bool) -> None:
-    emotion = getattr(page, "emotion_cycle_chip", None)
-    if emotion is not None:
-        emotion.setVisible(visible)
-
-
 def apply_toolbar_for_preset(page: WatchlistHost, preset_id: LayoutPresetId) -> None:
     if is_strategy_monitor_page(page.page_name):
         return
@@ -21,5 +15,3 @@ def apply_toolbar_for_preset(page: WatchlistHost, preset_id: LayoutPresetId) -> 
     add_signal = getattr(page, "add_signal_panel_button", None)
     if add_signal is not None and page.config.show_watchlist_signals:
         add_signal.setVisible(spec.show_add_signal_toolbar)
-    if page.config.show_watchlist_signals or page.config.show_watchlist_positions:
-        _sync_emotion_chip_visibility(page, visible=spec.show_emotion_chips)

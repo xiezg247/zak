@@ -16,7 +16,7 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
 
 def test_radar_cards_count_and_categories() -> None:
     cards = list_radar_cards()
-    assert len(cards) == 15
+    assert len(cards) == 14
     categories = {card.category for card in cards}
     assert categories == {"screen", "discovery", "watchlist", "sector", "outlook"}
     assert RADAR_GRID_COLUMNS == 3
@@ -27,7 +27,7 @@ def test_radar_layout_sections_and_modes() -> None:
     assert [section.mode for section in RADAR_LAYOUT_SECTIONS] == ["statistical", "predictive"]
     statistical = list_radar_cards_for_mode("statistical")
     predictive = list_radar_cards_for_mode("predictive")
-    assert len(statistical) == 11
+    assert len(statistical) == 10
     assert len(predictive) == 4
     assert all(spec.mode == "statistical" for spec in statistical)
     assert all(spec.mode == "predictive" for spec in predictive)
@@ -153,7 +153,6 @@ def test_auto_refresh_intervals() -> None:
     assert "discovery_volume_surge" in auto_ids
     assert "watchlist_intraday" in auto_ids
     assert "discovery_limit_ladder" in auto_ids
-    assert "market_emotion" in auto_ids
     assert "watchlist_short_term" in auto_ids
     assert "sector_flow_hot" in auto_ids
     manual_ids = manual_only_card_ids()
@@ -191,7 +190,6 @@ def test_new_cards_registered() -> None:
 
     ids = {spec.id for spec in RADAR_CARD_SPECS}
     for card_id in (
-        "market_emotion",
         "discovery_limit_break",
         "watchlist_short_term",
         "sector_flow_hot",
@@ -199,12 +197,12 @@ def test_new_cards_registered() -> None:
         assert card_id in ids
 
 
-def test_resonance_excludes_environment_and_risk_cards() -> None:
+def test_resonance_excludes_risk_cards() -> None:
     from vnpy_ashare.quotes.radar.radar_resonance_prefs import (
         RADAR_CARDS_EXCLUDED_FROM_RESONANCE,
         radar_card_participates_in_resonance,
     )
 
-    assert "market_emotion" in RADAR_CARDS_EXCLUDED_FROM_RESONANCE
+    assert "discovery_limit_break" in RADAR_CARDS_EXCLUDED_FROM_RESONANCE
     assert radar_card_participates_in_resonance("leader_pick")
-    assert not radar_card_participates_in_resonance("market_emotion")
+    assert not radar_card_participates_in_resonance("discovery_limit_break")

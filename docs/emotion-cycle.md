@@ -31,7 +31,7 @@
 | 持仓登记 | warning toast |
 | `emotion_gate_only` Recipe | Top3 观察 |
 
-顶栏 `EmotionCycleChip`（市场/自选/雷达）。阶段变更可推飞书 `emotion_stage_change`。AI：`get_emotion_cycle`；退潮/冰点须明确不建议新开仓。
+顶栏 `EmotionCycleChip` 仅在市场页统计条展示。阶段变更可推飞书 `emotion_stage_change`。AI：`get_emotion_cycle`；退潮/冰点须明确不建议新开仓。
 
 ---
 

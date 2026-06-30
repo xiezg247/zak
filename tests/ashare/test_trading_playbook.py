@@ -13,7 +13,7 @@ from vnpy_ashare.services.trading_playbook import (
     load_playbook_sections,
     render_section_markdown,
 )
-from vnpy_ashare.storage.repositories.trading_playbook import update_playbook_section, upsert_playbook_sections
+from vnpy_ashare.storage.repositories.trading_playbook import list_playbook_sections, update_playbook_section, upsert_playbook_sections
 
 
 def test_playbook_template_has_five_sections() -> None:
@@ -39,6 +39,17 @@ def test_build_home_status_without_engine() -> None:
     assert status.phase_label
 
 
+def test_playbook_load_uses_template_body() -> None:
+    ensure_playbook_seeded()
+    upsert_playbook_sections(playbook_template_sections("short_swing"))
+    update_playbook_section("timing", PlaybookSectionUpdate(body_md="我的自定义择时规则"))
+
+    timing = next(item for item in load_playbook_sections() if item.section_id == "timing")
+    tpl = next(item for item in playbook_template_sections("short_swing") if item.section_id == "timing")
+    assert timing.body_md.strip() == tpl.body_md.strip()
+    assert "五阶段情绪" in timing.body_md or "波段择时" in timing.body_md
+
+
 def test_playbook_merge_candidates_respect_user_edits() -> None:
     ensure_playbook_seeded()
     upsert_playbook_sections(playbook_template_sections("short_swing"))
@@ -49,6 +60,6 @@ def test_playbook_merge_candidates_respect_user_edits() -> None:
     assert "execution" in candidates
 
     apply_playbook_template_merge("ultra_short", ("execution",))
-    execution = next(item for item in load_playbook_sections() if item.section_id == "execution")
+    execution = next(item for item in list_playbook_sections() if item.section_id == "execution")
     ultra_tpl = next(item for item in playbook_template_sections("ultra_short") if item.section_id == "execution")
     assert execution.body_md.strip() == ultra_tpl.body_md.strip()

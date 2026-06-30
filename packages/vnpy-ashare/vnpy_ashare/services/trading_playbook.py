@@ -135,8 +135,26 @@ def ensure_playbook_seeded() -> None:
 
 
 def load_playbook_sections() -> tuple[PlaybookSection, ...]:
+    """加载 Playbook 章节；正文始终以当前 Profile 模板为准（只读）。"""
     ensure_playbook_seeded()
-    return list_playbook_sections()
+    profile_id = load_strategy_profile_id()
+    templates = {item.section_id: item for item in playbook_template_sections(profile_id)}
+    merged: list[PlaybookSection] = []
+    for row in list_playbook_sections():
+        template = templates.get(row.section_id)
+        if template is None:
+            merged.append(row)
+            continue
+        merged.append(
+            PlaybookSection(
+                section_id=row.section_id,
+                title=template.title,
+                body_md=template.body_md,
+                collapsed=row.collapsed,
+                sort_order=row.sort_order,
+            ),
+        )
+    return tuple(merged)
 
 
 def build_mirror_appendix(section_id: str) -> str:

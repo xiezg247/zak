@@ -50,8 +50,6 @@ class HomePlaybookStatusStrip(QtWidgets.QFrame):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("HomeStatusCard")
-        self._emotion_loading = False
-
         outer = QtWidgets.QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(10)
@@ -67,36 +65,19 @@ class HomePlaybookStatusStrip(QtWidgets.QFrame):
         row.setContentsMargins(16, 12, 16, 12)
         row.setSpacing(10)
 
-        self._emotion = _HomeChip("情绪")
         self._daily = _HomeChip("日盈亏")
         self._plan = _HomeChip("计划")
         self._position = _HomeChip("持仓")
 
-        for chip in (self._emotion, self._daily, self._plan, self._position):
+        for chip in (self._daily, self._plan, self._position):
             row.addWidget(chip, stretch=1)
 
         outer.addWidget(self._alert)
         outer.addWidget(inner)
 
-    def set_emotion_loading(self, loading: bool) -> None:
-        self._emotion_loading = loading
-        if loading:
-            self._emotion.set_content("加载中…", sub="")
-
     def apply(self, status: HomePlaybookStatus) -> None:
-        if self._emotion_loading and status.emotion_label == "—":
-            emotion_value = "加载中…"
-            emotion_sub = ""
-        elif status.emotion_label == "—":
-            emotion_value = "暂无"
-            emotion_sub = "可在市场页刷新"
-        else:
-            emotion_value = status.emotion_label
-            emotion_sub = status.emotion_position_hint or ""
-
         position_tone = "danger" if status.off_plan_symbols else ""
 
-        self._emotion.set_content(emotion_value, sub=emotion_sub)
         self._daily.set_content(status.daily_pnl_text)
         self._plan.set_content(status.plan_text)
         self._position.set_content(

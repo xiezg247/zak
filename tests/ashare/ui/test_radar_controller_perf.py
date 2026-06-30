@@ -272,7 +272,6 @@ def test_start_group_load_splits_leader_priority(qapp: QtWidgets.QApplication) -
     page = QtWidgets.QWidget()
     board = MagicMock()
     board.visible_card_ids_for_current_group.return_value = {
-        "market_emotion",
         "leader_pick",
         "watchlist_short_term",
     }
@@ -282,7 +281,6 @@ def test_start_group_load_splits_leader_priority(qapp: QtWidgets.QApplication) -
 
     controller._run_group_worker = MagicMock()
     items = [
-        ("market_emotion", {}),
         ("leader_pick", {}),
         ("watchlist_short_term", {}),
     ]
@@ -291,9 +289,8 @@ def test_start_group_load_splits_leader_priority(qapp: QtWidgets.QApplication) -
     controller._run_group_worker.assert_called_once()
     first_batch = controller._run_group_worker.call_args.args[0]
     assert [card_id for card_id, _kwargs in first_batch] == ["leader_pick"]
-    assert len(controller._deferred_tier_batches) == 2
+    assert len(controller._deferred_tier_batches) == 1
     assert [card_id for card_id, _kwargs in controller._deferred_tier_batches[0]] == ["watchlist_short_term"]
-    assert [card_id for card_id, _kwargs in controller._deferred_tier_batches[1]] == ["market_emotion"]
 
 
 def test_on_group_loaded_drains_tier_batches_before_prefetch(qapp: QtWidgets.QApplication) -> None:
