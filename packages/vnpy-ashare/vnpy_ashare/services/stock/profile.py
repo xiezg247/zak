@@ -110,7 +110,7 @@ def _valuation_needs_sync(ts_code: str, *, force: bool) -> bool:
 def sync_valuation_history(
     vt_symbol: str,
     *,
-    days: int = 750,
+    days: int = 250,
     force: bool = False,
     market: SectorMarketSnapshot | None = None,
 ) -> ValuationProfile:
@@ -155,7 +155,7 @@ def build_valuation_profile(
         return ValuationProfile(ts_code="", vt_symbol=vt_symbol)
 
     ts_code = item.ts_code
-    history = list_valuation_history(ts_code, limit=750)
+    history = list_valuation_history(ts_code, limit=250)
     pe_hist = [row.pe_ttm for row in history if row.pe_ttm is not None]
     pb_hist = [row.pb for row in history if row.pb is not None]
 

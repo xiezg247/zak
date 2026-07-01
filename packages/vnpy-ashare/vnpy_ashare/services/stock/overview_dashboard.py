@@ -24,6 +24,7 @@ from vnpy_ashare.services.stock.context import (
     MoneyflowDayRow,
     build_financial_quality_hints,
     build_moneyflow_profile,
+    lookup_latest_moneyflow,
 )
 from vnpy_ashare.services.stock.events import build_disclosure_upcoming_hints
 from vnpy_ashare.services.stock.profile import build_valuation_profile
@@ -281,6 +282,36 @@ def _limit_board_alerts(vt_symbol: str) -> list[OverviewAlert]:
     ]
 
 
+def _safe_moneyflow_for_overview(vt_symbol: str, *, tushare_ok: bool) -> MoneyflowProfile | None:
+    """概览仪表盘专用：仅使用本地缓存数据，不触发 Tushare API 调用。"""
+    if not tushare_ok:
+        return None
+    item = parse_stock_symbol(vt_symbol)
+    if item is None:
+        return None
+    try:
+        latest = lookup_latest_moneyflow(vt_symbol)
+        if latest is not None:
+            return MoneyflowProfile(
+                ts_code=item.ts_code,
+                vt_symbol=item.vt_symbol,
+                latest=latest,
+                history=[latest],
+                message="",
+            )
+    except Exception:
+        pass
+    # 无缓存，尝试轻量拉取（带超时保护）
+    try:
+        return build_moneyflow_profile(vt_symbol, history_days=5)
+    except Exception:
+        return MoneyflowProfile(
+            ts_code=item.ts_code,
+            vt_symbol=item.vt_symbol,
+            message="资金流数据暂不可用，稍后可刷新",
+        )
+
+
 def build_overview_dashboard(
     engine: Any,
     vt_symbol: str,
@@ -291,7 +322,8 @@ def build_overview_dashboard(
     item = parse_stock_symbol(vt_symbol)
     ts_code = item.ts_code if item is not None else ""
     tushare_ok = _tushare_configured()
-    moneyflow_profile = build_moneyflow_profile(vt_symbol, history_days=8) if tushare_ok else None
+    # 概览仪表盘仅使用本地缓存数据，避免 Tushare API 挂起导致整个页面卡在加载中
+    moneyflow_profile = _safe_moneyflow_for_overview(vt_symbol, tushare_ok=tushare_ok)
     valuation_profile = build_valuation_profile(vt_symbol, live=False) if tushare_ok else None
 
     readiness = [

@@ -19,6 +19,7 @@ from vnpy_ashare.quotes.rank.rank_scope import (
     load_watchlist_rank_catalog,
     paginate_symbols,
 )
+from vnpy_ashare.storage.repositories.universe import load_universe_rows
 
 QuoteSource = Literal["market", "watchlist"]
 
@@ -62,13 +63,14 @@ class RedisQuoteProvider(QuoteProvider):
         *,
         rank_id: str = "change_pct",
     ) -> tuple[list[StockItem], dict[str, QuoteSnapshot], int]:
+        name_map = {(symbol, exchange): name for symbol, exchange, name in load_universe_rows()}
         spec = get_rank_definition(rank_id)
         if spec.scope == "watchlist":
             tf_symbols, quotes = load_watchlist_rank_catalog(self._store, spec)
             total = len(tf_symbols)
             page_symbols = paginate_symbols(tf_symbols, offset, limit)
             page_quotes = {symbol: quotes[symbol] for symbol in page_symbols if symbol in quotes}
-            items = build_stock_items_from_rank_symbols(page_symbols, page_quotes)
+            items = build_stock_items_from_rank_symbols(page_symbols, page_quotes, name_map=name_map)
             return items, page_quotes, total
 
         tf_symbols, quotes = load_market_rank_catalog(
@@ -80,7 +82,7 @@ class RedisQuoteProvider(QuoteProvider):
         page_symbols = paginate_symbols(tf_symbols, offset, limit)
         page_quotes = {symbol: quotes[symbol] for symbol in page_symbols if symbol in quotes}
 
-        items = build_stock_items_from_rank_symbols(page_symbols, page_quotes)
+        items = build_stock_items_from_rank_symbols(page_symbols, page_quotes, name_map=name_map)
         return items, page_quotes, total
 
     def updated_at(self) -> str | None:

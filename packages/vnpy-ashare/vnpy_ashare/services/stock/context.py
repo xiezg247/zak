@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import concurrent.futures
 from datetime import timedelta
 from typing import Any
 
@@ -212,19 +213,31 @@ def _fetch_stock_moneyflow_from_cache(ts_code: str, *, days: int) -> list[Moneyf
     return rows[:days]
 
 
+_STOCK_MONEYFLOW_API_TIMEOUT = 10.0
+
+
 def _fetch_stock_moneyflow_from_api(ts_code: str, *, days: int) -> list[MoneyflowDayRow]:
     now = china_now()
     end = format_china_date_compact(now)
     start = format_china_date_compact(now - timedelta(days=days * 2))
     try:
         pro = get_tushare_pro()
-        frame = pro.moneyflow(
-            ts_code=ts_code,
-            start_date=start,
-            end_date=end,
-            fields="ts_code,trade_date,net_mf_amount,buy_elg_amount,sell_elg_amount",
-        )
+        # 用独立线程 + 超时避免 Tushare API 挂起导致页面一直加载中
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        try:
+            future = executor.submit(
+                pro.moneyflow,
+                ts_code=ts_code,
+                start_date=start,
+                end_date=end,
+                fields="ts_code,trade_date,net_mf_amount,buy_elg_amount,sell_elg_amount",
+            )
+            frame = future.result(timeout=_STOCK_MONEYFLOW_API_TIMEOUT)
+        finally:
+            executor.shutdown(wait=False)
     except TushareNotConfiguredError:
+        return []
+    except (concurrent.futures.TimeoutError, TimeoutError):
         return []
     except Exception:
         return []

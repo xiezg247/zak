@@ -364,10 +364,7 @@ class WatchlistSignalController:
             self._page.continuation_cache.update(self._normalize_continuation_updates(built))
 
     def _ensure_bar_meta(self, symbols: list[str]) -> None:
-        from vnpy_ashare.data.bar_store import is_overview_cache_warmed
-
-        if not is_overview_cache_warmed():
-            return
+        """定向查询 PostgreSQL 为指定标的加载 K 线概览（按 key 查询，不依赖全库缓存）。"""
         items = []
         for vt in symbols:
             item = self._page.find_stock_item(vt)

@@ -15,6 +15,22 @@ from vnpy_ashare.integrations.tushare.disclosure import fetch_disclosure_dates
 from vnpy_ashare.services.stock.profile import sync_disclosure_calendar
 from vnpy_ashare.storage.repositories.disclosure import list_disclosure_calendar, upsert_disclosure_rows
 
+_EVENT_API_TIMEOUT = 8.0
+
+
+def _call_with_timeout(fn, *args, **kwargs):
+    """在独立线程中执行函数，超时返回 None。"""
+    import concurrent.futures as cf
+
+    executor = cf.ThreadPoolExecutor(max_workers=1)
+    try:
+        future = executor.submit(fn, *args, **kwargs)
+        return future.result(timeout=_EVENT_API_TIMEOUT)
+    except (cf.TimeoutError, TimeoutError):
+        return None
+    finally:
+        executor.shutdown(wait=False)
+
 
 def _parse_yyyymmdd(text: str) -> datetime | None:
     value = str(text or "").strip()
@@ -120,20 +136,26 @@ def build_events_profile(vt_symbol: str, *, sync_disclosure: bool = True) -> Eve
     news: list[dict[str, Any]] = []
     extra_messages: list[str] = []
     try:
-        dividends = fetch_dividends(ts_code)
-        share_float = fetch_share_float(ts_code)
+        dividends = _call_with_timeout(fetch_dividends, ts_code) or []
     except TushareNotConfiguredError as ex:
         extra_messages.append(str(ex))
     except Exception as ex:
         extra_messages.append(str(ex))
 
     try:
-        announcements = fetch_announcements(ts_code)
+        share_float = _call_with_timeout(fetch_share_float, ts_code) or []
+    except TushareNotConfiguredError as ex:
+        extra_messages.append(str(ex))
+    except Exception as ex:
+        extra_messages.append(str(ex))
+
+    try:
+        announcements = _call_with_timeout(fetch_announcements, ts_code) or []
     except AnnouncementFetchError as ex:
         extra_messages.append(str(ex))
 
     try:
-        news = fetch_stock_news(ts_code)
+        news = _call_with_timeout(fetch_stock_news, ts_code) or []
     except NewsFetchError as ex:
         extra_messages.append(str(ex))
 

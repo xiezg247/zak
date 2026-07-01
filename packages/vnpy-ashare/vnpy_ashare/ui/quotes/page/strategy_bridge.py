@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
 
 def navigate_to_strategy_monitor(start: QtWidgets.QWidget) -> QuotesPage | None:
+    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
     from vnpy_ashare.ui.shell.main_window import AshareMainWindow
     from vnpy_ashare.ui.shell.main_window_pages import (
         _switch_page_deferred,

@@ -36,7 +36,7 @@ from vnpy_ashare.trading.signals.seal_reopen import attach_seal_reopen_fields, s
 from vnpy_ashare.trading.signals.seal_strength import seal_strength_from_row
 
 _LIMIT_HISTORY_DAYS = 20
-_TOP_LIST_LOOKBACK_DAYS = 60
+_TOP_LIST_LOOKBACK_DAYS = 30
 
 
 def _seal_strength_label(score: float | None) -> str:
@@ -163,6 +163,14 @@ def _merge_quote_row(vt_symbol: str, *, quote_summary: dict[str, Any] | None = N
 
 
 def _find_limit_today(vt_symbol: str) -> tuple[dict[str, Any] | None, str]:
+    """今日涨停详情（单项）；先查缓存，未涨停直接跳过避免全市场查询。"""
+    # 若本地连板缓存显示未涨停，直接跳过
+    limit_map = get_cached_limit_times_map()
+    item = parse_stock_symbol(vt_symbol)
+    if item is not None:
+        boards = limit_map.get(item.tickflow_symbol, 0)
+        if boards < 1:
+            return None, ""
     rows, trade_date = fetch_limit_list_with_fallback(limit_type="U")
     for row in rows:
         if str(row.get("vt_symbol") or "").strip() == vt_symbol:

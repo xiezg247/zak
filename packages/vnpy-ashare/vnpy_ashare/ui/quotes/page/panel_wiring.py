@@ -63,7 +63,7 @@ def apply_strategy_profile_for_page(page: QuotesPage, profile_id: str) -> None:
 
 
 def refresh_watchlist_signals(page: QuotesPage) -> None:
-    page._signals.invalidate_memory_cache()
+    page._signals.invalidate_cache(clear_disk=True)
     page._signals.refresh(force=True)
 
 
