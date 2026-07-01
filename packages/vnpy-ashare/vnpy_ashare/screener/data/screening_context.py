@@ -125,6 +125,22 @@ class ScreeningContext(MutableModel):
     def preload_volume_ratio_map(self) -> dict[str, float]:
         return self.get_volume_ratio_map()
 
+    def load_volume_ratio_from_snapshot(self, snapshot: MarketQuotesSnapshot | None) -> None:
+        """从行情快照行直接提取 volume_ratio（避免 Tushare daily_basic 请求）。"""
+        if self._volume_ratio_loaded or snapshot is None:
+            return
+        with self._lock:
+            if self._volume_ratio_loaded:
+                return
+            result: dict[str, float] = {}
+            for row in snapshot.rows:
+                vt = str(getattr(row, "vt_symbol", "") or "")
+                vr = float(getattr(row, "volume_ratio", 0) or 0)
+                if vt and vr > 0:
+                    result[vt] = vr
+            self._volume_ratio_map = result
+            self._volume_ratio_loaded = True
+
     def get_volume_ratio_map(self) -> dict[str, float]:
         if self._volume_ratio_loaded:
             return self._volume_ratio_map or {}
@@ -273,13 +289,92 @@ def screening_context_scope():
 def preload_screening_context(ctx: ScreeningContext) -> None:
     """预加载常用字段，避免并行维度重复拉 Redis / Tushare。"""
     ctx.preload_quote_snapshot()
-    ctx.preload_volume_ratio_map()
+    _coarse_prefilter_snapshot(ctx)
+    _prefilter_snapshot(ctx)
+    ctx.load_volume_ratio_from_snapshot(
+        getattr(ctx, "_snapshot", None)
+    )
     ctx.preload_avg_turnover_map()
     ctx.preload_industry_map()
     try:
         ctx.get_quote_snapshot_frame()
     except Exception:
         pass
+
+
+def _coarse_prefilter_snapshot(ctx: ScreeningContext) -> None:
+    """粗筛：仅用行情快照字段（零 API 调用）先过滤无效/涨跌停/低流动性/北交所标的。
+    
+    在硬过滤和 Tushare 重请求之前执行，显著减少后续处理行数。
+    """
+    snapshot = getattr(ctx, "_snapshot", None)
+    if snapshot is None or not getattr(snapshot, "rows", None):
+        return
+    rows = list(snapshot.rows)
+    original = len(rows)
+    filtered = _apply_coarse_quote_filters(rows)
+    if len(filtered) == original:
+        return
+
+    from vnpy_ashare.screener.data.quotes_loader import MarketQuotesSnapshot
+    from vnpy_ashare.domain.market.quote_row import coerce_quote_rows
+
+    ctx._snapshot = MarketQuotesSnapshot(
+        rows=coerce_quote_rows(filtered),
+        updated_at=snapshot.updated_at,
+        total=len(filtered),
+        source=snapshot.source,
+    )
+
+
+def _apply_coarse_quote_filters(rows: list) -> list:
+    """纯行内字段过滤，不发起任何外部请求。"""
+    from vnpy_ashare.screener.hard_filters import recipe_min_amount_yuan
+
+    min_amount = recipe_min_amount_yuan()
+    kept: list = []
+    for row in rows:
+        last_price = float(row.get("last_price") or 0)
+        if last_price <= 0:
+            continue
+
+        # 涨跌停排除
+        change_pct = float(row.get("change_pct") or 0)
+        symbol = str(row.get("symbol") or "")
+        if _at_any_limit_board(symbol, change_pct):
+            continue
+
+        # 流动性：成交额过低
+        if min_amount > 0:
+            amount = float(row.get("amount") or 0)
+            if amount < min_amount:
+                continue
+
+        # 北交所排除
+        if _is_beijing_board(symbol):
+            continue
+
+        kept.append(row)
+    return kept
+
+
+def _at_any_limit_board(symbol: str, change_pct: float) -> bool:
+    """涨跌停或接近涨跌停（主板 ±9.8%，科创/创业板 ±19.5%）。"""
+    if symbol.startswith(("300", "688")):
+        return abs(change_pct) >= 19.5
+    return abs(change_pct) >= 9.8
+
+
+def _is_beijing_board(symbol: str) -> bool:
+    """北交所主板（4/8开头）。"""
+    return bool(symbol) and symbol[0] in ("4", "8")
+
+
+def _prefilter_snapshot(ctx: ScreeningContext) -> None:
+    """提前应用硬过滤（ST、停牌、流动性），减少后续维度和 DataFrame 规模。"""
+    from vnpy_ashare.screener.data.screening_sentiment_prefilter import apply_recipe_prefilter_to_context
+
+    apply_recipe_prefilter_to_context(ctx)
 
 
 def preload_screening_context_quotes(ctx: ScreeningContext) -> None:
