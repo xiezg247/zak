@@ -53,6 +53,17 @@ def _card_from_scan(spec: RadarCardSpec, scan: PredictScanResult) -> RadarCardDa
         top_count=len(scan.rows),
     )
     rows = enrich_radar_rows(scan.rows)
+    # 预测卡片的 sub_label/sub_value 由 predict 逻辑计算（如"基准分"/分值），
+    # enrich_radar_rows 中的相对强度计算会覆盖这些值，需要还原。
+    if scan.rows:
+        sub_map = {r.vt_symbol: (r.sub_label, r.sub_value) for r in scan.rows}
+        restored: list[RadarRow] = []
+        for r in rows:
+            original = sub_map.get(r.vt_symbol)
+            if original is not None and (r.sub_label != original[0] or r.sub_value != original[1]):
+                r = r.model_copy(update={"sub_label": original[0], "sub_value": original[1]})
+            restored.append(r)
+        rows = tuple(restored)
     if not rows:
         return _empty_predict_card(
             spec,

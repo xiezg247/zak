@@ -140,6 +140,11 @@ def prefilter_horizon_universe(
             kline_missing=0,
         )
 
+    # 交易时段 Redis 行情可能缺少 total_mv/circ_mv/turnover_rate 等字段
+    for col_name in ("volume", "amount", "total_mv", "circ_mv", "turnover_rate"):
+        if col_name not in df.columns:
+            df = df.with_columns(pl.lit(None).alias(col_name))
+
     liq = pl.max_horizontal(
         pl.col("volume").cast(pl.Float64, strict=False).fill_null(0.0),
         pl.col("amount").cast(pl.Float64, strict=False).fill_null(0.0),

@@ -99,6 +99,17 @@ def _build_horizon_card(
     updated_at: str,
 ) -> RadarCardData:
     rows = enrich_radar_rows(raw_rows)
+    # 展望卡片的 sub_label/sub_value 由 outlook 逻辑计算（如"5日情景"/"参考带"），
+    # enrich_radar_rows 中的相对强度计算会覆盖这些值，需要还原。
+    if raw_rows:
+        sub_map = {r.vt_symbol: (r.sub_label, r.sub_value) for r in raw_rows}
+        restored: list[RadarRow] = []
+        for r in rows:
+            original = sub_map.get(r.vt_symbol)
+            if original is not None and (r.sub_label != original[0] or r.sub_value != original[1]):
+                r = r.model_copy(update={"sub_label": original[0], "sub_value": original[1]})
+            restored.append(r)
+        rows = tuple(restored)
     subtitle = subtitle_prefix
     cross_suffix = build_outlook_cross_ref_suffix(rows)
     if cross_suffix:
