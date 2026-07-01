@@ -13,6 +13,12 @@ def run_low_pe(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], in
     if not raw_rows:
         return [], 0
 
+    from vnpy_ashare.screener.data.screening_context import apply_board_prefilter_rows
+
+    raw_rows = apply_board_prefilter_rows(raw_rows)
+    if not raw_rows:
+        return [], 0
+
     result = run_low_pe_polars(raw_rows, pool_size=pool_size, weight=weight)
     if result is not None:
         return result

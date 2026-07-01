@@ -354,8 +354,42 @@ def _apply_coarse_quote_filters(rows: list) -> list:
         if _is_beijing_board(symbol):
             continue
 
+        # 板块白名单
+        symbol_col = str(row.get("symbol") or "")
+        if not _passes_board_prefilter(symbol_col):
+            continue
+
         kept.append(row)
     return kept
+
+
+def _passes_board_prefilter(symbol: str) -> bool:
+    """板块粗筛：symbol 前缀是否命中配置的市场板块白名单。"""
+    boards = _get_board_prefilter_boards()
+    if not boards:
+        return True
+    return any(_board_match_prefix(symbol, board) for board in boards)
+
+
+def _get_board_prefilter_boards() -> frozenset[str]:
+    """粗筛用板块白名单（与硬过滤共享 RECIPE_ALLOWED_MARKET_BOARDS 配置）。"""
+    from vnpy_ashare.screener.hard_filters import recipe_allowed_market_boards, resolve_market_board_filter
+
+    board_filter = resolve_market_board_filter()
+    return board_filter.boards if board_filter.active else frozenset()
+
+
+def _board_match_prefix(symbol: str, board: str) -> bool:
+    """symbol 前缀匹配板块。"""
+    if board == "沪深主板":
+        return symbol.startswith(("600", "601", "603", "000", "001", "002", "003"))
+    if board == "创业板":
+        return symbol.startswith("300")
+    if board == "科创板":
+        return symbol.startswith("688")
+    if board == "北交所":
+        return symbol.startswith(("8", "4"))
+    return True
 
 
 def _at_any_limit_board(symbol: str, change_pct: float) -> bool:
@@ -368,6 +402,17 @@ def _at_any_limit_board(symbol: str, change_pct: float) -> bool:
 def _is_beijing_board(symbol: str) -> bool:
     """北交所主板（4/8开头）。"""
     return bool(symbol) and symbol[0] in ("4", "8")
+
+
+def apply_board_prefilter_rows(rows: list) -> list:
+    """公共工具：按 RECIPE_ALLOWED_MARKET_BOARDS 配置过滤行列表。
+    
+    盘中/盘后维度均可调用，不依赖 ScreeningContext。
+    """
+    boards = _get_board_prefilter_boards()
+    if not boards:
+        return rows
+    return [row for row in rows if _passes_board_prefilter(str(row.get("symbol") or row.get("vt_symbol", "") or "").split(".")[0])]
 
 
 def _prefilter_snapshot(ctx: ScreeningContext) -> None:

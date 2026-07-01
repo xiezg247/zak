@@ -56,6 +56,13 @@ def _momentum_from_fundamentals(pool_size: int, *, weight: float) -> tuple[list[
     raw_rows, _trade_date, _ = fetch_fundamental_screening_rows()
     if not raw_rows:
         return [], 0
+
+    from vnpy_ashare.screener.data.screening_context import apply_board_prefilter_rows
+
+    raw_rows = apply_board_prefilter_rows(raw_rows)
+    if not raw_rows:
+        return [], 0
+
     industry_map = get_stock_industry_map()
     enriched = attach_industry(raw_rows, industry_map=industry_map)
     market_benchmark = market_benchmark_change_pct(enriched or raw_rows)

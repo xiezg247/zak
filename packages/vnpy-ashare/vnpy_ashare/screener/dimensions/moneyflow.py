@@ -12,6 +12,11 @@ def run_moneyflow(pool_size: int, *, weight: float) -> tuple[list[DimensionHit],
     raw_rows, _trade_date = fetch_moneyflow_with_fallback()
     if not raw_rows:
         return [], 0
+    from vnpy_ashare.screener.data.screening_context import apply_board_prefilter_rows
+
+    raw_rows = apply_board_prefilter_rows(raw_rows)
+    if not raw_rows:
+        return [], 0
     rows = apply_moneyflow_in(raw_rows, top_n=pool_size)
     hits: list[DimensionHit] = []
     for index, row in enumerate(rows, start=1):
