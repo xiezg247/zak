@@ -478,9 +478,8 @@ class StockAnalysisDialog(QtWidgets.QDialog):
                 self._render_quote_metrics()
                 return
         quote = self._host.quote_for_item(self._item)
-        if quote is None:
-            return
-        self._quote = quote
+        if quote is not None:
+            self._quote = quote
         self._render_header_quote()
         self._render_quote_metrics()
 
