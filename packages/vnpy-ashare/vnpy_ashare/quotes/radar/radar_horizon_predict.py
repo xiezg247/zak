@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from vnpy_ashare.quotes.radar.predict.baseline_ranker import PREDICT_HORIZON_DAYS
-from vnpy_ashare.quotes.radar.predict.predict_cache import get_latest_predict_cache, put_predict_cache
+from vnpy_ashare.quotes.radar.predict.predict_cache import get_latest_predict_cache
 from vnpy_ashare.quotes.radar.predict.predict_scan import (
     PredictScanResult,
     build_predict_subtitle,
@@ -105,14 +105,7 @@ def load_outlook_predict(spec: RadarCardSpec, *, force_recompute: bool = False) 
             empty_message="暂无预测快照，请点击卡片刷新；或在定时任务中运行「雷达展望扫描」。",
         )
 
-    scan = scan_predict(top_n=spec.top_n)
-    put_predict_cache(
-        variant=scan.variant,
-        rows=scan.rows,
-        stats=scan.stats,
-        model_label=scan.model_label,
-        computed_at=scan.computed_at,
-    )
+    scan = scan_predict(top_n=spec.top_n, persist=True)
     return _card_from_scan(spec, scan)
 
 

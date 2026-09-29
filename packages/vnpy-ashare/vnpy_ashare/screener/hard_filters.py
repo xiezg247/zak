@@ -142,17 +142,6 @@ def _screening_vt_name_map() -> dict[str, str]:
     return mapping
 
 
-def _names_for_st_check(row: ScreeningFilterRow, name_map: dict[str, str] | None) -> list[str]:
-    candidates: list[str] = []
-    for candidate in (
-        str(row.get("name") or "").strip(),
-        str((name_map or {}).get(str(row.get("vt_symbol") or "").strip()) or "").strip(),
-    ):
-        if candidate and candidate not in candidates:
-            candidates.append(candidate)
-    return candidates
-
-
 def row_amount_yuan(row: ScreeningFilterRow) -> float:
     amount = row.get("amount")
     if amount not in (None, ""):
@@ -413,43 +402,6 @@ def passes_liquidity_filter(row: ScreeningFilterRow) -> bool:
         return estimated >= min_amount
 
     return True
-
-
-def passes_screening_hard_filter(
-    row: ScreeningFilterRow,
-    *,
-    suspended_keys: frozenset[tuple[str, str]] | None = None,
-    name_map: dict[str, str] | None = None,
-    list_date_map: dict[str, str] | None = None,
-    market_board_map: dict[str, str] | None = None,
-    industry_map: dict[str, str] | None = None,
-    allowed_industries: frozenset[str] | None = None,
-    allowed_market_boards: frozenset[str] | None = None,
-) -> bool:
-    if allowed_market_boards is not None:
-        board_filter = MarketBoardFilter(active=True, boards=allowed_market_boards)
-    else:
-        board_filter = resolve_market_board_filter()
-    if board_filter.active and not passes_market_board_filter(row, board_filter.boards):
-        return False
-    allowed = allowed_industries if allowed_industries is not None else recipe_allowed_industries()
-    if allowed and not passes_industry_filter(row, allowed, industry_map=industry_map):
-        return False
-    if recipe_exclude_suspended_enabled():
-        keys = suspended_keys if suspended_keys is not None else _suspended_keys_for_screening()
-        if is_row_suspended(row, keys):
-            return False
-    if recipe_exclude_st_enabled():
-        for name in _names_for_st_check(row, name_map):
-            if is_st_stock(name):
-                return False
-    if recipe_exclude_new_listing_enabled() and is_new_listing(row, list_date_map=list_date_map):
-        return False
-    if recipe_exclude_limit_board_enabled() and is_at_limit_board(row, market_board_map=market_board_map):
-        return False
-    if recipe_exclude_one_word_enabled() and is_one_word_limit_board(row, market_board_map=market_board_map):
-        return False
-    return passes_liquidity_filter(row)
 
 
 def apply_recipe_filters(rows: Sequence[T_ScreeningRow]) -> list[T_ScreeningRow]:

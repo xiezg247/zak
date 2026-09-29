@@ -82,11 +82,12 @@ def scan_predict(
     prefilter: list[str] | None = None,
     base_stats: HorizonScanStats | None = None,
     quote_rows: list[QuoteRow] | None = None,
+    persist: bool = False,
 ) -> PredictScanResult:
     """全市场粗筛后做预测排序。
 
     若传入 prefilter / base_stats / quote_rows 则复用已有数据（如来自 run_horizon_outlook_scan_with_predict），
-    否则独立粗筛。
+    否则独立粗筛。``persist=True`` 时写入预测缓存。
     """
     if prefilter is None or base_stats is None:
         excluded = collect_outlook_exclusion_vt_symbols()
@@ -108,13 +109,22 @@ def scan_predict(
         refined_total=len(hits),
         kline_missing=stats.kline_missing,
     )
-    return PredictScanResult(
+    scan = PredictScanResult(
         variant=variant,
         rows=rows,
         stats=refined_stats,
         model_label=model_label,
         computed_at=format_china_datetime_minute(),
     )
+    if persist:
+        put_predict_cache(
+            variant=scan.variant,
+            rows=scan.rows,
+            stats=scan.stats,
+            model_label=scan.model_label,
+            computed_at=scan.computed_at,
+        )
+    return scan
 
 
 def scan_predict_baseline(
@@ -163,16 +173,7 @@ def predict_empty_message(stats: HorizonScanStats, *, card_title: str) -> str:
 
 def run_predict_scan(*, top_n: int = 8) -> PredictScanResult:
     """执行预测扫描并写入缓存。"""
-    scan = scan_predict(top_n=top_n)
-
-    put_predict_cache(
-        variant=scan.variant,
-        rows=scan.rows,
-        stats=scan.stats,
-        model_label=scan.model_label,
-        computed_at=scan.computed_at,
-    )
-    return scan
+    return scan_predict(top_n=top_n, persist=True)
 
 
 def build_predict_subtitle(

@@ -404,10 +404,48 @@ def apply_board_prefilter_rows(rows: list) -> list:
     return [row for row in rows if _passes_board_prefilter(str(row.get("symbol") or row.get("vt_symbol", "") or "").split(".")[0])]
 
 
+def _replace_context_snapshot(ctx: ScreeningContext, *, rows: list, total: int | None = None) -> None:
+    snapshot = getattr(ctx, "_snapshot", None)
+    if snapshot is None:
+        return
+    from vnpy_ashare.domain.market.quote_row import coerce_quote_rows
+
+    ctx._snapshot = MarketQuotesSnapshot(
+        rows=coerce_quote_rows(rows),
+        updated_at=snapshot.updated_at,
+        total=len(rows) if total is None else total,
+        source=snapshot.source,
+    )
+
+
+def apply_recipe_prefilter_to_context(ctx: ScreeningContext) -> None:
+    """将配方硬过滤（含 RECIPE_ALLOWED / ASHARE_TRADING_BOARDS）应用到上下文行情快照。"""
+    from vnpy_ashare.screener.hard_filters import apply_recipe_filters
+
+    snapshot = getattr(ctx, "_snapshot", None)
+    if snapshot is None or not getattr(snapshot, "rows", None):
+        return
+    filtered = apply_recipe_filters(list(snapshot.rows))
+    if len(filtered) == len(snapshot.rows):
+        return
+    _replace_context_snapshot(ctx, rows=filtered)
+
+
+def apply_sentiment_prefilter_to_context(ctx: ScreeningContext) -> None:
+    """恐贪前置缩池应用到上下文行情快照。"""
+    from vnpy_ashare.screener.sentiment.snapshot_prefilter import apply_sentiment_snapshot_prefilter
+
+    snapshot = getattr(ctx, "_snapshot", None)
+    if snapshot is None or not getattr(snapshot, "rows", None):
+        return
+    filtered = apply_sentiment_snapshot_prefilter(list(snapshot.rows))
+    if len(filtered) == len(snapshot.rows):
+        return
+    _replace_context_snapshot(ctx, rows=filtered)
+
+
 def _prefilter_snapshot(ctx: ScreeningContext) -> None:
     """提前应用硬过滤（ST、停牌、流动性），减少后续维度和 DataFrame 规模。"""
-    from vnpy_ashare.screener.data.screening_sentiment_prefilter import apply_recipe_prefilter_to_context
-
     apply_recipe_prefilter_to_context(ctx)
 
 

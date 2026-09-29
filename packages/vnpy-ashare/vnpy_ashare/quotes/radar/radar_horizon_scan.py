@@ -334,7 +334,6 @@ def run_horizon_outlook_scan_with_predict(
     variants: tuple[str, ...] = HORIZON_SCAN_VARIANTS,
 ) -> "tuple[PredictScanResult, tuple[HorizonScanResult, ...]]":
     """一次粗筛 + 批量算信号，产出关注/可持/情景/预测，统一复用粗筛池与行情数据。"""
-    from vnpy_ashare.quotes.radar.predict.predict_cache import put_predict_cache
     from vnpy_ashare.quotes.radar.predict.predict_scan import (
         _quote_rows_for_prefilter,
         scan_predict,
@@ -367,13 +366,7 @@ def run_horizon_outlook_scan_with_predict(
         prefilter=prefilter,
         base_stats=base_stats,
         quote_rows=quote_rows,
-    )
-    put_predict_cache(
-        variant=predict.variant,
-        rows=predict.rows,
-        stats=predict.stats,
-        model_label=predict.model_label,
-        computed_at=predict.computed_at,
+        persist=True,
     )
 
     return predict, tuple(results)

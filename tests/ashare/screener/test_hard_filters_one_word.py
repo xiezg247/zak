@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import tests._bootstrap  # noqa: F401
 from vnpy_ashare.screener.hard_filter_prefs import HardFilterPrefs
-from vnpy_ashare.screener.hard_filters import is_one_word_limit_board, passes_screening_hard_filter
+from vnpy_ashare.screener.hard_filters import apply_recipe_filters, is_one_word_limit_board
 
 
 class HardFilterOneWordTests(unittest.TestCase):
@@ -34,6 +34,7 @@ class HardFilterOneWordTests(unittest.TestCase):
     def test_exclude_one_word_pref(self) -> None:
         row = {
             "symbol": "600000",
+            "vt_symbol": "600000.SSE",
             "change_pct": 10.0,
             "prev_close": 10.0,
             "high_price": 11.0,
@@ -68,7 +69,19 @@ class HardFilterOneWordTests(unittest.TestCase):
                                 "vnpy_ashare.screener.hard_filters.recipe_exclude_one_word_enabled",
                                 return_value=True,
                             ):
-                                self.assertFalse(passes_screening_hard_filter(row))
+                                with patch(
+                                    "vnpy_ashare.screener.hard_filters._market_board_map_for_screening",
+                                    return_value={},
+                                ):
+                                    with patch(
+                                        "vnpy_ashare.screener.hard_filters.resolve_market_board_filter",
+                                        return_value=type("F", (), {"active": False, "boards": frozenset()})(),
+                                    ):
+                                        with patch(
+                                            "vnpy_ashare.screener.hard_filters.recipe_allowed_industries",
+                                            return_value=frozenset(),
+                                        ):
+                                            self.assertEqual(apply_recipe_filters([row]), [])
 
 
 if __name__ == "__main__":
