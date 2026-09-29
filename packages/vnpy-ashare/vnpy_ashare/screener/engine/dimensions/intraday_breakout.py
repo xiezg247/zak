@@ -8,14 +8,14 @@ import polars as pl
 
 from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row
 from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
-from vnpy_ashare.screener.dimensions.intraday_breakout import (
-    _MAX_PULLBACK_FROM_HIGH_PCT,
-    _MIN_BREAK_PCT,
-    _MIN_BREAKOUT_VOLUME_RATIO,
-    _MIN_CHANGE_PCT,
-    _NEAR_HIGH_RATIO,
-)
 from vnpy_ashare.screener.engine.snapshot_frame import change_pct_expr, frame_to_row_dicts, snapshot_rows_to_dataframe
+
+# 与 dimensions.intraday_breakout Python 路径共用阈值
+_MIN_CHANGE_PCT = 0.5
+_MIN_BREAK_PCT = 0.5
+_NEAR_HIGH_RATIO = 0.99
+_MIN_BREAKOUT_VOLUME_RATIO = 1.2
+_MAX_PULLBACK_FROM_HIGH_PCT = 2.0
 
 
 def score_breakout_candidates_polars(rows: list[Any]) -> list[tuple[QuoteRow, float]]:
@@ -30,17 +30,29 @@ def score_breakout_candidates_polars(rows: list[Any]) -> list[tuple[QuoteRow, fl
     else:
         df = df.with_columns(pl.lit(None).cast(pl.Float64).alias("_map_ratio"))
 
-    prev = pl.col("prev_close").cast(pl.Float64, strict=False).fill_null(0.0)
-    high = pl.coalesce(
-        pl.col("high_price").cast(pl.Float64, strict=False),
-        pl.col("high").cast(pl.Float64, strict=False),
-    ).fill_null(0.0)
-    last = pl.coalesce(
-        pl.col("last_price").cast(pl.Float64, strict=False),
-        pl.col("close").cast(pl.Float64, strict=False),
-    ).fill_null(0.0)
+    prev = (
+        pl.col("prev_close").cast(pl.Float64, strict=False).fill_null(0.0)
+        if "prev_close" in df.columns
+        else pl.lit(0.0)
+    )
+    high_exprs = [
+        pl.col(name).cast(pl.Float64, strict=False)
+        for name in ("high_price", "high")
+        if name in df.columns
+    ]
+    high = pl.coalesce(*high_exprs).fill_null(0.0) if high_exprs else pl.lit(0.0)
+    last_exprs = [
+        pl.col(name).cast(pl.Float64, strict=False)
+        for name in ("last_price", "close")
+        if name in df.columns
+    ]
+    last = pl.coalesce(*last_exprs).fill_null(0.0) if last_exprs else pl.lit(0.0)
     change = change_pct_expr()
-    row_ratio = pl.col("volume_ratio").cast(pl.Float64, strict=False).fill_null(0.0)
+    row_ratio = (
+        pl.col("volume_ratio").cast(pl.Float64, strict=False).fill_null(0.0)
+        if "volume_ratio" in df.columns
+        else pl.lit(0.0)
+    )
     map_ratio = pl.col("_map_ratio").cast(pl.Float64, strict=False).fill_null(0.0)
     volume_ratio = pl.max_horizontal(row_ratio, map_ratio)
     has_ratio = volume_ratio > 0

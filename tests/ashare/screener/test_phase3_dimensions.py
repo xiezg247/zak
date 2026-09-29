@@ -33,11 +33,20 @@ def _breakout_row(**overrides):
 
 class TestPhase3Dimensions(unittest.TestCase):
     def test_intraday_breakout_detects_prev_close_break(self) -> None:
-        snapshot = type("Snap", (), {"rows": [_breakout_row()], "total": 1})()
 
-        with patch(
-            "vnpy_ashare.screener.dimensions.intraday_breakout.load_screening_quote_snapshot",
-            return_value=snapshot,
+        with (
+            patch(
+                "vnpy_ashare.screener.dimensions.intraday_breakout.load_quote_snapshot_for_dimension",
+                return_value=([_breakout_row()], 1),
+            ),
+            patch("vnpy_ashare.screener.dimensions.scoring.metric_score_blend", return_value=0.0),
+            patch(
+                "vnpy_ashare.screener.engine.dimensions.intraday_breakout.get_volume_ratio_map",
+                return_value={},
+            ),
+            patch("vnpy_ashare.screener.dimensions.intraday_breakout.get_volume_ratio_map", return_value={}),
+            patch("vnpy_ashare.screener.dimensions.intraday_breakout._breakout_lookback_days", return_value=0),
+            patch("vnpy_ashare.screener.dimensions.intraday_breakout._minute_confirm_enabled", return_value=False),
         ):
             hits, scanned = run_intraday_breakout(5, weight=0.2)
 
@@ -48,17 +57,23 @@ class TestPhase3Dimensions(unittest.TestCase):
 
     def test_intraday_breakout_skips_low_volume_ratio(self) -> None:
         weak = _breakout_row(volume_ratio=1.0)
-        snapshot = type("Snap", (), {"rows": [weak], "total": 1})()
 
         with (
             patch(
-                "vnpy_ashare.screener.dimensions.intraday_breakout.load_screening_quote_snapshot",
-                return_value=snapshot,
+                "vnpy_ashare.screener.dimensions.intraday_breakout.load_quote_snapshot_for_dimension",
+                return_value=([weak], 1),
             ),
             patch(
                 "vnpy_ashare.screener.dimensions.intraday_breakout.get_volume_ratio_map",
                 return_value={},
             ),
+            patch(
+                "vnpy_ashare.screener.engine.dimensions.intraday_breakout.get_volume_ratio_map",
+                return_value={},
+            ),
+            patch("vnpy_ashare.screener.dimensions.scoring.metric_score_blend", return_value=0.0),
+            patch("vnpy_ashare.screener.dimensions.intraday_breakout._breakout_lookback_days", return_value=0),
+            patch("vnpy_ashare.screener.dimensions.intraday_breakout._minute_confirm_enabled", return_value=False),
         ):
             hits, _ = run_intraday_breakout(5, weight=0.2)
 
@@ -66,11 +81,18 @@ class TestPhase3Dimensions(unittest.TestCase):
 
     def test_intraday_breakout_skips_weak_moves(self) -> None:
         weak = _breakout_row(high_price=10.02, last_price=10.01, change_pct=0.1)
-        snapshot = type("Snap", (), {"rows": [weak], "total": 1})()
 
-        with patch(
-            "vnpy_ashare.screener.dimensions.intraday_breakout.load_screening_quote_snapshot",
-            return_value=snapshot,
+        with (
+            patch(
+                "vnpy_ashare.screener.dimensions.intraday_breakout.load_quote_snapshot_for_dimension",
+                return_value=([weak], 1),
+            ),
+            patch("vnpy_ashare.screener.dimensions.intraday_breakout._breakout_lookback_days", return_value=0),
+            patch("vnpy_ashare.screener.dimensions.intraday_breakout._minute_confirm_enabled", return_value=False),
+            patch(
+                "vnpy_ashare.screener.engine.dimensions.intraday_breakout.get_volume_ratio_map",
+                return_value={},
+            ),
         ):
             hits, _ = run_intraday_breakout(5, weight=0.2)
 
@@ -108,6 +130,7 @@ class TestPhase3Dimensions(unittest.TestCase):
                 "vnpy_ashare.screener.dimensions.moneyflow_resolve.is_ashare_trading_session",
                 return_value=True,
             ),
+            patch("vnpy_ashare.screener.dimensions.scoring.metric_score_blend", return_value=0.0),
         ):
             hits, scanned = run_moneyflow_intraday(2, weight=0.15)
 

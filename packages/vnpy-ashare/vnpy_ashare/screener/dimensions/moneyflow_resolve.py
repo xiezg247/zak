@@ -12,9 +12,10 @@ from vnpy_ashare.quotes.market.moneyflow_kind import enrich_moneyflow_row_with_k
 from vnpy_ashare.screener.data.data_source import fetch_moneyflow_with_fallback, load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, MarketQuotesSnapshot
 from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row, rank_score
+from vnpy_ashare.screener.dimensions.moneyflow_ids import INTRADAY_DIMENSION_ID, INTRADAY_LABEL
 
-_INTRADAY_DIMENSION_ID = "moneyflow_intraday"
-_INTRADAY_LABEL = "盘中资金"
+_INTRADAY_DIMENSION_ID = INTRADAY_DIMENSION_ID
+_INTRADAY_LABEL = INTRADAY_LABEL
 _POST_LABEL = "资金"
 _DIVERGENCE_SCORE_FACTOR = 0.65
 _STREAK_BONUS_PER_DAY = 0.05

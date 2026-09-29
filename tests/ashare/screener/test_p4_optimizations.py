@@ -8,7 +8,7 @@ from vnpy_ashare.quotes.radar.radar_cross_refs import build_outlook_cross_ref_su
 from vnpy_ashare.quotes.radar.radar_models import RadarRow
 from vnpy_ashare.quotes.radar.radar_relative_strength import build_relative_strength_subline
 from vnpy_ashare.screener.dimensions.intraday_breakout import _quote_breakout_strength
-from vnpy_ashare.screener.dimensions.momentum import _momentum_change_allowed
+from vnpy_ashare.screener.dimensions.momentum_bounds import momentum_change_bounds
 from vnpy_ashare.screener.sector.sector_summary import compute_sector_distribution
 
 
@@ -26,9 +26,28 @@ def test_compute_sector_distribution_includes_advance_ratio() -> None:
 
 
 def test_momentum_change_bounds() -> None:
-    assert _momentum_change_allowed(5.0)
-    assert not _momentum_change_allowed(0.1)
-    assert not _momentum_change_allowed(12.0)
+    with (
+        patch(
+            "vnpy_ashare.screener.dimensions.momentum_bounds.load_recipe_tuning_prefs",
+            return_value=type(
+                "P",
+                (),
+                {
+                    "momentum_min_change_pct": 1.0,
+                    "momentum_max_change_pct": 10.0,
+                    "momentum_fear_max_change_pct": 6.0,
+                },
+            )(),
+        ),
+        patch(
+            "vnpy_ashare.screener.dimensions.momentum_bounds.try_fetch_fear_greed_index",
+            return_value=None,
+        ),
+    ):
+        min_change, max_change = momentum_change_bounds()
+    assert min_change <= 5.0 <= max_change
+    assert not (min_change <= 0.1 <= max_change)
+    assert not (min_change <= 12.0 <= max_change)
 
 
 def test_breakout_rejects_large_pullback_from_high() -> None:

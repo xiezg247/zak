@@ -8,7 +8,7 @@ import polars as pl
 
 from vnpy_ashare.domain.market.quote_row import quote_row_copy
 from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row, rank_score
-from vnpy_ashare.screener.dimensions.moneyflow_resolve import _INTRADAY_DIMENSION_ID, _INTRADAY_LABEL
+from vnpy_ashare.screener.dimensions.moneyflow_ids import INTRADAY_DIMENSION_ID, INTRADAY_LABEL
 from vnpy_ashare.screener.engine.snapshot_frame import change_pct_expr, frame_to_row_dicts, snapshot_rows_to_dataframe
 
 
@@ -23,12 +23,24 @@ def hits_from_moneyflow_proxy_polars(
         return []
 
     change = change_pct_expr()
-    amount = pl.col("amount").cast(pl.Float64, strict=False).fill_null(0.0)
-    turnover = pl.col("turnover_rate").cast(pl.Float64, strict=False).fill_null(0.0)
-    price = pl.coalesce(
-        pl.col("last_price").cast(pl.Float64, strict=False),
-        pl.col("close").cast(pl.Float64, strict=False),
-    ).fill_null(0.0)
+    amount = (
+        pl.col("amount").cast(pl.Float64, strict=False).fill_null(0.0)
+        if "amount" in df.columns
+        else pl.lit(0.0)
+    )
+    turnover = (
+        pl.col("turnover_rate").cast(pl.Float64, strict=False).fill_null(0.0)
+        if "turnover_rate" in df.columns
+        else pl.lit(0.0)
+    )
+    if "last_price" in df.columns or "close" in df.columns:
+        price = pl.coalesce(
+            *(
+                [pl.col(name).cast(pl.Float64, strict=False) for name in ("last_price", "close") if name in df.columns]
+            ),
+        ).fill_null(0.0)
+    else:
+        price = pl.lit(0.0)
 
     proxy = (
         pl.when(change <= 0)
@@ -61,8 +73,8 @@ def hits_from_moneyflow_proxy_polars(
         hits.append(
             DimensionHit(
                 vt_symbol=vt_symbol,
-                dimension_id=_INTRADAY_DIMENSION_ID,
-                label=_INTRADAY_LABEL,
+                dimension_id=INTRADAY_DIMENSION_ID,
+                label=INTRADAY_LABEL,
                 weight=weight,
                 score=rank_score(index, total),
                 reason=(f"盘中资金：涨幅 {float(item.get('change_pct') or 0):+.2f}% + 成交额 {amount_wan:,.0f} 万（代理），排名第 {index}"),

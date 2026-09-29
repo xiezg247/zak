@@ -8,10 +8,8 @@ from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, coerce_quote_row, quote_row_copy
 from vnpy_ashare.domain.symbols.stock import parse_tickflow_symbol
 from vnpy_ashare.integrations.tickflow.klines import fetch_intraday_bars
-from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
-from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
-from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row
+from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row, load_quote_snapshot_for_dimension
 from vnpy_ashare.screener.dimensions.history_signals import (
     bars_for_vt_symbol,
     breaks_rolling_high,
@@ -19,14 +17,16 @@ from vnpy_ashare.screener.dimensions.history_signals import (
     rolling_high_before_last,
 )
 from vnpy_ashare.screener.dimensions.scoring import blended_score
+from vnpy_ashare.screener.engine.dimensions.intraday_breakout import (
+    _MAX_PULLBACK_FROM_HIGH_PCT,
+    _MIN_BREAK_PCT,
+    _MIN_BREAKOUT_VOLUME_RATIO,
+    _MIN_CHANGE_PCT,
+    _NEAR_HIGH_RATIO,
+)
 from vnpy_ashare.screener.recipe_tuning_prefs import load_recipe_tuning_prefs
 
 _META_DIMENSION_ID = "intraday_breakout"
-_MIN_CHANGE_PCT = 0.5
-_MIN_BREAK_PCT = 0.5
-_NEAR_HIGH_RATIO = 0.99
-_MIN_BREAKOUT_VOLUME_RATIO = 1.2
-_MAX_PULLBACK_FROM_HIGH_PCT = 2.0
 _DEFAULT_LOOKBACK_DAYS = 5
 
 
@@ -42,15 +42,15 @@ def _breakout_lookback_days() -> int:
 
 
 def run_intraday_breakout(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], int]:
-    try:
-        snapshot = load_screening_quote_snapshot()
-    except MarketQuotesLoadError:
+    loaded = load_quote_snapshot_for_dimension()
+    if loaded is None:
         return [], 0
+    rows, total = loaded
 
     ratio_map = get_volume_ratio_map()
     from vnpy_ashare.screener.engine.dimensions.intraday_breakout import score_breakout_candidates_polars
 
-    candidates = score_breakout_candidates_polars(list(snapshot.rows))
+    candidates = score_breakout_candidates_polars(rows)
 
     lookback = _breakout_lookback_days()
     if lookback > 0 and candidates:
@@ -89,7 +89,7 @@ def run_intraday_breakout(pool_size: int, *, weight: float) -> tuple[list[Dimens
                 row=dimension_hit_row(coerce_quote_row(row)),
             )
         )
-    return hits, snapshot.total
+    return hits, total
 
 
 def _row_volume_ratio(row: QuoteRowLike, ratio_map: dict[str, float]) -> float | None:
