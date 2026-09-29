@@ -9,9 +9,14 @@ import polars as pl
 from vnpy_ashare.domain.market.quote_row import QuoteRow
 from vnpy_ashare.integrations.tushare.concept_board import build_hot_concept_vt_symbol_map
 from vnpy_ashare.screener.dimensions.base import DimensionHit, quote_hits
-from vnpy_ashare.screener.dimensions.concept_strength import _concept_reason
 from vnpy_ashare.screener.engine.snapshot_frame import change_pct_expr, frame_to_row_dicts, snapshot_rows_to_dataframe
 from vnpy_ashare.screener.preset.rules import _quote_row
+
+
+def _concept_reason(row: dict[str, Any], rank: int) -> str:
+    concept = str(row.get("concept_name") or "未知")
+    change = float(row.get("change_pct") or 0)
+    return f"概念：{concept} 强势，涨幅 {change:+.2f}%，排名第 {rank}"
 
 
 def run_concept_strength_polars(

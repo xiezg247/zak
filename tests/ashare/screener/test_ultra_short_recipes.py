@@ -78,16 +78,15 @@ class UltraShortRecipeTest(unittest.TestCase):
         self.assertEqual(prefs.min_total_mv_yi, 30.0)
         self.assertFalse(prefs.exclude_limit_board)
 
-    @patch("vnpy_ashare.screener.dimensions.limit_board.build_limit_ladder_candidates")
-    @patch("vnpy_ashare.screener.dimensions.limit_board.attach_industry", side_effect=lambda rows: rows)
-    @patch("vnpy_ashare.screener.dimensions.limit_board.load_screening_quote_snapshot")
-    @patch("vnpy_ashare.screener.dimensions.limit_board.get_cached_limit_times_map", return_value={})
-    def test_run_limit_board_dimension(self, _limit_map, mock_snapshot, _industry, mock_pool) -> None:
-        from types import SimpleNamespace
-
-        mock_snapshot.return_value = SimpleNamespace(
-            rows=[{"vt_symbol": "600000.SSE", "limit_times": 3, "change_pct": 10.0, "amount": 2e8}],
-            total=100,
+    @patch("vnpy_ashare.screener.dimensions.scoring.metric_score_blend", return_value=0.0)
+    @patch("vnpy_ashare.screener.engine.dimensions.limit_board.collect_limit_candidate_rows")
+    @patch("vnpy_ashare.screener.engine.dimensions.limit_board.resolve_limit_times", return_value=3)
+    @patch("vnpy_ashare.screener.engine.dimensions.limit_board.get_cached_limit_times_map", return_value={})
+    @patch("vnpy_ashare.screener.dimensions.limit_board.load_quote_snapshot_for_dimension")
+    def test_run_limit_board_dimension(self, mock_load, _limit_map, _resolve, mock_pool, _blend) -> None:
+        mock_load.return_value = (
+            [{"vt_symbol": "600000.SSE", "limit_times": 3, "change_pct": 10.0, "amount": 2e8}],
+            100,
         )
         mock_pool.return_value = [
             {"vt_symbol": "600000.SSE", "limit_times": 3, "change_pct": 10.0, "amount": 2e8, "industry": "半导体"},
@@ -97,25 +96,39 @@ class UltraShortRecipeTest(unittest.TestCase):
         self.assertEqual(len(hits), 1)
         self.assertEqual(hits[0].dimension_id, "limit_board")
 
-    @patch("vnpy_ashare.screener.dimensions.cm20_elastic.apply_recipe_filters", side_effect=lambda rows: rows)
-    @patch("vnpy_ashare.screener.dimensions.cm20_elastic.attach_industry", side_effect=lambda rows: rows)
-    @patch("vnpy_ashare.screener.dimensions.cm20_elastic.load_screening_quote_snapshot")
-    def test_run_cm20_elastic_dimension(self, mock_snapshot, _industry, _filters) -> None:
-        from types import SimpleNamespace
-
+    @patch("vnpy_ashare.screener.dimensions.scoring.metric_score_blend", return_value=0.0)
+    @patch(
+        "vnpy_ashare.screener.engine.dimensions.cm20_elastic.attach_industry_columns",
+        side_effect=lambda df, **kwargs: df,
+    )
+    @patch(
+        "vnpy_ashare.screener.engine.dimensions.cm20_elastic.apply_recipe_filters",
+        side_effect=lambda rows: rows,
+    )
+    @patch(
+        "vnpy_ashare.screener.engine.dimensions.cm20_elastic.get_stock_industry_map",
+        return_value={},
+    )
+    @patch(
+        "vnpy_ashare.screener.engine.dimensions.cm20_elastic.get_stock_industry_l1_map",
+        return_value={},
+    )
+    @patch("vnpy_ashare.screener.dimensions.cm20_elastic.load_quote_snapshot_for_dimension")
+    def test_run_cm20_elastic_dimension(self, mock_load, _l1, _industry, _filters, _attach, _blend) -> None:
         from vnpy_ashare.screener.dimensions.cm20_elastic import run_cm20_elastic
 
-        mock_snapshot.return_value = SimpleNamespace(
-            rows=[
+        mock_load.return_value = (
+            [
                 {
                     "vt_symbol": "300001.SZSE",
                     "symbol": "300001",
                     "change_pct": 12.0,
                     "amount": 2e8,
                     "total_mv": 500000,
+                    "circ_mv": 500000,
                 }
             ],
-            total=100,
+            100,
         )
         hits, total = run_cm20_elastic(5, weight=0.45)
         self.assertEqual(total, 100)

@@ -8,8 +8,15 @@ from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row
 from vnpy_ashare.quotes.core.enrich import get_cached_limit_times_map
 from vnpy_ashare.quotes.radar.radar_limit_ladder import resolve_limit_times
 from vnpy_ashare.screener.dimensions.base import DimensionHit, quote_hits
-from vnpy_ashare.screener.dimensions.limit_board import _limit_board_reason
 from vnpy_ashare.screener.engine.dimensions.limit_common import collect_limit_candidate_rows
+
+
+def _limit_board_reason(row: dict[str, Any], rank: int) -> str:
+    boards = int(float(row.get("limit_times") or 1))
+    industry = str(row.get("industry") or "—")
+    change = float(row.get("change_pct") or 0)
+    board_text = f"{boards}板" if boards >= 2 else "首板"
+    return f"连板：{industry} {board_text}，涨幅 {change:+.2f}%，排名第 {rank}"
 
 
 def run_limit_board_polars(

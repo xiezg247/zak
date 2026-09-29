@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 from vnpy_ashare.integrations.tushare.factors import fetch_daily_basic
-from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
-from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
-from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row
+from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row, load_quote_snapshot_for_dimension
 from vnpy_ashare.screener.dimensions.scoring import blended_score
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters
 
@@ -17,9 +15,8 @@ def run_volume_ratio(pool_size: int, *, weight: float) -> tuple[list[DimensionHi
         volume_ratio_tier_factor,
     )
 
-    try:
-        snapshot = load_screening_quote_snapshot()
-    except MarketQuotesLoadError:
+    loaded = load_quote_snapshot_for_dimension()
+    if loaded is None:
         return _volume_ratio_from_tushare_only(
             pool_size,
             weight=weight,
@@ -27,11 +24,12 @@ def run_volume_ratio(pool_size: int, *, weight: float) -> tuple[list[DimensionHi
             tier_factor=volume_ratio_tier_factor,
         )
 
+    rows, total = loaded
     result = run_volume_ratio_polars(
-        list(snapshot.rows),
+        rows,
         pool_size=pool_size,
         weight=weight,
-        total=snapshot.total,
+        total=total,
     )
     if result is not None:
         return result

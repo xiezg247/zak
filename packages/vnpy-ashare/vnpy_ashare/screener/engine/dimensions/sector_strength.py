@@ -9,10 +9,17 @@ import polars as pl
 from vnpy_ashare.domain.market.quote_row import QuoteRow
 from vnpy_ashare.screener.data.screening_context import get_stock_industry_l1_map, get_stock_industry_map
 from vnpy_ashare.screener.dimensions.base import DimensionHit, quote_hits
-from vnpy_ashare.screener.dimensions.sector_strength import _sector_reason
 from vnpy_ashare.screener.engine.sector_stats import compute_sector_distribution_polars
 from vnpy_ashare.screener.engine.snapshot_frame import attach_industry_columns, change_pct_expr, frame_to_row_dicts, snapshot_rows_to_dataframe
 from vnpy_ashare.screener.preset.rules import _quote_row
+
+
+def _sector_reason(row: dict, rank: int) -> str:
+    industry = str(row.get("industry") or "未知")
+    change = float(row.get("change_pct") or 0)
+    advance = row.get("industry_advance_pct")
+    advance_note = f"，上涨占比 {float(advance):.0f}%" if advance is not None else ""
+    return f"板块：{industry} 强势{advance_note}，涨幅 {change:+.2f}%，排名第 {rank}"
 
 
 def run_sector_strength_polars(

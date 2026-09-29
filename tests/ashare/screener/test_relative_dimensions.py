@@ -9,41 +9,39 @@ from vnpy_ashare.screener.dimensions.volume_surge import run_volume_surge
 
 
 def test_volume_surge_prefers_volume_ratio() -> None:
-    snapshot = type(
-        "Snap",
-        (),
+    rows = [
         {
-            "rows": [
-                {
-                    "vt_symbol": "600000.SSE",
-                    "symbol": "600000",
-                    "volume": 1_000_000,
-                    "amount": 50_000_000,
-                    "change_pct": 1.0,
-                    "total_mv": 600_000,
-                },
-                {
-                    "vt_symbol": "000001.SZSE",
-                    "symbol": "000001",
-                    "volume": 9_000_000,
-                    "amount": 80_000_000,
-                    "change_pct": 1.0,
-                    "total_mv": 600_000,
-                },
-            ],
-            "total": 2,
+            "vt_symbol": "600000.SSE",
+            "symbol": "600000",
+            "volume": 1_000_000,
+            "amount": 50_000_000,
+            "change_pct": 1.0,
+            "total_mv": 600_000,
         },
-    )()
+        {
+            "vt_symbol": "000001.SZSE",
+            "symbol": "000001",
+            "volume": 9_000_000,
+            "amount": 80_000_000,
+            "change_pct": 1.0,
+            "total_mv": 600_000,
+        },
+    ]
 
     with (
         patch(
-            "vnpy_ashare.screener.dimensions.volume_surge.load_screening_quote_snapshot",
-            return_value=snapshot,
+            "vnpy_ashare.screener.dimensions.volume_surge.load_quote_snapshot_for_dimension",
+            return_value=(rows, 2),
         ),
         patch(
-            "vnpy_ashare.screener.dimensions.volume_surge.get_volume_ratio_map",
+            "vnpy_ashare.screener.engine.dimensions.volume_surge.get_volume_ratio_map",
             return_value={"600000.SSE": 3.5, "000001.SZSE": 1.2},
         ),
+        patch(
+            "vnpy_ashare.screener.engine.dimensions.volume_surge.apply_recipe_filters",
+            side_effect=lambda items: items,
+        ),
+        patch("vnpy_ashare.screener.dimensions.scoring.metric_score_blend", return_value=0.0),
     ):
         hits, scanned = run_volume_surge(2, weight=0.1)
 
@@ -53,39 +51,37 @@ def test_volume_surge_prefers_volume_ratio() -> None:
 
 
 def test_turnover_uses_relative_turnover() -> None:
-    snapshot = type(
-        "Snap",
-        (),
+    rows = [
         {
-            "rows": [
-                {
-                    "vt_symbol": "600000.SSE",
-                    "symbol": "600000",
-                    "turnover_rate": 2.0,
-                    "total_mv": 600_000,
-                    "amount": 40_000_000,
-                },
-                {
-                    "vt_symbol": "000001.SZSE",
-                    "symbol": "000001",
-                    "turnover_rate": 8.0,
-                    "total_mv": 600_000,
-                    "amount": 40_000_000,
-                },
-            ],
-            "total": 2,
+            "vt_symbol": "600000.SSE",
+            "symbol": "600000",
+            "turnover_rate": 2.0,
+            "total_mv": 600_000,
+            "amount": 40_000_000,
         },
-    )()
+        {
+            "vt_symbol": "000001.SZSE",
+            "symbol": "000001",
+            "turnover_rate": 8.0,
+            "total_mv": 600_000,
+            "amount": 40_000_000,
+        },
+    ]
 
     with (
         patch(
-            "vnpy_ashare.screener.dimensions.turnover.load_screening_quote_snapshot",
-            return_value=snapshot,
+            "vnpy_ashare.screener.dimensions.turnover.load_quote_snapshot_for_dimension",
+            return_value=(rows, 2),
         ),
         patch(
-            "vnpy_ashare.screener.dimensions.turnover.get_avg_turnover_map",
+            "vnpy_ashare.screener.engine.dimensions.turnover.get_avg_turnover_map",
             return_value={"600000.SSE": 2.0, "000001.SZSE": 4.0},
         ),
+        patch(
+            "vnpy_ashare.screener.engine.dimensions.turnover.apply_recipe_filters",
+            side_effect=lambda items: items,
+        ),
+        patch("vnpy_ashare.screener.dimensions.scoring.metric_score_blend", return_value=0.0),
     ):
         hits, scanned = run_turnover(2, weight=0.1)
 

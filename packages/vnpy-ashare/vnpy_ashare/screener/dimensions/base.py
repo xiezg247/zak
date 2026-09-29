@@ -14,9 +14,22 @@ __all__ = [
     "DimensionHit",
     "dimension_hit_row",
     "fundamental_base_row",
+    "load_quote_snapshot_for_dimension",
     "merge_rows",
     "quote_hits",
 ]
+
+
+def load_quote_snapshot_for_dimension() -> tuple[list[Any], int] | None:
+    """加载行情快照供维度入口使用；失败时返回 None。"""
+    from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
+    from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
+
+    try:
+        snapshot = load_screening_quote_snapshot()
+    except MarketQuotesLoadError:
+        return None
+    return list(snapshot.rows), snapshot.total
 
 
 def quote_hits(

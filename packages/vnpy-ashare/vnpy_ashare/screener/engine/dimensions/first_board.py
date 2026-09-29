@@ -10,11 +10,28 @@ from vnpy_ashare.quotes.radar.radar_first_board import rank_first_board_pool
 from vnpy_ashare.quotes.radar.radar_limit_ladder import resolve_limit_times
 from vnpy_ashare.screener.data.screening_context import get_stock_industry_l1_map, get_stock_industry_map
 from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row
-from vnpy_ashare.screener.dimensions.first_board import _first_board_reason
 from vnpy_ashare.screener.engine.dimensions.limit_common import collect_limit_candidate_rows
 from vnpy_ashare.screener.engine.sector_stats import compute_sector_distribution_polars
 from vnpy_ashare.screener.engine.snapshot_frame import attach_industry_columns, snapshot_rows_to_dataframe
 from vnpy_ashare.trading.signals.intraday_seal_time import attach_first_time_fields
+from vnpy_ashare.trading.signals.seal_time import format_seal_time_label
+
+
+def _first_board_reason(row: dict[str, Any], seal_label: str) -> str:
+    industry = str(row.get("industry") or "—")
+    change = float(row.get("change_pct") or 0)
+    seal = seal_label or format_seal_time_label(str(row.get("first_time") or "")) or "封板时间待补"
+    score = float(row.get("first_board_score") or 0)
+    strength_raw = row.get("seal_strength_score")
+    strength_hint = ""
+    if strength_raw not in (None, ""):
+        try:
+            strength_hint = f"，封单强度 {float(str(strength_raw)) * 100:.0f}"
+        except (TypeError, ValueError):
+            strength_hint = ""
+    reopen_label = str(row.get("seal_reopen_label") or "").strip()
+    reopen_hint = f"，{reopen_label}" if reopen_label else ""
+    return f"首板：{industry} {seal}{strength_hint}{reopen_hint}，人气 {score:.0f}，涨幅 {change:+.2f}%"
 
 
 def _strong_industries_polars(rows: list[Any]) -> set[str]:

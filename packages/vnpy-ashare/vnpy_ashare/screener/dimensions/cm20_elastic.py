@@ -4,9 +4,7 @@ from __future__ import annotations
 
 from vnpy_ashare.domain.market.board import matches_board
 from vnpy_ashare.domain.market.quote_row import QuoteRowLike
-from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
-from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
-from vnpy_ashare.screener.dimensions.base import DimensionHit
+from vnpy_ashare.screener.dimensions.base import DimensionHit, load_quote_snapshot_for_dimension
 from vnpy_ashare.screener.hard_filters import row_symbol
 
 _CM20_SWEET_MV_YI = (20.0, 80.0)
@@ -43,17 +41,14 @@ def cm20_elastic_score(row: QuoteRowLike, *, amount_rank: float = 0.5) -> float:
 def run_cm20_elastic(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], int]:
     from vnpy_ashare.screener.engine.dimensions.cm20_elastic import run_cm20_elastic_polars
 
-    try:
-        snapshot = load_screening_quote_snapshot()
-    except MarketQuotesLoadError:
+    loaded = load_quote_snapshot_for_dimension()
+    if loaded is None:
         return [], 0
-
-    return run_cm20_elastic_polars(
-        list(snapshot.rows),
-        pool_size=pool_size,
-        weight=weight,
-        total=snapshot.total,
-    )
+    rows, total = loaded
+    result = run_cm20_elastic_polars(rows, pool_size=pool_size, weight=weight, total=total)
+    if result is not None:
+        return result
+    return [], total
 
 
 def _cm20_reason(row: QuoteRowLike, score: float) -> str:
