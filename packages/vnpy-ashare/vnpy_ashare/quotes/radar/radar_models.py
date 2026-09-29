@@ -242,6 +242,7 @@ def enrich_radar_row(
     *,
     snapshot_rows: QuoteRowsLike | None = None,
     rs_context: RelativeStrengthContext | None = None,
+    preserve_sub: bool = False,
 ) -> RadarRow:
     """用全市场行情补全 RadarRow 的现价、涨幅与相对强度副标题。"""
 
@@ -263,6 +264,7 @@ def enrich_radar_row(
         merged,
         snapshot_rows=snapshot_rows,
         rs_context=rs_context,
+        preserve_sub=preserve_sub,
     )
 
 
@@ -319,7 +321,11 @@ def collect_radar_quote_vt_symbols(cards: list[RadarCardData]) -> list[str]:
     return symbols
 
 
-def enrich_radar_rows(rows: tuple[RadarRow, ...]) -> tuple[RadarRow, ...]:
+def enrich_radar_rows(
+    rows: tuple[RadarRow, ...],
+    *,
+    preserve_sub: bool = False,
+) -> tuple[RadarRow, ...]:
     """批量补全雷达行行情字段。"""
     if not rows:
         return rows
@@ -336,6 +342,7 @@ def enrich_radar_rows(rows: tuple[RadarRow, ...]) -> tuple[RadarRow, ...]:
             quotes.get(row.vt_symbol, {"vt_symbol": row.vt_symbol}),
             snapshot_rows=snapshot_rows,
             rs_context=rs_context,
+            preserve_sub=preserve_sub,
         )
         for row in rows
     )

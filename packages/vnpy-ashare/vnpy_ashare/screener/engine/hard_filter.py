@@ -8,9 +8,11 @@ from typing import Any
 
 import polars as pl
 
+from vnpy_ashare.domain.market.board import BOARD_PREFIXES
 from vnpy_ashare.domain.symbols.stock import vt_symbol_to_ts_code
 from vnpy_ashare.screener import hard_filters as hf
 from vnpy_ashare.screener.engine.frame import restore_rows, rows_with_index
+from vnpy_ashare.screener.engine.snapshot_frame import change_pct_expr
 from vnpy_ashare.screener.hard_filters import ONE_WORD_AMPLITUDE_MAX_PCT
 
 
@@ -20,13 +22,6 @@ def _symbol_expr() -> pl.Expr:
     return pl.coalesce(pl.col("symbol").cast(pl.Utf8, strict=False), from_vt).fill_null("")
 
 
-def _change_pct_expr() -> pl.Expr:
-    return pl.coalesce(
-        pl.col("change_pct").cast(pl.Float64, strict=False),
-        pl.col("pct_chg").cast(pl.Float64, strict=False),
-    ).fill_null(0.0)
-
-
 def _limit_threshold_expr(market_col: pl.Expr, symbol_col: pl.Expr) -> pl.Expr:
     market = market_col.fill_null("")
     is_growth = market.is_in(["创业板", "科创板"]) | symbol_col.str.starts_with("300") | symbol_col.str.starts_with("688")
@@ -34,16 +29,10 @@ def _limit_threshold_expr(market_col: pl.Expr, symbol_col: pl.Expr) -> pl.Expr:
 
 
 def _board_match_expr(symbol_col: pl.Expr, board: str) -> pl.Expr:
-    if board == "沪深主板":
-        prefixes = ("600", "601", "603", "000", "001", "002", "003")
-        return pl.any_horizontal([symbol_col.str.starts_with(prefix) for prefix in prefixes])
-    if board == "创业板":
-        return symbol_col.str.starts_with("300")
-    if board == "科创板":
-        return symbol_col.str.starts_with("688")
-    if board == "北交所":
-        return pl.any_horizontal([symbol_col.str.starts_with("8"), symbol_col.str.starts_with("4")])
-    return pl.lit(True)
+    prefixes = BOARD_PREFIXES.get(board)
+    if not prefixes:
+        return pl.lit(True)
+    return pl.any_horizontal([symbol_col.str.starts_with(prefix) for prefix in prefixes])
 
 
 def _market_board_mask(symbol_col: pl.Expr, allowed: frozenset[str]) -> pl.Expr:
@@ -116,7 +105,7 @@ def apply_recipe_filters_polars(rows: Sequence[Any]) -> list[Any]:
     df = _ensure_columns(df, _OPTIONAL_COLS)
 
     symbol_col = _symbol_expr()
-    change_col = _change_pct_expr()
+    change_col = change_pct_expr()
     df = df.with_columns(
         symbol_col.alias("_symbol"),
         change_col.alias("_change_pct"),

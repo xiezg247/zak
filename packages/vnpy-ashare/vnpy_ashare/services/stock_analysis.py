@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+from typing import Any, Literal
 
 from pydantic import Field
 
@@ -33,9 +33,6 @@ from vnpy_ashare.services.financial import bundle_has_local_data
 from vnpy_ashare.services.stock.short_term import build_short_term_profile
 from vnpy_ashare.storage.repositories.valuation import ValuationRow, list_valuation_history
 from vnpy_common.domain.base import MutableModel
-
-if TYPE_CHECKING:
-    pass
 
 StockAnalysisScope = Literal[
     "overview",

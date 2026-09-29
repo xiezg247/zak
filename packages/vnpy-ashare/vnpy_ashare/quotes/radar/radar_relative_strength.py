@@ -115,8 +115,14 @@ def enrich_radar_row_relative_strength(
     *,
     snapshot_rows: QuoteRowsLike | None = None,
     rs_context: RelativeStrengthContext | None = None,
+    preserve_sub: bool = False,
 ) -> RadarRow:
-    """为雷达行补全相对强度副标题。"""
+    """为雷达行补全相对强度副标题。
+
+    ``preserve_sub=True`` 时保留行上已有副标题（展望/预测卡自带 sub_*）。
+    """
+    if preserve_sub and (row.sub_label or row.sub_value):
+        return row
     sub = build_relative_strength_subline(
         quote_row,
         snapshot_rows=snapshot_rows,

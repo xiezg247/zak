@@ -8,8 +8,13 @@ import polars as pl
 
 from vnpy_ashare.quotes.core.enrich import get_cached_limit_times_map
 from vnpy_ashare.screener.data.screening_context import get_stock_industry_l1_map, get_stock_industry_map
-from vnpy_ashare.screener.engine.hard_filter import _change_pct_expr, _limit_threshold_expr, _symbol_expr
-from vnpy_ashare.screener.engine.snapshot_frame import attach_industry_columns, frame_to_row_dicts, snapshot_rows_to_dataframe
+from vnpy_ashare.screener.engine.hard_filter import _limit_threshold_expr, _symbol_expr
+from vnpy_ashare.screener.engine.snapshot_frame import (
+    attach_industry_columns,
+    change_pct_expr,
+    frame_to_row_dicts,
+    snapshot_rows_to_dataframe,
+)
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters
 
 
@@ -38,7 +43,7 @@ def collect_limit_candidate_rows(
         return []
 
     symbol = _symbol_expr()
-    change = _change_pct_expr()
+    change = change_pct_expr()
     df = df.with_columns(
         symbol.alias("_symbol"),
         change.alias("_change_pct"),
