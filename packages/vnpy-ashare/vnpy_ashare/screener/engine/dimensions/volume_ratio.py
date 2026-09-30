@@ -1,4 +1,4 @@
-"""Polars 量比维度。"""
+"""量比维度：Polars + Tushare 降级。"""
 
 from __future__ import annotations
 
@@ -7,7 +7,9 @@ from typing import Any
 import polars as pl
 
 from vnpy_ashare.domain.market.quote_row import QuoteRow
-from vnpy_ashare.screener.dimensions.base import DimensionHit, quote_hits
+from vnpy_ashare.integrations.tushare.factors import fetch_daily_basic
+from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row, quote_hits
+from vnpy_ashare.screener.dimensions.scoring import blended_score
 from vnpy_ashare.screener.engine.snapshot_frame import frame_to_row_dicts, snapshot_rows_to_dataframe
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters
 from vnpy_ashare.screener.preset.rules import _quote_row
@@ -78,3 +80,64 @@ def run_volume_ratio_polars(
         reason_builder=lambda row, rank: volume_ratio_reason(row, rank),
         score_adjustment=lambda row: volume_ratio_tier_factor(float(row.get("volume_ratio") or 0)),
     ), total
+
+
+def run_volume_ratio_from_tushare(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], int]:
+    try:
+        basic_rows, _ = fetch_daily_basic()
+    except Exception:
+        return [], 0
+    if not basic_rows:
+        return [], 0
+    filtered_rows = apply_recipe_filters(
+        [row for row in basic_rows if float(row.get("volume_ratio") or 0) > 0],
+    )
+    sorted_rows = sorted(
+        filtered_rows,
+        key=lambda item: float(item.get("volume_ratio") or 0),
+        reverse=True,
+    )[:pool_size]
+    hits: list[DimensionHit] = []
+    metric_values = [float(r.get("volume_ratio") or 0) for r in sorted_rows]
+    for index, row in enumerate(sorted_rows, start=1):
+        vt_symbol = str(row.get("vt_symbol") or "")
+        if not vt_symbol:
+            continue
+        ratio = float(row.get("volume_ratio") or 0)
+        base = blended_score(index, len(sorted_rows), ratio, metric_values)
+        hits.append(
+            DimensionHit(
+                vt_symbol=vt_symbol,
+                dimension_id="volume_ratio",
+                label="量比",
+                weight=weight,
+                score=round(base * volume_ratio_tier_factor(ratio), 1),
+                reason=volume_ratio_reason({"volume_ratio": ratio}, index),
+                row=dimension_hit_row(
+                    {
+                        "symbol": row.get("symbol", ""),
+                        "name": row.get("name", ""),
+                        "vt_symbol": vt_symbol,
+                        "close": row.get("close", 0),
+                        "volume_ratio": ratio,
+                        "turnover_rate": row.get("turnover_rate", 0),
+                        "source": "tushare",
+                    }
+                ),
+            )
+        )
+    return hits, len(basic_rows)
+
+
+def run_volume_ratio_pipeline(
+    rows: list[Any] | None,
+    total: int,
+    pool_size: int,
+    *,
+    weight: float,
+) -> tuple[list[DimensionHit], int]:
+    if rows is not None:
+        result = run_volume_ratio_polars(rows, pool_size=pool_size, weight=weight, total=total)
+        if result is not None:
+            return result
+    return run_volume_ratio_from_tushare(pool_size, weight=weight)

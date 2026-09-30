@@ -16,12 +16,12 @@ from vnpy_ashare.screener.data.market_benchmark import (
 )
 from vnpy_ashare.screener.data.screening_context import get_stock_industry_l1_map, get_stock_industry_map
 from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row, fundamental_base_row, quote_hits
-from vnpy_ashare.screener.dimensions.history_signals import (
+from vnpy_ashare.screener.engine.dimensions.history_signals import (
     attach_momentum_persistence,
     load_history_bars_map,
     momentum_persistence_score_factor,
 )
-from vnpy_ashare.screener.dimensions.momentum_bounds import momentum_change_bounds
+from vnpy_ashare.screener.engine.dimensions.momentum_bounds import momentum_change_bounds
 from vnpy_ashare.screener.dimensions.scoring import blended_score
 from vnpy_ashare.screener.engine.snapshot_frame import (
     attach_industry_columns,

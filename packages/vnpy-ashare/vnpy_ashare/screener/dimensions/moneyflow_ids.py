@@ -1,6 +1,7 @@
-"""盘中资金维度公共 ID / 标签（dimensions 与 engine 共用，避免回引）。"""
+"""盘中资金维度公共 ID / 标签（兼容入口；实现见 engine）。"""
 
 from __future__ import annotations
 
-INTRADAY_DIMENSION_ID = "moneyflow_intraday"
-INTRADAY_LABEL = "盘中资金"
+from vnpy_ashare.screener.engine.dimensions.moneyflow_ids import INTRADAY_DIMENSION_ID, INTRADAY_LABEL
+
+__all__ = ["INTRADAY_DIMENSION_ID", "INTRADAY_LABEL"]

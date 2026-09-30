@@ -10,7 +10,7 @@ from vnpy_ashare.domain.market.quote_row import (
     coerce_quote_row,
     coerce_quote_rows,
 )
-from vnpy_ashare.screener.dimensions.momentum_bounds import momentum_change_bounds
+from vnpy_ashare.screener.engine.dimensions.momentum_bounds import momentum_change_bounds
 from vnpy_ashare.screener.recipe_tuning_prefs import load_recipe_tuning_prefs
 from vnpy_ashare.screener.sentiment.fear_greed_provider import try_fetch_fear_greed_index
 

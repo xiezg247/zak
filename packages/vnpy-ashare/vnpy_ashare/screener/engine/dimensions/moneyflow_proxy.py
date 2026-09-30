@@ -8,7 +8,7 @@ import polars as pl
 
 from vnpy_ashare.domain.market.quote_row import quote_row_copy
 from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row, rank_score
-from vnpy_ashare.screener.dimensions.moneyflow_ids import INTRADAY_DIMENSION_ID, INTRADAY_LABEL
+from vnpy_ashare.screener.engine.dimensions.moneyflow_ids import INTRADAY_DIMENSION_ID, INTRADAY_LABEL
 from vnpy_ashare.screener.engine.snapshot_frame import change_pct_expr, frame_to_row_dicts, snapshot_rows_to_dataframe
 
 
