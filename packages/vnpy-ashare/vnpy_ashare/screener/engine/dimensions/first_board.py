@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from vnpy_ashare.screener.engine.dimensions.hits import run_with_quote_snapshot
 from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row
 from vnpy_ashare.quotes.core.enrich import get_cached_limit_times_map
 from vnpy_ashare.quotes.radar.radar_first_board import rank_first_board_pool
@@ -97,3 +98,6 @@ def run_first_board_polars(
             )
         )
     return hits, total
+
+def run_first_board(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], int]:
+    return run_with_quote_snapshot(pool_size, weight=weight, runner=run_first_board_polars)

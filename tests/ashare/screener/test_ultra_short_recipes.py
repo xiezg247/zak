@@ -82,7 +82,7 @@ class UltraShortRecipeTest(unittest.TestCase):
     @patch("vnpy_ashare.screener.engine.dimensions.limit_board.collect_limit_candidate_rows")
     @patch("vnpy_ashare.screener.engine.dimensions.limit_board.resolve_limit_times", return_value=3)
     @patch("vnpy_ashare.screener.engine.dimensions.limit_board.get_cached_limit_times_map", return_value={})
-    @patch("vnpy_ashare.screener.dimensions.limit_board.load_quote_snapshot_for_dimension")
+    @patch("vnpy_ashare.screener.engine.dimensions.hits.load_quote_snapshot_for_dimension")
     def test_run_limit_board_dimension(self, mock_load, _limit_map, _resolve, mock_pool, _blend) -> None:
         mock_load.return_value = (
             [{"vt_symbol": "600000.SSE", "limit_times": 3, "change_pct": 10.0, "amount": 2e8}],
@@ -113,7 +113,7 @@ class UltraShortRecipeTest(unittest.TestCase):
         "vnpy_ashare.screener.engine.dimensions.cm20_elastic.get_stock_industry_l1_map",
         return_value={},
     )
-    @patch("vnpy_ashare.screener.dimensions.cm20_elastic.load_quote_snapshot_for_dimension")
+    @patch("vnpy_ashare.screener.engine.dimensions.hits.load_quote_snapshot_for_dimension")
     def test_run_cm20_elastic_dimension(self, mock_load, _l1, _industry, _filters, _attach, _blend) -> None:
         from vnpy_ashare.screener.dimensions.cm20_elastic import run_cm20_elastic
 

@@ -36,7 +36,7 @@ class TestPhase3Dimensions(unittest.TestCase):
 
         with (
             patch(
-                "vnpy_ashare.screener.dimensions.intraday_breakout.load_quote_snapshot_for_dimension",
+                "vnpy_ashare.screener.engine.dimensions.hits.load_quote_snapshot_for_dimension",
                 return_value=([_breakout_row()], 1),
             ),
             patch("vnpy_ashare.screener.engine.dimensions.scoring.metric_score_blend", return_value=0.0),
@@ -59,7 +59,7 @@ class TestPhase3Dimensions(unittest.TestCase):
 
         with (
             patch(
-                "vnpy_ashare.screener.dimensions.intraday_breakout.load_quote_snapshot_for_dimension",
+                "vnpy_ashare.screener.engine.dimensions.hits.load_quote_snapshot_for_dimension",
                 return_value=([weak], 1),
             ),
             patch(
@@ -79,7 +79,7 @@ class TestPhase3Dimensions(unittest.TestCase):
 
         with (
             patch(
-                "vnpy_ashare.screener.dimensions.intraday_breakout.load_quote_snapshot_for_dimension",
+                "vnpy_ashare.screener.engine.dimensions.hits.load_quote_snapshot_for_dimension",
                 return_value=([weak], 1),
             ),
             patch("vnpy_ashare.screener.engine.dimensions.intraday_breakout.breakout_lookback_days", return_value=0),

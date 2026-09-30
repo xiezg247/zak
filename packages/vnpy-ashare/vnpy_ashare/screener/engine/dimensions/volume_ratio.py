@@ -9,7 +9,7 @@ import polars as pl
 from vnpy_ashare.domain.market.quote_row import QuoteRow
 from vnpy_ashare.integrations.tushare.factors import fetch_daily_basic
 from vnpy_ashare.domain.screener.dimension_hit import DimensionHit, dimension_hit_row
-from vnpy_ashare.screener.engine.dimensions.hits import quote_hits
+from vnpy_ashare.screener.engine.dimensions.hits import load_quote_snapshot_for_dimension, quote_hits
 from vnpy_ashare.screener.engine.dimensions.scoring import blended_score
 from vnpy_ashare.screener.engine.snapshot_frame import frame_to_row_dicts, snapshot_rows_to_dataframe
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters
@@ -142,3 +142,10 @@ def run_volume_ratio_pipeline(
         if result is not None:
             return result
     return run_volume_ratio_from_tushare(pool_size, weight=weight)
+
+def run_volume_ratio(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], int]:
+    loaded = load_quote_snapshot_for_dimension()
+    if loaded is None:
+        return run_volume_ratio_pipeline(None, 0, pool_size, weight=weight)
+    rows, total = loaded
+    return run_volume_ratio_pipeline(rows, total, pool_size, weight=weight)

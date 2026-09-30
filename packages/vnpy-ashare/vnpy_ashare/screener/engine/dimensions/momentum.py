@@ -16,7 +16,7 @@ from vnpy_ashare.screener.data.market_benchmark import (
 )
 from vnpy_ashare.screener.data.screening_context import get_stock_industry_l1_map, get_stock_industry_map
 from vnpy_ashare.domain.screener.dimension_hit import DimensionHit, dimension_hit_row
-from vnpy_ashare.screener.engine.dimensions.hits import fundamental_base_row, quote_hits
+from vnpy_ashare.screener.engine.dimensions.hits import fundamental_base_row, load_quote_snapshot_for_dimension, quote_hits
 from vnpy_ashare.screener.engine.dimensions.history_signals import (
     attach_momentum_persistence,
     load_history_bars_map,
@@ -213,3 +213,10 @@ def run_momentum_from_fundamentals(pool_size: int, *, weight: float) -> tuple[li
             )
         )
     return hits, len(raw_rows)
+
+def run_momentum(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], int]:
+    loaded = load_quote_snapshot_for_dimension()
+    if loaded is None:
+        return run_momentum_from_fundamentals(pool_size, weight=weight)
+    rows, total = loaded
+    return run_momentum_from_rows(rows, total, pool_size, weight=weight)

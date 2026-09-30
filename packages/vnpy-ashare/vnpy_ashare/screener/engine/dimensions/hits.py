@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import Any
 
 from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike, quote_row_copy
@@ -10,11 +10,14 @@ from vnpy_ashare.domain.screener.dimension_hit import DimensionHit, dimension_hi
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.screener.engine.dimensions.scoring import blended_score, rank_score
 
+SnapshotRunner = Callable[..., tuple[list[DimensionHit], int] | None]
+
 __all__ = [
     "fundamental_base_row",
     "load_quote_snapshot_for_dimension",
     "merge_rows",
     "quote_hits",
+    "run_with_quote_snapshot",
 ]
 
 
@@ -28,6 +31,23 @@ def load_quote_snapshot_for_dimension() -> tuple[list[Any], int] | None:
     except MarketQuotesLoadError:
         return None
     return list(snapshot.rows), snapshot.total
+
+
+def run_with_quote_snapshot(
+    pool_size: int,
+    *,
+    weight: float,
+    runner: SnapshotRunner,
+) -> tuple[list[DimensionHit], int]:
+    """维度入口共用：加载快照后交给 Polars runner；runner 可返回 None 表示空结果。"""
+    loaded = load_quote_snapshot_for_dimension()
+    if loaded is None:
+        return [], 0
+    rows, total = loaded
+    result = runner(rows, pool_size=pool_size, weight=weight, total=total)
+    if result is None:
+        return [], total
+    return result
 
 
 def quote_hits(

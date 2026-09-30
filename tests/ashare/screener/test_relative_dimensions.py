@@ -30,7 +30,7 @@ def test_volume_surge_prefers_volume_ratio() -> None:
 
     with (
         patch(
-            "vnpy_ashare.screener.dimensions.volume_surge.load_quote_snapshot_for_dimension",
+            "vnpy_ashare.screener.engine.dimensions.hits.load_quote_snapshot_for_dimension",
             return_value=(rows, 2),
         ),
         patch(
@@ -70,7 +70,7 @@ def test_turnover_uses_relative_turnover() -> None:
 
     with (
         patch(
-            "vnpy_ashare.screener.dimensions.turnover.load_quote_snapshot_for_dimension",
+            "vnpy_ashare.screener.engine.dimensions.hits.load_quote_snapshot_for_dimension",
             return_value=(rows, 2),
         ),
         patch(

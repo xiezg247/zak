@@ -6,6 +6,7 @@ from typing import Any
 
 import polars as pl
 
+from vnpy_ashare.screener.engine.dimensions.hits import run_with_quote_snapshot
 from vnpy_ashare.domain.market.board import matches_board
 from vnpy_ashare.domain.market.quote_row import QuoteRowLike, quote_row_copy
 from vnpy_ashare.screener.data.screening_context import get_stock_industry_l1_map, get_stock_industry_map
@@ -164,3 +165,6 @@ def run_cm20_elastic_polars(
             )
         )
     return hits, total
+
+def run_cm20_elastic(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], int]:
+    return run_with_quote_snapshot(pool_size, weight=weight, runner=run_cm20_elastic_polars)

@@ -13,6 +13,7 @@ from vnpy_ashare.domain.symbols.stock import parse_tickflow_symbol
 from vnpy_ashare.integrations.tickflow.klines import fetch_intraday_bars
 from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
 from vnpy_ashare.domain.screener.dimension_hit import DimensionHit, dimension_hit_row
+from vnpy_ashare.screener.engine.dimensions.hits import run_with_quote_snapshot
 from vnpy_ashare.screener.engine.dimensions.history_signals import (
     bars_for_vt_symbol,
     breaks_rolling_high,
@@ -284,3 +285,9 @@ def _minute_bar_confirms_breakout(row: QuoteRowLike) -> bool:
     session_high = max(highs)
     last_close = closes[-1]
     return session_high >= prev_close * (1 + _MIN_BREAK_PCT / 100) and last_close >= session_high * 0.985
+
+def run_intraday_breakout(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], int]:
+    def _runner(rows, pool_size, weight, total):
+        return run_intraday_breakout_pipeline(rows, total, pool_size, weight=weight)
+
+    return run_with_quote_snapshot(pool_size, weight=weight, runner=_runner)

@@ -9,7 +9,7 @@ import polars as pl
 from vnpy_ashare.domain.market.quote_row import QuoteRow
 from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
 from vnpy_ashare.domain.screener.dimension_hit import DimensionHit
-from vnpy_ashare.screener.engine.dimensions.hits import quote_hits
+from vnpy_ashare.screener.engine.dimensions.hits import quote_hits, run_with_quote_snapshot
 from vnpy_ashare.screener.engine.snapshot_frame import frame_to_row_dicts, snapshot_rows_to_dataframe
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters
 from vnpy_ashare.screener.preset.rules import _quote_row
@@ -80,3 +80,6 @@ def run_volume_surge_polars(
         metric_key="relative_volume",
         reason_builder=_volume_surge_reason,
     ), total
+
+def run_volume_surge(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], int]:
+    return run_with_quote_snapshot(pool_size, weight=weight, runner=run_volume_surge_polars)
