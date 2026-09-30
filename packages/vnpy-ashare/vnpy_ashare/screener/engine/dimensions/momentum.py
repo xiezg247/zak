@@ -22,7 +22,7 @@ from vnpy_ashare.screener.engine.dimensions.history_signals import (
     momentum_persistence_score_factor,
 )
 from vnpy_ashare.screener.engine.dimensions.momentum_bounds import momentum_change_bounds
-from vnpy_ashare.screener.dimensions.scoring import blended_score
+from vnpy_ashare.screener.engine.dimensions.scoring import blended_score
 from vnpy_ashare.screener.engine.snapshot_frame import (
     attach_industry_columns,
     change_pct_expr,

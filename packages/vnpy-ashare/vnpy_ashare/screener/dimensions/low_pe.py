@@ -1,25 +1,7 @@
-"""估值维度：行业相对低 PE 排行。"""
+"""估值维度入口（实现见 engine.dimensions.low_pe）。"""
 
 from __future__ import annotations
 
-from vnpy_ashare.screener.data.data_source import fetch_fundamental_screening_rows
-from vnpy_ashare.screener.dimensions.base import DimensionHit
+from vnpy_ashare.screener.engine.dimensions.low_pe import run_low_pe
 
-
-def run_low_pe(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], int]:
-    from vnpy_ashare.screener.engine.dimensions.low_pe import run_low_pe_polars
-
-    raw_rows, _trade_date, _ = fetch_fundamental_screening_rows()
-    if not raw_rows:
-        return [], 0
-
-    from vnpy_ashare.screener.data.screening_context import apply_board_prefilter_rows
-
-    raw_rows = apply_board_prefilter_rows(raw_rows)
-    if not raw_rows:
-        return [], 0
-
-    result = run_low_pe_polars(raw_rows, pool_size=pool_size, weight=weight)
-    if result is not None:
-        return result
-    return [], len(raw_rows)
+__all__ = ["run_low_pe"]

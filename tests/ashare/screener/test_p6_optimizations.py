@@ -48,7 +48,7 @@ def test_volume_liquidity_dedup_weakens_surge() -> None:
         ),
     ]
     with patch(
-        "vnpy_ashare.screener.dimensions.volume_dedup.volume_liquidity_dedup_factor",
+        "vnpy_ashare.screener.engine.dimensions.volume_dedup.volume_liquidity_dedup_factor",
         return_value=0.5,
     ):
         adjusted = apply_volume_liquidity_dedup(hits)

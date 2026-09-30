@@ -28,7 +28,7 @@ from vnpy_ashare.screener.dimensions.moneyflow_resolve import (
     build_moneyflow_source_subtitle,
     resolve_moneyflow_hits,
 )
-from vnpy_ashare.screener.dimensions.volume_dedup import build_volume_discovery_subtitle
+from vnpy_ashare.screener.engine.dimensions.volume_dedup import build_volume_discovery_subtitle
 from vnpy_ashare.screener.dimensions.volume_ratio import run_volume_ratio
 from vnpy_ashare.screener.dimensions.volume_surge import run_volume_surge
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters

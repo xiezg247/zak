@@ -19,7 +19,7 @@ from vnpy_ashare.screener.engine.dimensions.history_signals import (
     load_history_bars_map,
     rolling_high_before_last,
 )
-from vnpy_ashare.screener.dimensions.scoring import blended_score
+from vnpy_ashare.screener.engine.dimensions.scoring import blended_score
 from vnpy_ashare.screener.engine.snapshot_frame import change_pct_expr, frame_to_row_dicts, snapshot_rows_to_dataframe
 from vnpy_ashare.screener.recipe_tuning_prefs import load_recipe_tuning_prefs
 

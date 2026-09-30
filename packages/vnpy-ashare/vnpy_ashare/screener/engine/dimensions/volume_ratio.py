@@ -9,7 +9,7 @@ import polars as pl
 from vnpy_ashare.domain.market.quote_row import QuoteRow
 from vnpy_ashare.integrations.tushare.factors import fetch_daily_basic
 from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row, quote_hits
-from vnpy_ashare.screener.dimensions.scoring import blended_score
+from vnpy_ashare.screener.engine.dimensions.scoring import blended_score
 from vnpy_ashare.screener.engine.snapshot_frame import frame_to_row_dicts, snapshot_rows_to_dataframe
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters
 from vnpy_ashare.screener.preset.rules import _quote_row

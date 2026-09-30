@@ -28,7 +28,7 @@ from vnpy_ashare.screener.data.screening_context import (
 )
 from vnpy_ashare.screener.dimensions.base import DimensionHit, merge_rows
 from vnpy_ashare.screener.dimensions.registry import run_dimension, scoring_dimension_specs
-from vnpy_ashare.screener.dimensions.volume_dedup import apply_volume_liquidity_dedup
+from vnpy_ashare.screener.engine.dimensions.volume_dedup import apply_volume_liquidity_dedup
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters
 from vnpy_ashare.screener.recipe.recipe import RECIPE_EMOTION_GATE_ONLY, DimensionSpec, ScreenRecipe, resolve_recipe
 from vnpy_ashare.screener.run.result import ScreenerRunResult, build_screener_run_result

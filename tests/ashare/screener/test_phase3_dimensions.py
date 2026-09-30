@@ -39,7 +39,7 @@ class TestPhase3Dimensions(unittest.TestCase):
                 "vnpy_ashare.screener.dimensions.intraday_breakout.load_quote_snapshot_for_dimension",
                 return_value=([_breakout_row()], 1),
             ),
-            patch("vnpy_ashare.screener.dimensions.scoring.metric_score_blend", return_value=0.0),
+            patch("vnpy_ashare.screener.engine.dimensions.scoring.metric_score_blend", return_value=0.0),
             patch(
                 "vnpy_ashare.screener.engine.dimensions.intraday_breakout.get_volume_ratio_map",
                 return_value={},
@@ -66,7 +66,7 @@ class TestPhase3Dimensions(unittest.TestCase):
                 "vnpy_ashare.screener.engine.dimensions.intraday_breakout.get_volume_ratio_map",
                 return_value={},
             ),
-            patch("vnpy_ashare.screener.dimensions.scoring.metric_score_blend", return_value=0.0),
+            patch("vnpy_ashare.screener.engine.dimensions.scoring.metric_score_blend", return_value=0.0),
             patch("vnpy_ashare.screener.engine.dimensions.intraday_breakout.breakout_lookback_days", return_value=0),
             patch("vnpy_ashare.screener.engine.dimensions.intraday_breakout.minute_confirm_enabled", return_value=False),
         ):
@@ -125,7 +125,7 @@ class TestPhase3Dimensions(unittest.TestCase):
                 "vnpy_ashare.screener.engine.dimensions.moneyflow_resolve.is_ashare_trading_session",
                 return_value=True,
             ),
-            patch("vnpy_ashare.screener.dimensions.scoring.metric_score_blend", return_value=0.0),
+            patch("vnpy_ashare.screener.engine.dimensions.scoring.metric_score_blend", return_value=0.0),
         ):
             hits, scanned = run_moneyflow_intraday(2, weight=0.15)
 

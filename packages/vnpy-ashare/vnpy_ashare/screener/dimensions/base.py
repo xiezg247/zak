@@ -8,7 +8,7 @@ from typing import Any
 from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike, quote_row_copy
 from vnpy_ashare.domain.screener.dimension_hit import DimensionHit, dimension_hit_row
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
-from vnpy_ashare.screener.dimensions.scoring import blended_score, rank_score
+from vnpy_ashare.screener.engine.dimensions.scoring import blended_score, rank_score
 
 __all__ = [
     "DimensionHit",

@@ -41,7 +41,7 @@ def test_volume_surge_prefers_volume_ratio() -> None:
             "vnpy_ashare.screener.engine.dimensions.volume_surge.apply_recipe_filters",
             side_effect=lambda items: items,
         ),
-        patch("vnpy_ashare.screener.dimensions.scoring.metric_score_blend", return_value=0.0),
+        patch("vnpy_ashare.screener.engine.dimensions.scoring.metric_score_blend", return_value=0.0),
     ):
         hits, scanned = run_volume_surge(2, weight=0.1)
 
@@ -81,7 +81,7 @@ def test_turnover_uses_relative_turnover() -> None:
             "vnpy_ashare.screener.engine.dimensions.turnover.apply_recipe_filters",
             side_effect=lambda items: items,
         ),
-        patch("vnpy_ashare.screener.dimensions.scoring.metric_score_blend", return_value=0.0),
+        patch("vnpy_ashare.screener.engine.dimensions.scoring.metric_score_blend", return_value=0.0),
     ):
         hits, scanned = run_turnover(2, weight=0.1)
 

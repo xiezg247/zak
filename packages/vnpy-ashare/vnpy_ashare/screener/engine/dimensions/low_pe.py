@@ -76,3 +76,22 @@ def run_low_pe_polars(
             )
         )
     return hits, len(raw_rows)
+
+
+def run_low_pe(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], int]:
+    from vnpy_ashare.screener.data.data_source import fetch_fundamental_screening_rows
+
+    raw_rows, _trade_date, _ = fetch_fundamental_screening_rows()
+    if not raw_rows:
+        return [], 0
+
+    from vnpy_ashare.screener.data.screening_context import apply_board_prefilter_rows
+
+    raw_rows = apply_board_prefilter_rows(raw_rows)
+    if not raw_rows:
+        return [], 0
+
+    result = run_low_pe_polars(raw_rows, pool_size=pool_size, weight=weight)
+    if result is not None:
+        return result
+    return [], len(raw_rows)

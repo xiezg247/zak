@@ -78,7 +78,7 @@ class UltraShortRecipeTest(unittest.TestCase):
         self.assertEqual(prefs.min_total_mv_yi, 30.0)
         self.assertFalse(prefs.exclude_limit_board)
 
-    @patch("vnpy_ashare.screener.dimensions.scoring.metric_score_blend", return_value=0.0)
+    @patch("vnpy_ashare.screener.engine.dimensions.scoring.metric_score_blend", return_value=0.0)
     @patch("vnpy_ashare.screener.engine.dimensions.limit_board.collect_limit_candidate_rows")
     @patch("vnpy_ashare.screener.engine.dimensions.limit_board.resolve_limit_times", return_value=3)
     @patch("vnpy_ashare.screener.engine.dimensions.limit_board.get_cached_limit_times_map", return_value={})
@@ -96,7 +96,7 @@ class UltraShortRecipeTest(unittest.TestCase):
         self.assertEqual(len(hits), 1)
         self.assertEqual(hits[0].dimension_id, "limit_board")
 
-    @patch("vnpy_ashare.screener.dimensions.scoring.metric_score_blend", return_value=0.0)
+    @patch("vnpy_ashare.screener.engine.dimensions.scoring.metric_score_blend", return_value=0.0)
     @patch(
         "vnpy_ashare.screener.engine.dimensions.cm20_elastic.attach_industry_columns",
         side_effect=lambda df, **kwargs: df,
