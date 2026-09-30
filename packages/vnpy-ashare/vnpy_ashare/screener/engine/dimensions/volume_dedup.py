@@ -7,7 +7,7 @@ from vnpy_ashare.config.constants.recipe import (
     ENV_VOLUME_LIQUIDITY_DEDUP_FACTOR,
 )
 from vnpy_ashare.domain.core.env import env_or_prefs_float
-from vnpy_ashare.screener.dimensions.base import DimensionHit
+from vnpy_ashare.domain.screener.dimension_hit import DimensionHit
 from vnpy_ashare.screener.recipe_tuning_prefs import load_recipe_tuning_prefs
 
 _VOLUME_LIQUIDITY_IDS = frozenset({"volume_ratio", "volume_surge"})

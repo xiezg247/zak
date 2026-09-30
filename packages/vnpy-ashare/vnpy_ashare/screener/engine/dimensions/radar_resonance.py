@@ -7,7 +7,8 @@ from typing import Any
 import polars as pl
 
 from vnpy_ashare.quotes.radar.radar_leader import leader_tier_label
-from vnpy_ashare.screener.dimensions.base import DimensionHit, quote_hits
+from vnpy_ashare.domain.screener.dimension_hit import DimensionHit
+from vnpy_ashare.screener.engine.dimensions.hits import quote_hits
 from vnpy_ashare.screener.engine.snapshot_frame import frame_to_row_dicts, snapshot_rows_to_dataframe
 
 

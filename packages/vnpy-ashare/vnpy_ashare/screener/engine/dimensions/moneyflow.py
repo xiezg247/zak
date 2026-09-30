@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from vnpy_ashare.quotes.market.moneyflow_kind import enrich_moneyflow_row_with_kind
 from vnpy_ashare.screener.data.data_source import fetch_moneyflow_with_fallback
-from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row, rank_score
+from vnpy_ashare.domain.screener.dimension_hit import DimensionHit, dimension_hit_row
+from vnpy_ashare.screener.engine.dimensions.scoring import rank_score
 from vnpy_ashare.screener.preset.rules import apply_moneyflow_in
 
 

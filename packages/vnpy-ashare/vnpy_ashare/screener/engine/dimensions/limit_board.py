@@ -7,7 +7,8 @@ from typing import Any
 from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row
 from vnpy_ashare.quotes.core.enrich import get_cached_limit_times_map
 from vnpy_ashare.quotes.radar.radar_limit_ladder import resolve_limit_times
-from vnpy_ashare.screener.dimensions.base import DimensionHit, quote_hits
+from vnpy_ashare.domain.screener.dimension_hit import DimensionHit
+from vnpy_ashare.screener.engine.dimensions.hits import quote_hits
 from vnpy_ashare.screener.engine.dimensions.limit_common import collect_limit_candidate_rows
 
 

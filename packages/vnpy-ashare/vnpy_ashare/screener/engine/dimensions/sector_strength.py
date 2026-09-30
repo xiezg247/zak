@@ -8,7 +8,8 @@ import polars as pl
 
 from vnpy_ashare.domain.market.quote_row import QuoteRow
 from vnpy_ashare.screener.data.screening_context import get_stock_industry_l1_map, get_stock_industry_map
-from vnpy_ashare.screener.dimensions.base import DimensionHit, quote_hits
+from vnpy_ashare.domain.screener.dimension_hit import DimensionHit
+from vnpy_ashare.screener.engine.dimensions.hits import quote_hits
 from vnpy_ashare.screener.engine.sector_stats import compute_sector_distribution_polars
 from vnpy_ashare.screener.engine.snapshot_frame import attach_industry_columns, change_pct_expr, frame_to_row_dicts, snapshot_rows_to_dataframe
 from vnpy_ashare.screener.preset.rules import _quote_row

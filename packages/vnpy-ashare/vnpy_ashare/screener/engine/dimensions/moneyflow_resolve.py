@@ -11,7 +11,8 @@ from vnpy_ashare.quotes.core.quote_rows import quote_rows_by_vt_symbol
 from vnpy_ashare.quotes.market.moneyflow_kind import enrich_moneyflow_row_with_kind
 from vnpy_ashare.screener.data.data_source import fetch_moneyflow_with_fallback, load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, MarketQuotesSnapshot
-from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row, rank_score
+from vnpy_ashare.domain.screener.dimension_hit import DimensionHit, dimension_hit_row
+from vnpy_ashare.screener.engine.dimensions.scoring import rank_score
 from vnpy_ashare.screener.engine.dimensions.moneyflow_ids import INTRADAY_DIMENSION_ID, INTRADAY_LABEL
 
 _POST_LABEL = "资金"

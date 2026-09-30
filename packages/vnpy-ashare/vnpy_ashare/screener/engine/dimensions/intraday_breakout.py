@@ -12,7 +12,7 @@ from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, coerce_q
 from vnpy_ashare.domain.symbols.stock import parse_tickflow_symbol
 from vnpy_ashare.integrations.tickflow.klines import fetch_intraday_bars
 from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
-from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row
+from vnpy_ashare.domain.screener.dimension_hit import DimensionHit, dimension_hit_row
 from vnpy_ashare.screener.engine.dimensions.history_signals import (
     bars_for_vt_symbol,
     breaks_rolling_high,

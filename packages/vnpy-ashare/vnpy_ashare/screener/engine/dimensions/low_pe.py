@@ -8,7 +8,8 @@ import polars as pl
 
 from vnpy_ashare.domain.market.quote_row import coerce_quote_row
 from vnpy_ashare.screener.data.screening_context import get_stock_industry_l1_map, get_stock_industry_map
-from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row, rank_score
+from vnpy_ashare.domain.screener.dimension_hit import DimensionHit, dimension_hit_row
+from vnpy_ashare.screener.engine.dimensions.scoring import rank_score
 from vnpy_ashare.screener.engine.snapshot_frame import attach_industry_columns, frame_to_row_dicts, snapshot_rows_to_dataframe
 
 
