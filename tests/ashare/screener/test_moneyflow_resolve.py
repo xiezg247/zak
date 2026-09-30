@@ -16,17 +16,17 @@ def test_resolve_moneyflow_intraday_prefers_mcp_over_tushare() -> None:
     )
 
     with (
-        patch("vnpy_ashare.screener.dimensions.moneyflow_resolve.is_ashare_trading_session", return_value=True),
+        patch("vnpy_ashare.screener.engine.dimensions.moneyflow_resolve.is_ashare_trading_session", return_value=True),
         patch(
-            "vnpy_ashare.screener.dimensions.moneyflow_resolve.load_screening_quote_snapshot",
+            "vnpy_ashare.screener.engine.dimensions.moneyflow_resolve.load_screening_quote_snapshot",
             return_value=snapshot,
         ),
         patch(
-            "vnpy_ashare.screener.dimensions.moneyflow_resolve.fetch_intraday_moneyflow_map",
+            "vnpy_ashare.screener.engine.dimensions.moneyflow_resolve.fetch_intraday_moneyflow_map",
             return_value={"600000.SSE": 500.0},
         ),
         patch(
-            "vnpy_ashare.screener.dimensions.moneyflow_resolve.fetch_moneyflow_with_fallback",
+            "vnpy_ashare.screener.engine.dimensions.moneyflow_resolve.fetch_moneyflow_with_fallback",
         ) as mock_tushare,
     ):
         hits, total, trade_date = resolve_moneyflow_hits(5, weight=1.0)
@@ -43,16 +43,16 @@ def test_resolve_moneyflow_post_close_uses_tushare() -> None:
     snapshot = MarketQuotesSnapshot(rows=[], updated_at="x", total=0)
 
     with (
-        patch("vnpy_ashare.screener.dimensions.moneyflow_resolve.is_ashare_trading_session", return_value=False),
+        patch("vnpy_ashare.screener.engine.dimensions.moneyflow_resolve.is_ashare_trading_session", return_value=False),
         patch(
-            "vnpy_ashare.screener.dimensions.moneyflow_resolve.load_screening_quote_snapshot",
+            "vnpy_ashare.screener.engine.dimensions.moneyflow_resolve.load_screening_quote_snapshot",
             return_value=snapshot,
         ),
         patch(
-            "vnpy_ashare.screener.dimensions.moneyflow_resolve.fetch_intraday_moneyflow_map",
+            "vnpy_ashare.screener.engine.dimensions.moneyflow_resolve.fetch_intraday_moneyflow_map",
         ) as mock_mcp,
         patch(
-            "vnpy_ashare.screener.dimensions.moneyflow_resolve.fetch_moneyflow_with_fallback",
+            "vnpy_ashare.screener.engine.dimensions.moneyflow_resolve.fetch_moneyflow_with_fallback",
             return_value=(
                 [
                     {
@@ -70,6 +70,14 @@ def test_resolve_moneyflow_post_close_uses_tushare() -> None:
                 ],
                 "20260612",
             ),
+        ),
+        patch(
+            "vnpy_ashare.screener.engine.dimensions.moneyflow_in.apply_recipe_filters",
+            side_effect=lambda rows: list(rows),
+        ),
+        patch(
+            "vnpy_ashare.screener.engine.dimensions.moneyflow_post.post_close_streak_map_for_rows",
+            return_value={},
         ),
     ):
         hits, total, trade_date = resolve_moneyflow_hits(5, weight=1.0)

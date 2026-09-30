@@ -16,7 +16,7 @@ from vnpy_ashare.screener.dimensions.history_signals import (
     rolling_high_before_last,
 )
 from vnpy_ashare.screener.dimensions.moneyflow_resolve import _moneyflow_score_adjustment
-from vnpy_ashare.screener.dimensions.volume_ratio import _volume_ratio_tier_factor
+from vnpy_ashare.screener.engine.dimensions.volume_ratio import volume_ratio_tier_factor as _volume_ratio_tier_factor
 from vnpy_ashare.screener.hard_filter_prefs import PRESET_AGGRESSIVE, PRESET_CONSERVATIVE, hard_filter_preset
 from vnpy_ashare.screener.hard_filters import is_at_limit_board, is_new_listing
 from vnpy_ashare.screener.sentiment.snapshot_prefilter import apply_sentiment_snapshot_prefilter

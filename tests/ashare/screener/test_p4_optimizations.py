@@ -7,7 +7,7 @@ from unittest.mock import patch
 from vnpy_ashare.quotes.radar.radar_cross_refs import build_outlook_cross_ref_suffix
 from vnpy_ashare.quotes.radar.radar_models import RadarRow
 from vnpy_ashare.quotes.radar.radar_relative_strength import build_relative_strength_subline
-from vnpy_ashare.screener.dimensions.intraday_breakout import _quote_breakout_strength
+from vnpy_ashare.screener.engine.dimensions.intraday_breakout import quote_breakout_strength as _quote_breakout_strength
 from vnpy_ashare.screener.dimensions.momentum_bounds import momentum_change_bounds
 from vnpy_ashare.screener.sector.sector_summary import compute_sector_distribution
 
