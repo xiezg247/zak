@@ -8,7 +8,6 @@ from vnpy_ashare.screener.data.quotes_loader import MarketQuotesSnapshot
 from vnpy_ashare.screener.data.screening_context import (
     fetch_volume_ratio_map_uncached,
     get_volume_ratio_map,
-    preload_screening_context,
     screening_context_scope,
 )
 from vnpy_ashare.screener.dimensions.volume_ratio import run_volume_ratio
@@ -28,7 +27,7 @@ def test_screening_context_caches_quote_snapshot() -> None:
         side_effect=_load,
     ):
         with screening_context_scope() as ctx:
-            preload_screening_context(ctx)
+            ctx.get_quote_snapshot()
             from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 
             first = load_screening_quote_snapshot()
@@ -50,12 +49,24 @@ def test_volume_ratio_skips_rows_without_ratio() -> None:
 
     with (
         patch(
-            "vnpy_ashare.screener.dimensions.volume_ratio.load_screening_quote_snapshot",
-            return_value=snapshot,
+            "vnpy_ashare.screener.engine.dimensions.volume_ratio.load_quote_snapshot_for_dimension",
+            return_value=(snapshot.rows, snapshot.total),
         ),
         patch(
-            "vnpy_ashare.screener.dimensions.volume_ratio.get_volume_ratio_map",
+            "vnpy_ashare.screener.engine.dimensions.volume_ratio.get_volume_ratio_map",
             return_value={"000001.SZSE": 3.5},
+        ),
+        patch(
+            "vnpy_ashare.screener.engine.dimensions.volume_ratio.apply_recipe_filters",
+            side_effect=lambda rows: list(rows),
+        ),
+        patch(
+            "vnpy_ashare.screener.engine.dimensions.scoring.metric_score_blend",
+            return_value=0.0,
+        ),
+        patch(
+            "vnpy_ashare.screener.engine.dimensions.volume_ratio.fetch_daily_basic",
+            side_effect=RuntimeError("offline"),
         ),
     ):
         hits, scanned = run_volume_ratio(5, weight=0.2)
@@ -78,8 +89,7 @@ def test_get_volume_ratio_map_uses_context_cache() -> None:
         "vnpy_ashare.screener.data.screening_context.fetch_volume_ratio_map_uncached",
         side_effect=_fetch,
     ):
-        with screening_context_scope() as ctx:
-            preload_screening_context(ctx)
+        with screening_context_scope():
             first = get_volume_ratio_map()
             second = get_volume_ratio_map()
 

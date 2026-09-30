@@ -8,6 +8,7 @@ import polars as pl
 
 from vnpy_ashare.domain.market.quote_row import QuoteRow
 from vnpy_ashare.integrations.tushare.factors import fetch_daily_basic
+from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
 from vnpy_ashare.domain.screener.dimension_hit import DimensionHit, dimension_hit_row
 from vnpy_ashare.screener.engine.dimensions.hits import load_quote_snapshot_for_dimension, quote_hits
 from vnpy_ashare.screener.engine.dimensions.scoring import blended_score
@@ -47,8 +48,6 @@ def run_volume_ratio_polars(
     total: int,
 ) -> tuple[list[DimensionHit], int] | None:
     """向量化量比；无有效 ratio 时返回 None 供调用方降级 Tushare。"""
-    from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
-
     ratio_map = get_volume_ratio_map()
     if not ratio_map:
         return None
@@ -58,6 +57,8 @@ def run_volume_ratio_polars(
         return None
 
     df = df.filter(pl.col("vt_symbol").cast(pl.Utf8, strict=False).fill_null("").str.len_chars() > 0)
+    # QuoteRow 常带 volume_ratio=0；先丢掉再 join，避免 Polars 生成 volume_ratio_right
+    df = df.drop("volume_ratio", strict=False)
     map_df = pl.DataFrame({"vt_symbol": list(ratio_map.keys()), "volume_ratio": list(ratio_map.values())})
     df = df.join(map_df, on="vt_symbol", how="inner")
     ratio = pl.col("volume_ratio").cast(pl.Float64, strict=False).fill_null(0.0)

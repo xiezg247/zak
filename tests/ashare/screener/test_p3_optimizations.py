@@ -85,107 +85,144 @@ def test_market_benchmark_fallback_to_mean() -> None:
 
 
 def test_momentum_uses_industry_relative_strength() -> None:
-    snapshot = type(
-        "Snap",
-        (),
+    rows = [
         {
-            "rows": [
-                {
-                    "vt_symbol": "600000.SSE",
-                    "symbol": "600000",
-                    "change_pct": 5.0,
-                    "amount": 50_000_000,
-                    "total_mv": 600_000,
-                },
-                {
-                    "vt_symbol": "000001.SZSE",
-                    "symbol": "000001",
-                    "change_pct": 4.0,
-                    "amount": 50_000_000,
-                    "total_mv": 600_000,
-                },
-            ],
-            "total": 2,
+            "vt_symbol": "600000.SSE",
+            "symbol": "600000",
+            "change_pct": 5.0,
+            "amount": 50_000_000,
+            "total_mv": 600_000,
         },
-    )()
+        {
+            "vt_symbol": "000001.SZSE",
+            "symbol": "000001",
+            "change_pct": 4.0,
+            "amount": 50_000_000,
+            "total_mv": 600_000,
+        },
+    ]
+
+    def _attach(df, *, industry_map=None, industry_l1_map=None, drop_unmapped=True):
+        import polars as pl
+
+        return df.with_columns(pl.lit("银行").alias("industry"), pl.lit("").alias("industry_l1"))
 
     with (
         patch(
-            "vnpy_ashare.screener.dimensions.momentum.load_screening_quote_snapshot",
-            return_value=snapshot,
+            "vnpy_ashare.screener.engine.dimensions.momentum.load_quote_snapshot_for_dimension",
+            return_value=(rows, 2),
         ),
         patch(
-            "vnpy_ashare.screener.dimensions.momentum.get_stock_industry_map",
+            "vnpy_ashare.screener.engine.dimensions.momentum.get_stock_industry_map",
             return_value={"600000.SH": "银行", "000001.SZ": "银行"},
         ),
         patch(
-            "vnpy_ashare.screener.dimensions.momentum.market_benchmark_change_pct",
+            "vnpy_ashare.screener.engine.dimensions.momentum.get_stock_industry_l1_map",
+            return_value={},
+        ),
+        patch(
+            "vnpy_ashare.screener.engine.dimensions.momentum.attach_industry_columns",
+            side_effect=_attach,
+        ),
+        patch(
+            "vnpy_ashare.screener.engine.dimensions.momentum.market_benchmark_change_pct",
             return_value=1.0,
         ),
         patch(
-            "vnpy_ashare.screener.dimensions.momentum.attach_industry",
+            "vnpy_ashare.screener.engine.dimensions.momentum.attach_industry",
             side_effect=lambda rows, industry_map=None: [{**row, "industry": "银行"} for row in rows],
         ),
         patch(
-            "vnpy_ashare.screener.dimensions.momentum.industry_avg_change_map",
-            return_value={"银行": 3.0},
+            "vnpy_ashare.screener.engine.dimensions.momentum.momentum_change_bounds",
+            return_value=(-100.0, 100.0),
+        ),
+        patch(
+            "vnpy_ashare.screener.engine.dimensions.momentum.apply_recipe_filters",
+            side_effect=lambda items: list(items),
+        ),
+        patch(
+            "vnpy_ashare.screener.engine.dimensions.momentum.load_history_bars_map",
+            return_value={},
+        ),
+        patch(
+            "vnpy_ashare.screener.engine.dimensions.scoring.metric_score_blend",
+            return_value=0.0,
         ),
     ):
         hits, scanned = run_momentum(2, weight=0.3)
 
     assert scanned == 2
     assert hits[0].vt_symbol == "600000.SSE"
-    assert hits[0].row["relative_strength"] == 2.0
+    # 行业均值 (5+4)/2=4.5 → 相对行业 0.5；相对大盘 4.0
+    assert hits[0].row["relative_strength"] == 0.5
     assert hits[0].row["strength_basis"] == "行业银行"
     assert hits[0].row["market_relative_strength"] == 4.0
     assert "相对大盘" in hits[0].reason
 
 
 def test_momentum_uses_relative_strength() -> None:
-    snapshot = type(
-        "Snap",
-        (),
+    rows = [
         {
-            "rows": [
-                {
-                    "vt_symbol": "600000.SSE",
-                    "symbol": "600000",
-                    "change_pct": 5.0,
-                    "amount": 50_000_000,
-                    "total_mv": 600_000,
-                },
-                {
-                    "vt_symbol": "000001.SZSE",
-                    "symbol": "000001",
-                    "change_pct": 8.0,
-                    "amount": 50_000_000,
-                    "total_mv": 600_000,
-                },
-            ],
-            "total": 2,
+            "vt_symbol": "600000.SSE",
+            "symbol": "600000",
+            "change_pct": 5.0,
+            "amount": 50_000_000,
+            "total_mv": 600_000,
         },
-    )()
+        {
+            "vt_symbol": "000001.SZSE",
+            "symbol": "000001",
+            "change_pct": 8.0,
+            "amount": 50_000_000,
+            "total_mv": 600_000,
+        },
+    ]
+
+    def _attach(df, *, industry_map=None, industry_l1_map=None, drop_unmapped=True):
+        import polars as pl
+
+        return df.with_columns(pl.lit("").alias("industry"), pl.lit("").alias("industry_l1"))
 
     with (
         patch(
-            "vnpy_ashare.screener.dimensions.momentum.load_screening_quote_snapshot",
-            return_value=snapshot,
+            "vnpy_ashare.screener.engine.dimensions.momentum.load_quote_snapshot_for_dimension",
+            return_value=(rows, 2),
         ),
         patch(
-            "vnpy_ashare.screener.dimensions.momentum.get_stock_industry_map",
+            "vnpy_ashare.screener.engine.dimensions.momentum.get_stock_industry_map",
             return_value={},
         ),
         patch(
-            "vnpy_ashare.screener.dimensions.momentum.attach_industry",
+            "vnpy_ashare.screener.engine.dimensions.momentum.get_stock_industry_l1_map",
+            return_value={},
+        ),
+        patch(
+            "vnpy_ashare.screener.engine.dimensions.momentum.attach_industry_columns",
+            side_effect=_attach,
+        ),
+        patch(
+            "vnpy_ashare.screener.engine.dimensions.momentum.attach_industry",
             side_effect=lambda rows, industry_map=None: list(rows),
         ),
         patch(
-            "vnpy_ashare.screener.dimensions.momentum.market_benchmark_change_pct",
+            "vnpy_ashare.screener.engine.dimensions.momentum.market_benchmark_change_pct",
             return_value=2.0,
         ),
         patch(
-            "vnpy_ashare.screener.dimensions.momentum.industry_avg_change_map",
+            "vnpy_ashare.screener.engine.dimensions.momentum.momentum_change_bounds",
+            return_value=(-100.0, 100.0),
+        ),
+        patch(
+            "vnpy_ashare.screener.engine.dimensions.momentum.apply_recipe_filters",
+            side_effect=lambda items: list(items),
+        ),
+        patch(
+            "vnpy_ashare.screener.engine.dimensions.momentum.load_history_bars_map",
             return_value={},
+        ),
+        patch(
+            "vnpy_ashare.screener.engine.dimensions.scoring.metric_score_blend",
+            return_value=0.0,
         ),
     ):
         hits, scanned = run_momentum(2, weight=0.3)

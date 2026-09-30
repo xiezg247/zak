@@ -88,6 +88,11 @@ def resolve_moneyflow_hits(
     return hits, total, ""
 
 
+def run_moneyflow_intraday(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], int]:
+    hits, total, _ = resolve_moneyflow_hits(pool_size, weight=weight)
+    return hits, total
+
+
 def build_moneyflow_source_subtitle(
     hits: list[DimensionHit],
     trade_date: str,
