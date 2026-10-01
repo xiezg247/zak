@@ -23,7 +23,7 @@ from vnpy_ashare.screener.hard_filters import apply_recipe_filters
 from vnpy_ashare.screener.pattern.pattern_rules import PATTERN_MATCHERS, BarSeries, PatternMatch
 from vnpy_ashare.screener.preset.presets import SCREENER_CUSTOM
 from vnpy_ashare.screener.preset.rules import apply_quote_preset
-from vnpy_ashare.screener.run.result import ScreenerRunResult, build_screener_run_result
+from vnpy_ashare.domain.screener.run_result import ScreenerRunResult, build_screener_run_result
 from vnpy_common.domain.base import FrozenModel
 
 MAX_PATTERN_SCAN = 1200

@@ -65,7 +65,7 @@ def test_rank_predict_hits_uses_baseline(monkeypatch) -> None:
 
 
 def test_scan_predict_builds_rows(monkeypatch) -> None:
-    from vnpy_ashare.quotes.radar.radar_horizon_scan import HorizonScanStats
+    from vnpy_ashare.domain.radar.horizon import HorizonScanStats
 
     monkeypatch.setattr(
         "vnpy_ashare.quotes.radar.predict.predict_scan.collect_outlook_exclusion_vt_symbols",

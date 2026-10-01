@@ -7,7 +7,7 @@ from vnpy_ashare.domain.screener.result_row import coerce_screener_result_rows
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters
-from vnpy_ashare.screener.run.result import ScreenerRunResult, build_screener_run_result
+from vnpy_ashare.domain.screener.run_result import ScreenerRunResult, build_screener_run_result
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
 
 

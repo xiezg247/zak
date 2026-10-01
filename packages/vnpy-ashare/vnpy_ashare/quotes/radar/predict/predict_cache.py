@@ -6,7 +6,7 @@ import json
 
 from vnpy_ashare.domain.radar.predict import PredictCacheEntry
 from vnpy_ashare.domain.time.china import format_china_datetime_minute
-from vnpy_ashare.quotes.radar.radar_horizon_stats import HorizonScanStats
+from vnpy_ashare.domain.radar.horizon import HorizonScanStats
 from vnpy_ashare.quotes.radar.radar_models import (
     RadarRow,
     radar_row_from_cache_dict,

@@ -23,7 +23,7 @@ from vnpy_ashare.quotes.radar.radar_horizon_scan import (
     scan_horizon_variant,
 )
 from vnpy_ashare.quotes.radar.radar_horizon_scenario import SCENARIO_VARIANT_LABELS, SCENARIO_VARIANTS
-from vnpy_ashare.quotes.radar.radar_horizon_stats import HorizonScanStats
+from vnpy_ashare.domain.radar.horizon import HorizonScanStats
 from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, enrich_radar_rows
 
 OUTLOOK_CARD_VARIANTS: dict[str, str] = {

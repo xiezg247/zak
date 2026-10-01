@@ -28,7 +28,7 @@ from vnpy_ashare.quotes.radar.radar_horizon_scenario import (
     filter_scenario_metrics,
     scenario_sort_key,
 )
-from vnpy_ashare.quotes.radar.radar_horizon_stats import HorizonScanStats
+from vnpy_ashare.domain.radar.horizon import HorizonScanStats
 from vnpy_ashare.quotes.radar.radar_pool import collect_outlook_exclusion_vt_symbols, name_map_for_symbols
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError

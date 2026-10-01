@@ -11,8 +11,8 @@ from vnpy_ashare.quotes.radar.radar_horizon_cache import (
     horizon_cache_storage_key,
     put_horizon_cache,
 )
+from vnpy_ashare.domain.radar.horizon import HorizonScanStats
 from vnpy_ashare.quotes.radar.radar_horizon_scan import (
-    HorizonScanStats,
     horizon_empty_message,
     local_daily_k_insufficient,
     prefilter_horizon_universe,

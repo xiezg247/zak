@@ -8,7 +8,7 @@ from vnpy_ashare.quotes.radar.radar_resonance_store import (
     get_radar_resonance_entries,
     radar_resonance_updated_at,
 )
-from vnpy_ashare.screener.run.result import ScreenerRunResult, build_screener_run_result
+from vnpy_ashare.domain.screener.run_result import ScreenerRunResult, build_screener_run_result
 
 
 def resonance_entries_to_result_rows(entries: tuple[RadarResonanceEntry, ...]) -> list[ScreenerResultRow]:

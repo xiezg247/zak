@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from vnpy_ashare.ai.context.store import get_screening_results, set_screening_results
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
-from vnpy_ashare.screener.run.result import ScreenerRunResult
+from vnpy_ashare.domain.screener.run_result import ScreenerRunResult
 from vnpy_ashare.screener.run.run_store import get_run, save_run
 
 

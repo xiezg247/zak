@@ -12,7 +12,7 @@ from vnpy_ashare.quotes.radar.predict.baseline_ranker import rank_baseline_predi
 from vnpy_ashare.quotes.radar.predict.predict_cache import put_predict_cache
 from vnpy_ashare.quotes.radar.predict.predict_prefs import PredictModelMode, load_predict_model_mode
 from vnpy_ashare.quotes.radar.radar_horizon_scan import prefilter_horizon_universe
-from vnpy_ashare.quotes.radar.radar_horizon_stats import HorizonScanStats
+from vnpy_ashare.domain.radar.horizon import HorizonScanStats
 from vnpy_ashare.quotes.radar.radar_models import RadarRow
 from vnpy_ashare.quotes.radar.radar_pool import collect_outlook_exclusion_vt_symbols, name_map_for_symbols
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot

@@ -14,7 +14,7 @@ from vnpy_ashare.quotes.radar.radar_leader_pick import (
 )
 from vnpy_ashare.screener.enrich.regulatory import enrich_regulatory_tags
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters
-from vnpy_ashare.screener.run.result import ScreenerRunResult, build_screener_run_result
+from vnpy_ashare.domain.screener.run_result import ScreenerRunResult, build_screener_run_result
 from vnpy_ashare.screener.sector.sector_summary import attach_sector_fields, compute_sector_distribution
 from vnpy_ashare.trading.signals.intraday_seal_time import attach_first_time_fields
 
