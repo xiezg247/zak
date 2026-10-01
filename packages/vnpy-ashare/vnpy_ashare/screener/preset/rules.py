@@ -9,7 +9,6 @@ from typing import Any
 
 from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike, coerce_quote_row, quote_row_copy
 from vnpy_ashare.quotes.market.moneyflow_kind import enrich_moneyflow_row_with_kind
-from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters
 
 # Tushare daily_basic.total_mv 单位为万元；50 亿 = 500000 万元
@@ -84,19 +83,6 @@ def apply_limit_up(rows: QuoteRowsLike, *, top_n: int) -> list[QuoteRow]:
     rows = apply_recipe_filters(rows)
     sorted_rows = sorted(rows, key=lambda r: float(r.get("limit_times") or 0), reverse=True)
     return [_limit_up_row(r) for r in sorted_rows[:top_n]]
-
-
-def _sort_by_volume_ratio(quotes: QuoteRowsLike) -> list[QuoteRow]:
-    ratio_map = get_volume_ratio_map()
-    enriched: list[QuoteRow] = []
-    for row in quotes:
-        vt_symbol = str(row.get("vt_symbol") or "")
-        ratio = float(ratio_map.get(vt_symbol) or row.get("volume_ratio") or 0)
-        if ratio <= 0:
-            continue
-        enriched.append(quote_row_copy(row, volume_ratio=ratio))
-    enriched.sort(key=lambda item: float(item.get("volume_ratio") or 0), reverse=True)
-    return enriched
 
 
 def apply_moneyflow_in(rows: QuoteRowsLike, *, top_n: int) -> list[QuoteRow]:

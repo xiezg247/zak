@@ -14,7 +14,7 @@ from vnpy_ashare.quotes.radar.radar_leader import LeaderScoredRow, leader_tier_l
 from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, apply_board_quality, enrich_radar_rows, merge_row_quotes
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
-from vnpy_ashare.screener.dimensions.sector_strength import run_sector_strength
+from vnpy_ashare.screener.engine.dimensions.sector_strength import run_sector_strength
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters
 from vnpy_ashare.screener.sector.sector_summary import (
     attach_industry,

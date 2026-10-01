@@ -20,7 +20,7 @@ from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 
 PREDICT_VARIANT_BASELINE = "predict_baseline"
 
-__all__ = ["PREDICT_VARIANT_BASELINE", "PredictScanResult", "run_predict_scan"]
+__all__ = ["PREDICT_VARIANT_BASELINE", "PredictScanResult", "scan_predict"]
 
 
 def _quote_rows_for_prefilter(prefilter: list[str]) -> list[QuoteRow]:
@@ -127,42 +127,6 @@ def scan_predict(
     return scan
 
 
-def scan_predict_baseline(
-    *,
-    top_n: int = 8,
-    prefilter: list[str] | None = None,
-    base_stats: HorizonScanStats | None = None,
-    quote_rows: list[QuoteRow] | None = None,
-) -> PredictScanResult:
-    """仅统计基线（测试 / 对照）。"""
-    if prefilter is None or base_stats is None:
-        excluded = collect_outlook_exclusion_vt_symbols()
-        prefilter, stats = prefilter_horizon_universe(excluded)
-    else:
-        stats = base_stats
-
-    if quote_rows is None:
-        quote_rows = _quote_rows_for_prefilter(prefilter)
-
-    hits = [_baseline_to_hit(hit) for hit in rank_baseline_predict(quote_rows)[: max(1, int(top_n))]]
-    name_map = name_map_for_symbols([hit.vt_symbol for hit in hits])
-    row_by_vt = quote_rows_by_vt_symbol(quote_rows)
-    rows = tuple(_hit_to_row(hit, name_map=name_map, quote_row=row_by_vt.get(hit.vt_symbol, {"vt_symbol": hit.vt_symbol})) for hit in hits)
-    return PredictScanResult(
-        variant=PREDICT_VARIANT_BASELINE,
-        rows=rows,
-        stats=HorizonScanStats(
-            scanned_total=stats.scanned_total,
-            excluded_count=stats.excluded_count,
-            prefilter_total=stats.prefilter_total,
-            refined_total=len(hits),
-            kline_missing=stats.kline_missing,
-        ),
-        model_label="统计基线",
-        computed_at=format_china_datetime_minute(),
-    )
-
-
 def predict_empty_message(stats: HorizonScanStats, *, card_title: str) -> str:
     if stats.prefilter_total == 0 and stats.scanned_total == 0:
         return "暂无全市场行情，请先同步标的或等待行情采集。"
@@ -171,20 +135,11 @@ def predict_empty_message(stats: HorizonScanStats, *, card_title: str) -> str:
     return f"当前无符合「{card_title}」条件的标的（已扫描 {stats.scanned_total} 只）"
 
 
-def run_predict_scan(*, top_n: int = 8) -> PredictScanResult:
-    """执行预测扫描并写入缓存。"""
-    return scan_predict(top_n=top_n, persist=True)
-
-
 def build_predict_subtitle(
     *,
     horizon_days: int,
     model_label: str,
     scanned_total: int,
     top_count: int,
-    model_caption: str = "",
 ) -> str:
-    base = f"约 {horizon_days} 日 · {model_label} · 已扫 {scanned_total} 只 · Top {top_count} · 模型估计非保证收益"
-    if model_caption:
-        return f"{base} · {model_caption}"
-    return base
+    return f"约 {horizon_days} 日 · {model_label} · 已扫 {scanned_total} 只 · Top {top_count} · 模型估计非保证收益"

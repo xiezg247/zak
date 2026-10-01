@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.config.constants.recipe import ENV_SENTIMENT_GATE
-from vnpy_ashare.domain.core.env import env_or_prefs_bool
 from vnpy_ashare.domain.market.quote_row import (
     QuoteRow,
     QuoteRowsLike,
@@ -11,12 +9,8 @@ from vnpy_ashare.domain.market.quote_row import (
     coerce_quote_rows,
 )
 from vnpy_ashare.screener.engine.dimensions.momentum_bounds import momentum_change_bounds
-from vnpy_ashare.screener.recipe_tuning_prefs import load_recipe_tuning_prefs
 from vnpy_ashare.screener.sentiment.fear_greed_provider import try_fetch_fear_greed_index
-
-
-def sentiment_gate_enabled() -> bool:
-    return env_or_prefs_bool(ENV_SENTIMENT_GATE, prefs=lambda: load_recipe_tuning_prefs().sentiment_gate_enabled)
+from vnpy_ashare.screener.sentiment.sentiment_gate import sentiment_gate_enabled
 
 
 def apply_sentiment_snapshot_prefilter(rows: QuoteRowsLike) -> list[QuoteRow]:

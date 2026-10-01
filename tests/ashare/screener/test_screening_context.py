@@ -10,7 +10,7 @@ from vnpy_ashare.screener.data.screening_context import (
     get_volume_ratio_map,
     screening_context_scope,
 )
-from vnpy_ashare.screener.dimensions.volume_ratio import run_volume_ratio
+from vnpy_ashare.screener.engine.dimensions.volume_ratio import run_volume_ratio
 
 
 def test_screening_context_caches_quote_snapshot() -> None:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.screener.dimensions.scoring import metric_score_blend
+from vnpy_ashare.screener.engine.dimensions.scoring import metric_score_blend
 from vnpy_ashare.screener.recipe_tuning_prefs import (
     RecipeTuningPrefs,
     load_recipe_tuning_prefs,

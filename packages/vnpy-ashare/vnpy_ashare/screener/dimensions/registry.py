@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import importlib
 from collections.abc import Callable
-from typing import Any
 
 from vnpy_ashare.domain.screener.dimension_hit import DimensionHit
 from vnpy_ashare.screener.recipe.recipe import DimensionSpec
@@ -26,7 +25,6 @@ _RUNNER_SPECS: dict[str, tuple[str, str]] = {
     "radar_resonance": ("vnpy_ashare.screener.engine.dimensions.radar_resonance", "run_radar_resonance"),
     "cm20_elastic": ("vnpy_ashare.screener.engine.dimensions.cm20_elastic", "run_cm20_elastic"),
     "moneyflow_intraday": ("vnpy_ashare.screener.engine.dimensions.moneyflow_resolve", "run_moneyflow_intraday"),
-    "sentiment_gate": ("vnpy_ashare.screener.dimensions.sentiment_gate_dim", "run_sentiment_gate"),
     "moneyflow": ("vnpy_ashare.screener.engine.dimensions.moneyflow", "run_moneyflow"),
     "low_pe": ("vnpy_ashare.screener.engine.dimensions.low_pe", "run_low_pe"),
 }
@@ -48,35 +46,6 @@ def _load_runner(dimension_id: str) -> DimensionRunner | None:
     runner = getattr(module, attr)
     _runner_cache[dimension_id] = runner
     return runner
-
-
-class _LazyRunners(dict[str, DimensionRunner]):
-    """兼容仍读取 DIMENSION_RUNNERS[...] 的代码；按 key 惰性导入。"""
-
-    def __getitem__(self, key: str) -> DimensionRunner:
-        runner = _load_runner(key)
-        if runner is None:
-            raise KeyError(key)
-        return runner
-
-    def get(self, key: str, default: Any = None) -> Any:  # type: ignore[override]
-        runner = _load_runner(key)
-        return default if runner is None else runner
-
-    def __contains__(self, key: object) -> bool:
-        return isinstance(key, str) and key in _RUNNER_SPECS
-
-    def keys(self):  # type: ignore[override]
-        return _RUNNER_SPECS.keys()
-
-    def __iter__(self):
-        return iter(_RUNNER_SPECS)
-
-    def __len__(self) -> int:
-        return len(_RUNNER_SPECS)
-
-
-DIMENSION_RUNNERS: dict[str, DimensionRunner] = _LazyRunners()
 
 
 def run_dimension(spec: DimensionSpec, pool_size: int) -> tuple[list[DimensionHit], int]:

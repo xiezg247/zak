@@ -23,14 +23,15 @@ from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, merge
 from vnpy_ashare.quotes.radar.radar_pool import name_map_for_symbols
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
-from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row, rank_score
-from vnpy_ashare.screener.dimensions.moneyflow_resolve import (
+from vnpy_ashare.domain.screener.dimension_hit import DimensionHit, dimension_hit_row
+from vnpy_ashare.screener.engine.dimensions.moneyflow_resolve import (
     build_moneyflow_source_subtitle,
     resolve_moneyflow_hits,
 )
+from vnpy_ashare.screener.engine.dimensions.scoring import rank_score
 from vnpy_ashare.screener.engine.dimensions.volume_dedup import build_volume_discovery_subtitle
-from vnpy_ashare.screener.dimensions.volume_ratio import run_volume_ratio
-from vnpy_ashare.screener.dimensions.volume_surge import run_volume_surge
+from vnpy_ashare.screener.engine.dimensions.volume_ratio import run_volume_ratio
+from vnpy_ashare.screener.engine.dimensions.volume_surge import run_volume_surge
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters
 from vnpy_ashare.screener.preset.rules import _quote_liquidity_key
 

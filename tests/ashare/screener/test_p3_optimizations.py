@@ -11,7 +11,7 @@ from vnpy_ashare.quotes.radar.loaders import (
     compute_radar_resonance_scores,
 )
 from vnpy_ashare.screener.data.market_benchmark import market_benchmark_change_pct, relative_strength_pct
-from vnpy_ashare.screener.dimensions.momentum import run_momentum
+from vnpy_ashare.screener.engine.dimensions.momentum import run_momentum
 
 
 def _sample_row(vt_symbol: str, *, name: str = "测试") -> RadarRow:

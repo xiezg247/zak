@@ -16,7 +16,7 @@ from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, enric
 from vnpy_ashare.quotes.radar.radar_sector import _row_from_leader_scored
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
-from vnpy_ashare.screener.dimensions.sector_strength import run_sector_strength
+from vnpy_ashare.screener.engine.dimensions.sector_strength import run_sector_strength
 from vnpy_ashare.screener.hard_filters import is_at_limit_board
 from vnpy_ashare.screener.sector.sector_summary import attach_sector_fields, compute_sector_distribution
 from vnpy_ashare.trading.signals.intraday_seal_time import attach_first_time_fields

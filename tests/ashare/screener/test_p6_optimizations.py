@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from vnpy_ashare.screener.dimensions.base import DimensionHit
-from vnpy_ashare.screener.dimensions.volume_dedup import (
+from vnpy_ashare.domain.screener.dimension_hit import DimensionHit
+from vnpy_ashare.screener.engine.dimensions.volume_dedup import (
     apply_volume_liquidity_dedup,
     build_volume_discovery_subtitle,
 )

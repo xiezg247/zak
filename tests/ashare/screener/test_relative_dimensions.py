@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from vnpy_ashare.screener.dimensions.turnover import run_turnover
-from vnpy_ashare.screener.dimensions.volume_surge import run_volume_surge
+from vnpy_ashare.screener.engine.dimensions.turnover import run_turnover
+from vnpy_ashare.screener.engine.dimensions.volume_surge import run_volume_surge
 
 
 def test_volume_surge_prefers_volume_ratio() -> None:

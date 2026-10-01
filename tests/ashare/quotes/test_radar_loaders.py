@@ -94,7 +94,8 @@ def test_build_radar_resonance_list() -> None:
 
 
 def test_load_discovery_moneyflow_fallback(monkeypatch) -> None:
-    from vnpy_ashare.screener.dimensions.base import DimensionHit, rank_score
+    from vnpy_ashare.domain.screener.dimension_hit import DimensionHit
+    from vnpy_ashare.screener.engine.dimensions.scoring import rank_score
 
     monkeypatch.setattr(
         "vnpy_ashare.domain.time.market_hours.is_ashare_trading_session",
@@ -134,6 +135,18 @@ def test_load_discovery_moneyflow_fallback(monkeypatch) -> None:
         "vnpy_ashare.quotes.radar.loaders.discovery.resolve_moneyflow_hits",
         _fake_resolve,
     )
+    monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar.loaders.discovery.apply_recipe_filters",
+        lambda rows: list(rows),
+    )
+    monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar.loaders.discovery.name_map_for_symbols",
+        lambda _symbols: {"600000.SSE": "浦发银行"},
+    )
+    monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar.loaders.rows.relative_strength_subline",
+        lambda _row: None,
+    )
     data = load_discovery_moneyflow_intraday(RADAR_CARD_BY_ID["discovery_moneyflow_intraday"])
     assert len(data.rows) == 1
     assert data.rows[0].metric_label == "主力净流入"
@@ -141,7 +154,7 @@ def test_load_discovery_moneyflow_fallback(monkeypatch) -> None:
 
 
 def test_load_discovery_volume_surge_excludes_st_from_ratio_fallback(monkeypatch) -> None:
-    from vnpy_ashare.screener.dimensions.base import DimensionHit
+    from vnpy_ashare.domain.screener.dimension_hit import DimensionHit
 
     st_hit = DimensionHit(
         vt_symbol="300093.SZSE",
@@ -186,8 +199,30 @@ def test_load_discovery_volume_surge_excludes_st_from_ratio_fallback(monkeypatch
         lambda _n, weight=1.0: ([st_hit, normal_hit], 5512),
     )
     monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar.loaders.discovery.peek_fresh_intraday_screen_run",
+        lambda: None,
+    )
+    monkeypatch.setattr(
         "vnpy_ashare.quotes.radar.loaders.discovery.name_map_for_symbols",
         lambda _symbols: {"300093.SZSE": "*ST金刚", "603014.SSE": "威高血净"},
+    )
+
+    def _filters(rows):
+        kept = []
+        for row in rows:
+            name = str(row.get("name") or "")
+            if name.startswith(("*ST", "ST")):
+                continue
+            kept.append(row)
+        return kept
+
+    monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar.loaders.discovery.apply_recipe_filters",
+        _filters,
+    )
+    monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar.loaders.rows.relative_strength_subline",
+        lambda _row: None,
     )
     data = load_discovery_volume_surge(RADAR_CARD_BY_ID["discovery_volume_surge"])
     assert [row.vt_symbol for row in data.rows] == ["603014.SSE"]

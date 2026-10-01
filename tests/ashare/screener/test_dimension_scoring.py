@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.screener.dimensions.scoring import blended_score, metric_percentile, relative_ratio
+from vnpy_ashare.screener.engine.dimensions.scoring import blended_score, metric_percentile, relative_ratio
 
 
 def test_metric_percentile_higher_is_better() -> None:

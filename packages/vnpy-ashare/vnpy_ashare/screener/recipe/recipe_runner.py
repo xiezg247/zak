@@ -26,7 +26,8 @@ from vnpy_ashare.screener.data.screening_context import (
     preload_screening_context,
     screening_context_scope,
 )
-from vnpy_ashare.screener.dimensions.base import DimensionHit, merge_rows
+from vnpy_ashare.domain.screener.dimension_hit import DimensionHit
+from vnpy_ashare.screener.engine.dimensions.hits import merge_rows
 from vnpy_ashare.screener.dimensions.registry import run_dimension, scoring_dimension_specs
 from vnpy_ashare.screener.engine.dimensions.volume_dedup import apply_volume_liquidity_dedup
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters

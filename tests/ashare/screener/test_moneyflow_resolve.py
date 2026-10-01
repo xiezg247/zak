@@ -5,7 +5,7 @@ from __future__ import annotations
 from unittest.mock import patch
 
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesSnapshot
-from vnpy_ashare.screener.dimensions.moneyflow_resolve import resolve_moneyflow_hits
+from vnpy_ashare.screener.engine.dimensions.moneyflow_resolve import resolve_moneyflow_hits
 
 
 def test_resolve_moneyflow_intraday_prefers_mcp_over_tushare() -> None:
@@ -90,8 +90,8 @@ def test_resolve_moneyflow_post_close_uses_tushare() -> None:
 
 
 def test_build_moneyflow_source_subtitle_variants() -> None:
-    from vnpy_ashare.screener.dimensions.base import DimensionHit
-    from vnpy_ashare.screener.dimensions.moneyflow_resolve import build_moneyflow_source_subtitle
+    from vnpy_ashare.domain.screener.dimension_hit import DimensionHit
+    from vnpy_ashare.screener.engine.dimensions.moneyflow_resolve import build_moneyflow_source_subtitle
 
     assert build_moneyflow_source_subtitle([], "") == ""
     assert build_moneyflow_source_subtitle([], "20260612") == " · Tushare 20260612"

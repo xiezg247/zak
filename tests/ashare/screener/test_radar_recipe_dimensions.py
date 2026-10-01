@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from vnpy_ashare.screener.dimensions.leader_score_dim import run_leader_score
-from vnpy_ashare.screener.dimensions.radar_resonance import run_radar_resonance
+from vnpy_ashare.screener.engine.dimensions.radar_resonance import run_leader_score, run_radar_resonance
 from vnpy_ashare.screener.recipe.recipe import resolve_recipe
 
 
@@ -31,9 +30,15 @@ def test_run_leader_score_dimension() -> None:
         }
     ]
 
-    with patch(
-        "vnpy_ashare.screener.dimensions.leader_score_dim.build_leader_score_dimension_rows",
-        return_value=(fake_rows, 100),
+    with (
+        patch(
+            "vnpy_ashare.screener.data.radar_dimension_data.build_leader_score_dimension_rows",
+            return_value=(fake_rows, 100),
+        ),
+        patch(
+            "vnpy_ashare.screener.engine.dimensions.scoring.metric_score_blend",
+            return_value=0.0,
+        ),
     ):
         hits, total = run_leader_score(10, weight=0.3)
 
@@ -54,9 +59,15 @@ def test_run_radar_resonance_dimension() -> None:
         }
     ]
 
-    with patch(
-        "vnpy_ashare.screener.dimensions.radar_resonance.build_radar_resonance_dimension_rows",
-        return_value=(fake_rows, 200),
+    with (
+        patch(
+            "vnpy_ashare.screener.data.radar_dimension_data.build_radar_resonance_dimension_rows",
+            return_value=(fake_rows, 200),
+        ),
+        patch(
+            "vnpy_ashare.screener.engine.dimensions.scoring.metric_score_blend",
+            return_value=0.0,
+        ),
     ):
         hits, total = run_radar_resonance(10, weight=0.2)
 

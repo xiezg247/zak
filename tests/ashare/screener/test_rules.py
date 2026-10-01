@@ -172,8 +172,12 @@ def test_apply_quote_strong_up_filters_min_change():
 
 def test_apply_quote_volume_ratio(monkeypatch):
     monkeypatch.setattr(
-        "vnpy_ashare.screener.preset.rules._sort_by_volume_ratio",
-        lambda quotes: sorted(quotes, key=lambda q: q.get("volume_ratio", 0), reverse=True),
+        "vnpy_ashare.screener.engine.presets.get_volume_ratio_map",
+        lambda: {},
+    )
+    monkeypatch.setattr(
+        "vnpy_ashare.screener.preset.rules.apply_recipe_filters",
+        lambda rows: list(rows),
     )
     rows = apply_quote_preset(
         "量比排行",

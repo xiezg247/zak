@@ -14,7 +14,7 @@ from vnpy_ashare.quotes.radar.radar_leader_pick import build_leader_candidate_po
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesSnapshot
 from vnpy_ashare.screener.data.screening_context import ScreeningContext, screening_context_scope
 from vnpy_ashare.screener.data.screening_context import apply_recipe_prefilter_to_context
-from vnpy_ashare.screener.dimensions.sector_strength import run_sector_strength
+from vnpy_ashare.screener.engine.dimensions.sector_strength import run_sector_strength
 from vnpy_ashare.screener.hard_filter_prefs import HardFilterPrefs, save_hard_filter_prefs
 from vnpy_ashare.screener.hard_filters import filter_vt_symbols_by_recipe_market_board
 
@@ -99,12 +99,19 @@ def test_run_sector_strength_uses_prefiltered_context(monkeypatch: pytest.Monkey
     monkeypatch.setenv(ENV_TRADING_BOARDS, "沪深主板")
     monkeypatch.setenv(ENV_ALLOWED_MARKET_BOARDS, "沪深主板")
 
-    def _attach(rows):
-        return rows
-
+    industry_map = {
+        "600519.SH": "白酒",
+        "600036.SH": "白酒",
+        "601318.SH": "白酒",
+        "300750.SZ": "电池",
+    }
     monkeypatch.setattr(
-        "vnpy_ashare.screener.dimensions.sector_strength.attach_industry",
-        _attach,
+        "vnpy_ashare.screener.engine.dimensions.sector_strength.get_stock_industry_map",
+        lambda: industry_map,
+    )
+    monkeypatch.setattr(
+        "vnpy_ashare.screener.engine.dimensions.sector_strength.get_stock_industry_l1_map",
+        lambda: {},
     )
 
     with screening_context_scope() as ctx:

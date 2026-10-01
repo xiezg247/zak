@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import patch
 
 from vnpy_ashare.quotes.radar.radar_sector import _build_leaders_tiered_rows
-from vnpy_ashare.screener.dimensions.limit_board import run_limit_board
+from vnpy_ashare.screener.engine.dimensions.limit_board import run_limit_board
 from vnpy_ashare.screener.hard_filter_prefs import PRESET_AGGRESSIVE, hard_filter_preset
 from vnpy_ashare.screener.recipe.recipe import (
     BUILTIN_RECIPES,
@@ -115,7 +115,7 @@ class UltraShortRecipeTest(unittest.TestCase):
     )
     @patch("vnpy_ashare.screener.engine.dimensions.hits.load_quote_snapshot_for_dimension")
     def test_run_cm20_elastic_dimension(self, mock_load, _l1, _industry, _filters, _attach, _blend) -> None:
-        from vnpy_ashare.screener.dimensions.cm20_elastic import run_cm20_elastic
+        from vnpy_ashare.screener.engine.dimensions.cm20_elastic import run_cm20_elastic
 
         mock_load.return_value = (
             [
