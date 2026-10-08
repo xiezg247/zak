@@ -133,7 +133,7 @@ def test_build_leader_candidate_pool_all_market_respects_board_filter(monkeypatc
         ctx._snapshot_loaded = True
         ctx._snapshot = _mixed_snapshot()
         apply_recipe_prefilter_to_context(ctx)
-        pool, _total = build_leader_candidate_pool(variant="all_market", pool_size=20)
+        pool, _total, _meta = build_leader_candidate_pool(variant="all_market", pool_size=20)
 
     assert pool
     assert all(str(row.get("symbol")) in {"600519", "600036"} for row in pool)

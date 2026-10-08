@@ -11,12 +11,9 @@ from pydantic import ConfigDict, PrivateAttr
 from vnpy.trader.constant import Exchange
 from vnpy.trader.object import BarData
 
-from vnpy_ashare.data.download_concurrency import avg_turnover_prefetch_max_workers, run_parallel_map
 from vnpy_ashare.data.pattern_bars import load_daily_bars_batch
 from vnpy_ashare.domain.symbols.stock import StockItem, parse_stock_symbol
-from vnpy_ashare.domain.time.trade_dates import iter_trade_date_strs
 from vnpy_ashare.integrations.tushare.factors import (
-    fetch_daily_basic,
     fetch_stock_industry_l1_map,
     fetch_stock_industry_map,
 )
@@ -28,7 +25,39 @@ from vnpy_ashare.screener.data.screening_context_registry import (
     deactivate_screening_context,
     get_screening_context,
 )
+from vnpy_ashare.screener.data.screening_factor_maps import (
+    fetch_avg_turnover_map_uncached,
+    fetch_volume_ratio_map_uncached,
+    get_avg_turnover_map,
+    get_stock_industry_l1_map,
+    get_stock_industry_map,
+    get_volume_ratio_map,
+)
+from vnpy_ashare.screener.data.screening_prefilter import (
+    apply_board_prefilter_rows,
+    apply_recipe_prefilter_to_context,
+    apply_sentiment_prefilter_to_context,
+    coarse_prefilter_snapshot,
+    prefilter_snapshot,
+)
 from vnpy_common.domain.base import MutableModel
+
+__all__ = [
+    "ScreeningContext",
+    "apply_board_prefilter_rows",
+    "apply_recipe_prefilter_to_context",
+    "apply_sentiment_prefilter_to_context",
+    "fetch_avg_turnover_map_uncached",
+    "fetch_volume_ratio_map_uncached",
+    "get_avg_turnover_map",
+    "get_cached_quote_snapshot",
+    "get_stock_industry_l1_map",
+    "get_stock_industry_map",
+    "get_volume_ratio_map",
+    "preload_screening_context",
+    "preload_screening_context_quotes",
+    "screening_context_scope",
+]
 
 
 def _history_lookback_bars() -> int:
@@ -201,80 +230,6 @@ def get_cached_quote_snapshot() -> MarketQuotesSnapshot | None:
     return ctx._snapshot
 
 
-def fetch_volume_ratio_map_uncached() -> dict[str, float]:
-    try:
-        basic_rows, _ = fetch_daily_basic()
-    except Exception:
-        return {}
-    return {
-        str(row.get("vt_symbol") or ""): float(row.get("volume_ratio") or 0)
-        for row in basic_rows
-        if row.get("vt_symbol") and float(row.get("volume_ratio") or 0) > 0
-    }
-
-
-def get_volume_ratio_map() -> dict[str, float]:
-    ctx = get_screening_context()
-    if ctx is not None:
-        return ctx.get_volume_ratio_map()
-    return fetch_volume_ratio_map_uncached()
-
-
-def fetch_avg_turnover_map_uncached(*, lookback_days: int = 5) -> dict[str, float]:
-    trade_dates = list(iter_trade_date_strs(max_lookback=lookback_days))
-
-    def _fetch_day(trade_date: str) -> list[tuple[str, float]]:
-        try:
-            rows, _ = fetch_daily_basic(trade_date=trade_date)
-        except Exception:
-            return []
-        day_rows: list[tuple[str, float]] = []
-        for row in rows:
-            vt_symbol = str(row.get("vt_symbol") or "")
-            turnover = float(row.get("turnover_rate") or 0)
-            if not vt_symbol or turnover <= 0:
-                continue
-            day_rows.append((vt_symbol, turnover))
-        return day_rows
-
-    workers = avg_turnover_prefetch_max_workers(item_count=len(trade_dates))
-    day_results = run_parallel_map(trade_dates, _fetch_day, max_workers=workers)
-    sums: dict[str, float] = {}
-    counts: dict[str, int] = {}
-    for day_rows in day_results:
-        for vt_symbol, turnover in day_rows:
-            sums[vt_symbol] = sums.get(vt_symbol, 0.0) + turnover
-            counts[vt_symbol] = counts.get(vt_symbol, 0) + 1
-    return {vt_symbol: sums[vt_symbol] / counts[vt_symbol] for vt_symbol in sums if counts.get(vt_symbol, 0) > 0}
-
-
-def get_avg_turnover_map() -> dict[str, float]:
-    ctx = get_screening_context()
-    if ctx is not None:
-        return ctx.get_avg_turnover_map()
-    return fetch_avg_turnover_map_uncached()
-
-
-def get_stock_industry_map() -> dict[str, str]:
-    ctx = get_screening_context()
-    if ctx is not None:
-        return ctx.get_industry_map()
-    try:
-        return fetch_stock_industry_map()
-    except Exception:
-        return {}
-
-
-def get_stock_industry_l1_map() -> dict[str, str]:
-    ctx = get_screening_context()
-    if ctx is not None:
-        return ctx.get_industry_l1_map()
-    try:
-        return fetch_stock_industry_l1_map()
-    except Exception:
-        return {}
-
-
 @contextmanager
 def screening_context_scope():
     """进入配方 / 雷达批量加载作用域，子线程通过 copy_context 继承。"""
@@ -289,8 +244,8 @@ def screening_context_scope():
 def preload_screening_context(ctx: ScreeningContext) -> None:
     """预加载常用字段，避免并行维度重复拉 Redis / Tushare。"""
     ctx.preload_quote_snapshot()
-    _coarse_prefilter_snapshot(ctx)
-    _prefilter_snapshot(ctx)
+    coarse_prefilter_snapshot(ctx)
+    prefilter_snapshot(ctx)
     ctx.load_volume_ratio_from_snapshot(
         getattr(ctx, "_snapshot", None)
     )
@@ -300,153 +255,6 @@ def preload_screening_context(ctx: ScreeningContext) -> None:
         ctx.get_quote_snapshot_frame()
     except Exception:
         pass
-
-
-def _coarse_prefilter_snapshot(ctx: ScreeningContext) -> None:
-    """粗筛：仅用行情快照字段（零 API 调用）先过滤无效/涨跌停/低流动性/北交所标的。
-    
-    在硬过滤和 Tushare 重请求之前执行，显著减少后续处理行数。
-    """
-    snapshot = getattr(ctx, "_snapshot", None)
-    if snapshot is None or not getattr(snapshot, "rows", None):
-        return
-    rows = list(snapshot.rows)
-    original = len(rows)
-    filtered = _apply_coarse_quote_filters(rows)
-    if len(filtered) == original:
-        return
-
-    from vnpy_ashare.screener.data.quotes_loader import MarketQuotesSnapshot
-    from vnpy_ashare.domain.market.quote_row import coerce_quote_rows
-
-    ctx._snapshot = MarketQuotesSnapshot(
-        rows=coerce_quote_rows(filtered),
-        updated_at=snapshot.updated_at,
-        total=len(filtered),
-        source=snapshot.source,
-    )
-
-
-def _apply_coarse_quote_filters(rows: list) -> list:
-    """纯行内字段过滤，不发起任何外部请求。"""
-    from vnpy_ashare.screener.hard_filters import recipe_min_amount_yuan
-
-    min_amount = recipe_min_amount_yuan()
-    kept: list = []
-    for row in rows:
-        last_price = float(row.get("last_price") or 0)
-        if last_price <= 0:
-            continue
-
-        # 涨跌停排除
-        change_pct = float(row.get("change_pct") or 0)
-        symbol = str(row.get("symbol") or "")
-        if _at_any_limit_board(symbol, change_pct):
-            continue
-
-        # 流动性：成交额过低
-        if min_amount > 0:
-            amount = float(row.get("amount") or 0)
-            if amount < min_amount:
-                continue
-
-        # 北交所排除
-        if _is_beijing_board(symbol):
-            continue
-
-        # 板块白名单
-        symbol_col = str(row.get("symbol") or "")
-        if not _passes_board_prefilter(symbol_col):
-            continue
-
-        kept.append(row)
-    return kept
-
-
-def _passes_board_prefilter(symbol: str) -> bool:
-    """板块粗筛：symbol 前缀是否命中配置的市场板块白名单。"""
-    boards = _get_board_prefilter_boards()
-    if not boards:
-        return True
-    from vnpy_ashare.domain.market.board import matches_board
-
-    return any(matches_board(symbol, board) for board in boards)
-
-
-def _get_board_prefilter_boards() -> frozenset[str]:
-    """粗筛用板块白名单（与硬过滤共享 RECIPE_ALLOWED_MARKET_BOARDS 配置）。"""
-    from vnpy_ashare.screener.hard_filters import resolve_market_board_filter
-
-    board_filter = resolve_market_board_filter()
-    return board_filter.boards if board_filter.active else frozenset()
-
-
-def _at_any_limit_board(symbol: str, change_pct: float) -> bool:
-    """涨跌停或接近涨跌停（主板 ±9.8%，科创/创业板 ±19.5%）。"""
-    if symbol.startswith(("300", "688")):
-        return abs(change_pct) >= 19.5
-    return abs(change_pct) >= 9.8
-
-
-def _is_beijing_board(symbol: str) -> bool:
-    """北交所主板（4/8开头）。"""
-    return bool(symbol) and symbol[0] in ("4", "8")
-
-
-def apply_board_prefilter_rows(rows: list) -> list:
-    """公共工具：按 RECIPE_ALLOWED_MARKET_BOARDS 配置过滤行列表。
-    
-    盘中/盘后维度均可调用，不依赖 ScreeningContext。
-    """
-    boards = _get_board_prefilter_boards()
-    if not boards:
-        return rows
-    return [row for row in rows if _passes_board_prefilter(str(row.get("symbol") or row.get("vt_symbol", "") or "").split(".")[0])]
-
-
-def _replace_context_snapshot(ctx: ScreeningContext, *, rows: list, total: int | None = None) -> None:
-    snapshot = getattr(ctx, "_snapshot", None)
-    if snapshot is None:
-        return
-    from vnpy_ashare.domain.market.quote_row import coerce_quote_rows
-
-    ctx._snapshot = MarketQuotesSnapshot(
-        rows=coerce_quote_rows(rows),
-        updated_at=snapshot.updated_at,
-        total=len(rows) if total is None else total,
-        source=snapshot.source,
-    )
-
-
-def apply_recipe_prefilter_to_context(ctx: ScreeningContext) -> None:
-    """将配方硬过滤（含 RECIPE_ALLOWED / ASHARE_TRADING_BOARDS）应用到上下文行情快照。"""
-    from vnpy_ashare.screener.hard_filters import apply_recipe_filters
-
-    snapshot = getattr(ctx, "_snapshot", None)
-    if snapshot is None or not getattr(snapshot, "rows", None):
-        return
-    filtered = apply_recipe_filters(list(snapshot.rows))
-    if len(filtered) == len(snapshot.rows):
-        return
-    _replace_context_snapshot(ctx, rows=filtered)
-
-
-def apply_sentiment_prefilter_to_context(ctx: ScreeningContext) -> None:
-    """恐贪前置缩池应用到上下文行情快照。"""
-    from vnpy_ashare.screener.sentiment.snapshot_prefilter import apply_sentiment_snapshot_prefilter
-
-    snapshot = getattr(ctx, "_snapshot", None)
-    if snapshot is None or not getattr(snapshot, "rows", None):
-        return
-    filtered = apply_sentiment_snapshot_prefilter(list(snapshot.rows))
-    if len(filtered) == len(snapshot.rows):
-        return
-    _replace_context_snapshot(ctx, rows=filtered)
-
-
-def _prefilter_snapshot(ctx: ScreeningContext) -> None:
-    """提前应用硬过滤（ST、停牌、流动性），减少后续维度和 DataFrame 规模。"""
-    apply_recipe_prefilter_to_context(ctx)
 
 
 def preload_screening_context_quotes(ctx: ScreeningContext) -> None:

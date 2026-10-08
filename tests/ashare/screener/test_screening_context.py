@@ -99,7 +99,7 @@ def test_get_volume_ratio_map_uses_context_cache() -> None:
 
 def test_fetch_volume_ratio_map_uncached_empty_on_error() -> None:
     with patch(
-        "vnpy_ashare.screener.data.screening_context.fetch_daily_basic",
+        "vnpy_ashare.screener.data.screening_factor_maps.fetch_daily_basic",
         side_effect=RuntimeError("boom"),
     ):
         assert fetch_volume_ratio_map_uncached() == {}
