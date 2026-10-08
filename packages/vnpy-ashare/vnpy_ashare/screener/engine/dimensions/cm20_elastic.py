@@ -9,7 +9,7 @@ import polars as pl
 from vnpy_ashare.screener.engine.dimensions.hits import run_with_quote_snapshot
 from vnpy_ashare.domain.market.board import matches_board
 from vnpy_ashare.domain.market.quote_row import QuoteRowLike, quote_row_copy
-from vnpy_ashare.screener.data.screening_context import get_stock_industry_l1_map, get_stock_industry_map
+from vnpy_ashare.screener.data.screening_factor_maps import get_stock_industry_l1_map, get_stock_industry_map
 from vnpy_ashare.domain.screener.dimension_hit import DimensionHit, dimension_hit_row
 from vnpy_ashare.screener.engine.snapshot_frame import (
     attach_industry_columns,

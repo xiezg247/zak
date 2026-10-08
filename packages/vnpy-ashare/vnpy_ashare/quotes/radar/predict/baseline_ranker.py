@@ -12,7 +12,7 @@ from vnpy_ashare.screener.data.market_benchmark import (
     market_benchmark_change_pct,
     resolve_relative_strength,
 )
-from vnpy_ashare.screener.data.screening_context import get_stock_industry_map
+from vnpy_ashare.screener.data.screening_factor_maps import get_stock_industry_map
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
 
 _WEIGHT_RS = 0.40

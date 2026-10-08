@@ -8,7 +8,7 @@ import polars as pl
 
 from vnpy_ashare.domain.market.quote_row import QuoteRow
 from vnpy_ashare.integrations.tushare.factors import fetch_daily_basic
-from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
+from vnpy_ashare.screener.data.screening_factor_maps import get_volume_ratio_map
 from vnpy_ashare.domain.screener.dimension_hit import DimensionHit, dimension_hit_row
 from vnpy_ashare.screener.engine.dimensions.hits import load_quote_snapshot_for_dimension, quote_hits
 from vnpy_ashare.screener.engine.dimensions.scoring import blended_score

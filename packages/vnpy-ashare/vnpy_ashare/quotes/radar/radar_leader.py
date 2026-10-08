@@ -19,10 +19,6 @@ from vnpy_ashare.quotes.radar.radar_leader_score import (
 from vnpy_ashare.screener.hard_filters import is_at_limit_board
 from vnpy_ashare.trading.signals.seal_time import seal_time_score
 
-# 兼容：旧私有名 / 再导出评分 API
-_seal_quality_proxy = seal_quality_proxy
-_FOLLOWER_MIN_SCORE = FOLLOWER_MIN_SCORE
-
 __all__ = [
     "LeaderScoredRow",
     "LeaderTier",

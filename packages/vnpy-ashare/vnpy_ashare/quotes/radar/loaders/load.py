@@ -33,11 +33,13 @@ from vnpy_ashare.quotes.radar.radar_sector_flow_hot import SectorFlowHotVariant,
 from vnpy_ashare.quotes.radar.radar_watchlist import load_watchlist_intraday
 from vnpy_ashare.quotes.radar.radar_watchlist_short_term import load_watchlist_short_term
 from vnpy_ashare.screener.data.screening_context import (
-    apply_recipe_prefilter_to_context,
-    apply_sentiment_prefilter_to_context,
     preload_screening_context,
     preload_screening_context_quotes,
     screening_context_scope,
+)
+from vnpy_ashare.screener.data.screening_prefilter import (
+    apply_recipe_prefilter_to_context,
+    apply_sentiment_prefilter_to_context,
 )
 from vnpy_common.perf_trace import tracer
 

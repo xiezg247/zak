@@ -21,11 +21,8 @@ from vnpy_ashare.quotes.market.moneyflow_kind import (
     row_has_moneyflow_fields,
 )
 from vnpy_ashare.screener.data.data_source import enrich_recipe_rows
-from vnpy_ashare.screener.data.screening_context import (
-    apply_sentiment_prefilter_to_context,
-    preload_screening_context,
-    screening_context_scope,
-)
+from vnpy_ashare.screener.data.screening_context import preload_screening_context, screening_context_scope
+from vnpy_ashare.screener.data.screening_prefilter import apply_sentiment_prefilter_to_context
 from vnpy_ashare.domain.screener.dimension_hit import DimensionHit
 from vnpy_ashare.screener.engine.dimensions.hits import merge_rows
 from vnpy_ashare.screener.engine.dimensions.registry import run_dimension, scoring_dimension_specs

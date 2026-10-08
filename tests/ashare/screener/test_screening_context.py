@@ -5,10 +5,10 @@ from __future__ import annotations
 from unittest.mock import patch
 
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesSnapshot
-from vnpy_ashare.screener.data.screening_context import (
+from vnpy_ashare.screener.data.screening_context import screening_context_scope
+from vnpy_ashare.screener.data.screening_factor_maps import (
     fetch_volume_ratio_map_uncached,
     get_volume_ratio_map,
-    screening_context_scope,
 )
 from vnpy_ashare.screener.engine.dimensions.volume_ratio import run_volume_ratio
 

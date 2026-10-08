@@ -16,13 +16,15 @@ from vnpy_ashare.screener.engine.snapshot_frame import change_pct_expr
 from vnpy_ashare.screener.hard_filters import ONE_WORD_AMPLITUDE_MAX_PCT
 
 
-def _symbol_expr() -> pl.Expr:
+def symbol_expr() -> pl.Expr:
+    """从 symbol / vt_symbol 解析证券代码列表达式。"""
     vt = pl.col("vt_symbol").cast(pl.Utf8, strict=False).fill_null("")
     from_vt = vt.str.split(".").list.first()
     return pl.coalesce(pl.col("symbol").cast(pl.Utf8, strict=False), from_vt).fill_null("")
 
 
-def _limit_threshold_expr(market_col: pl.Expr, symbol_col: pl.Expr) -> pl.Expr:
+def limit_threshold_expr(market_col: pl.Expr, symbol_col: pl.Expr) -> pl.Expr:
+    """涨跌停阈值：创业/科创 19.5%，其余 9.8%。"""
     market = market_col.fill_null("")
     is_growth = market.is_in(["创业板", "科创板"]) | symbol_col.str.starts_with("300") | symbol_col.str.starts_with("688")
     return pl.when(is_growth).then(pl.lit(19.5)).otherwise(pl.lit(9.8))
@@ -104,7 +106,7 @@ def apply_recipe_filters_polars(rows: Sequence[Any]) -> list[Any]:
     df = pl.DataFrame(payloads, infer_schema_length=max(len(payloads), 1))
     df = _ensure_columns(df, _OPTIONAL_COLS)
 
-    symbol_col = _symbol_expr()
+    symbol_col = symbol_expr()
     change_col = change_pct_expr()
     df = df.with_columns(
         symbol_col.alias("_symbol"),
@@ -164,7 +166,7 @@ def apply_recipe_filters_polars(rows: Sequence[Any]) -> list[Any]:
         df = _join_map(df, "_vt_symbol", market_board_map, "_mapped_market")
         market_col = pl.coalesce(pl.col("market").cast(pl.Utf8, strict=False), pl.col("_mapped_market"))
         df = df.with_columns(market_col.alias("_market"))
-        threshold = _limit_threshold_expr(pl.col("_market"), pl.col("_symbol"))
+        threshold = limit_threshold_expr(pl.col("_market"), pl.col("_symbol"))
 
         if hf.recipe_exclude_limit_board_enabled():
             mask = mask & (pl.col("_change_pct") < threshold) & (pl.col("_change_pct") > -threshold)

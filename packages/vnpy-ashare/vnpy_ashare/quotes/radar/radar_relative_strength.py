@@ -18,7 +18,7 @@ from vnpy_ashare.screener.data.market_benchmark import (
     resolve_relative_strength,
 )
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
-from vnpy_ashare.screener.data.screening_context import get_stock_industry_map
+from vnpy_ashare.screener.data.screening_factor_maps import get_stock_industry_map
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
 
 _MIN_INDUSTRY_POOL = 20

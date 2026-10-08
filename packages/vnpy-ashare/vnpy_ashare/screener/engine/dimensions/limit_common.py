@@ -7,8 +7,8 @@ from typing import Any
 import polars as pl
 
 from vnpy_ashare.quotes.core.enrich import get_cached_limit_times_map
-from vnpy_ashare.screener.data.screening_context import get_stock_industry_l1_map, get_stock_industry_map
-from vnpy_ashare.screener.engine.hard_filter import _limit_threshold_expr, _symbol_expr
+from vnpy_ashare.screener.data.screening_factor_maps import get_stock_industry_l1_map, get_stock_industry_map
+from vnpy_ashare.screener.engine.hard_filter import limit_threshold_expr, symbol_expr
 from vnpy_ashare.screener.engine.snapshot_frame import (
     attach_industry_columns,
     change_pct_expr,
@@ -42,7 +42,7 @@ def collect_limit_candidate_rows(
     if df.is_empty():
         return []
 
-    symbol = _symbol_expr()
+    symbol = symbol_expr()
     change = change_pct_expr()
     df = df.with_columns(
         symbol.alias("_symbol"),
@@ -58,7 +58,7 @@ def collect_limit_candidate_rows(
 
     row_limit = pl.col("limit_times").cast(pl.Float64, strict=False).fill_null(0.0)
     map_limit = pl.col("_map_limit").cast(pl.Float64, strict=False).fill_null(0.0)
-    threshold = _limit_threshold_expr(pl.lit(""), symbol)
+    threshold = limit_threshold_expr(pl.lit(""), symbol)
     at_limit = (change >= threshold) | (change <= -threshold)
     boards = pl.max_horizontal(row_limit, map_limit, pl.when(at_limit).then(1.0).otherwise(0.0))
 

@@ -7,7 +7,7 @@ from typing import Any
 
 import polars as pl
 
-from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
+from vnpy_ashare.screener.data.screening_factor_maps import get_volume_ratio_map
 from vnpy_ashare.screener.engine.frame import restore_rows, rows_with_index
 from vnpy_ashare.screener.preset.presets import (
     SCREENER_CHANGE_TOP,

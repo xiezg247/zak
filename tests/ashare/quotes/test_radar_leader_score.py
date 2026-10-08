@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.quotes.radar.radar_leader import _seal_quality_proxy
 from vnpy_ashare.quotes.radar.radar_leader_score import (
     amount_rank_in_group,
     board_quality_score,
@@ -12,7 +11,7 @@ from vnpy_ashare.quotes.radar.radar_leader_score import (
 )
 
 
-def test_seal_quality_proxy_public_and_compat_alias() -> None:
+def test_seal_quality_proxy_range() -> None:
     row = {
         "vt_symbol": "600000.SSE",
         "limit_times": 1,
@@ -20,7 +19,6 @@ def test_seal_quality_proxy_public_and_compat_alias() -> None:
         "amount": 2e8,
         "seal_strength_score": 0.0,
     }
-    assert seal_quality_proxy(row) == _seal_quality_proxy(row)
     assert 0.0 <= seal_quality_proxy(row) <= 1.0
 
 

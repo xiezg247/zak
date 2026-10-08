@@ -27,9 +27,6 @@ from vnpy_ashare.screener.sector.sector_summary import (
 )
 from vnpy_ashare.trading.signals.intraday_seal_time import attach_first_time_fields
 
-# 兼容旧私有名
-_row_from_leader_scored = row_from_leader_scored
-
 _CONCEPT_POOL_TOP = 5
 
 
@@ -107,7 +104,7 @@ def _build_leaders_tiered_rows(pool_size: int) -> tuple[list[RadarRow], str, int
                 continue
             if tier in tier_limits:
                 tier_counts[tier] += 1
-            parsed = _row_from_leader_scored(scored)
+            parsed = row_from_leader_scored(scored)
             if parsed is None:
                 continue
             rows.append(parsed)
@@ -217,7 +214,7 @@ def _build_concept_leaders_rows(pool_size: int) -> tuple[list[RadarRow], str, in
     rows: list[RadarRow] = []
     sector_names: list[str] = []
     for item in concept_leaders[:pool_size]:
-        radar_row = _row_from_leader_scored(item)
+        radar_row = row_from_leader_scored(item)
         if radar_row is None:
             continue
         rows.append(radar_row)

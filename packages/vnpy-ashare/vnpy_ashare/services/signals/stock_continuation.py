@@ -30,7 +30,7 @@ from vnpy_ashare.domain.trading.stock_continuation import (
     format_bias_compact,
     format_outlook_compact,
 )
-from vnpy_ashare.screener.data.screening_context import get_stock_industry_map
+from vnpy_ashare.screener.data.screening_factor_maps import get_stock_industry_map
 from vnpy_ashare.services.signals.stock_moneyflow_series import load_stock_moneyflow_values
 
 _PATTERN_BIAS_SEQUENCE: dict[str, tuple[str, str, str]] = {

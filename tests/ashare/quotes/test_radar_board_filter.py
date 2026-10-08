@@ -13,7 +13,7 @@ from vnpy_ashare.domain.market.quote_row import coerce_quote_rows
 from vnpy_ashare.quotes.radar.radar_leader_pick import build_leader_candidate_pool
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesSnapshot
 from vnpy_ashare.screener.data.screening_context import ScreeningContext, screening_context_scope
-from vnpy_ashare.screener.data.screening_context import apply_recipe_prefilter_to_context
+from vnpy_ashare.screener.data.screening_prefilter import apply_recipe_prefilter_to_context
 from vnpy_ashare.screener.engine.dimensions.sector_strength import run_sector_strength
 from vnpy_ashare.screener.hard_filter_prefs import HardFilterPrefs, save_hard_filter_prefs
 from vnpy_ashare.screener.hard_filters import filter_vt_symbols_by_recipe_market_board

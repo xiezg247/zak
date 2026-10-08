@@ -7,7 +7,7 @@ from typing import Any
 import polars as pl
 
 from vnpy_ashare.domain.market.quote_row import QuoteRow
-from vnpy_ashare.screener.data.screening_context import get_stock_industry_l1_map, get_stock_industry_map
+from vnpy_ashare.screener.data.screening_factor_maps import get_stock_industry_l1_map, get_stock_industry_map
 from vnpy_ashare.domain.screener.dimension_hit import DimensionHit
 from vnpy_ashare.screener.engine.dimensions.hits import quote_hits, run_with_quote_snapshot
 from vnpy_ashare.screener.engine.sector_stats import compute_sector_distribution_polars

@@ -41,7 +41,3 @@ def row_from_leader_scored(scored: LeaderScoredRow) -> RadarRow | None:
         ),
         row,
     )
-
-
-# 兼容旧私有名
-_row_from_leader_scored = row_from_leader_scored

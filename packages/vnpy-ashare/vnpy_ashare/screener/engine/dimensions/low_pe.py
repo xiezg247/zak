@@ -7,7 +7,7 @@ from typing import Any
 import polars as pl
 
 from vnpy_ashare.domain.market.quote_row import coerce_quote_row
-from vnpy_ashare.screener.data.screening_context import get_stock_industry_l1_map, get_stock_industry_map
+from vnpy_ashare.screener.data.screening_factor_maps import get_stock_industry_l1_map, get_stock_industry_map
 from vnpy_ashare.domain.screener.dimension_hit import DimensionHit, dimension_hit_row
 from vnpy_ashare.screener.engine.dimensions.scoring import rank_score
 from vnpy_ashare.screener.engine.snapshot_frame import attach_industry_columns, frame_to_row_dicts, snapshot_rows_to_dataframe
@@ -86,7 +86,7 @@ def run_low_pe(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], in
     if not raw_rows:
         return [], 0
 
-    from vnpy_ashare.screener.data.screening_context import apply_board_prefilter_rows
+    from vnpy_ashare.screener.data.screening_prefilter import apply_board_prefilter_rows
 
     raw_rows = apply_board_prefilter_rows(raw_rows)
     if not raw_rows:

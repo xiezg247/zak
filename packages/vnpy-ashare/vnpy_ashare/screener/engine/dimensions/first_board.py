@@ -9,7 +9,7 @@ from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row
 from vnpy_ashare.quotes.core.enrich import get_cached_limit_times_map
 from vnpy_ashare.quotes.radar.radar_first_board import rank_first_board_pool
 from vnpy_ashare.quotes.radar.radar_limit_ladder import resolve_limit_times
-from vnpy_ashare.screener.data.screening_context import get_stock_industry_l1_map, get_stock_industry_map
+from vnpy_ashare.screener.data.screening_factor_maps import get_stock_industry_l1_map, get_stock_industry_map
 from vnpy_ashare.domain.screener.dimension_hit import DimensionHit, dimension_hit_row
 from vnpy_ashare.screener.engine.dimensions.limit_common import collect_limit_candidate_rows
 from vnpy_ashare.screener.engine.sector_stats import compute_sector_distribution_polars

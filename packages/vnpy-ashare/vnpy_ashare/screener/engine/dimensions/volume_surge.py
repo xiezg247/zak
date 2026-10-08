@@ -7,7 +7,7 @@ from typing import Any
 import polars as pl
 
 from vnpy_ashare.domain.market.quote_row import QuoteRow
-from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
+from vnpy_ashare.screener.data.screening_factor_maps import get_volume_ratio_map
 from vnpy_ashare.domain.screener.dimension_hit import DimensionHit
 from vnpy_ashare.screener.engine.dimensions.hits import quote_hits, run_with_quote_snapshot
 from vnpy_ashare.screener.engine.snapshot_frame import frame_to_row_dicts, snapshot_rows_to_dataframe

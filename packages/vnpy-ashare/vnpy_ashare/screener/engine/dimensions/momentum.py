@@ -14,7 +14,7 @@ from vnpy_ashare.screener.data.market_benchmark import (
     relative_strength_pct,
     resolve_relative_strength,
 )
-from vnpy_ashare.screener.data.screening_context import get_stock_industry_l1_map, get_stock_industry_map
+from vnpy_ashare.screener.data.screening_factor_maps import get_stock_industry_l1_map, get_stock_industry_map
 from vnpy_ashare.domain.screener.dimension_hit import DimensionHit, dimension_hit_row
 from vnpy_ashare.screener.engine.dimensions.hits import fundamental_base_row, load_quote_snapshot_for_dimension, quote_hits
 from vnpy_ashare.screener.engine.dimensions.history_signals import (
@@ -154,7 +154,7 @@ def run_momentum_from_fundamentals(pool_size: int, *, weight: float) -> tuple[li
     if not raw_rows:
         return [], 0
 
-    from vnpy_ashare.screener.data.screening_context import apply_board_prefilter_rows
+    from vnpy_ashare.screener.data.screening_prefilter import apply_board_prefilter_rows
 
     raw_rows = apply_board_prefilter_rows(raw_rows)
     if not raw_rows:

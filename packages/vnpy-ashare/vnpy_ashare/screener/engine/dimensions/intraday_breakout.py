@@ -11,7 +11,7 @@ from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, coerce_quote_row, quote_row_copy
 from vnpy_ashare.domain.symbols.stock import parse_tickflow_symbol
 from vnpy_ashare.integrations.tickflow.klines import fetch_intraday_bars
-from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
+from vnpy_ashare.screener.data.screening_factor_maps import get_volume_ratio_map
 from vnpy_ashare.domain.screener.dimension_hit import DimensionHit, dimension_hit_row
 from vnpy_ashare.screener.engine.dimensions.hits import run_with_quote_snapshot
 from vnpy_ashare.screener.engine.dimensions.history_signals import (

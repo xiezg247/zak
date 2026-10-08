@@ -10,7 +10,7 @@ from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
 from vnpy_ashare.quotes.core.quote_rows import peek_market_quotes_cache
 from vnpy_ashare.quotes.market.market_overview_loaders import SectorRankItem, load_sector_ranks
 from vnpy_ashare.quotes.watchlist_multiview.models import WatchlistMultiRow
-from vnpy_ashare.screener.data.screening_context import get_stock_industry_l1_map, get_stock_industry_map
+from vnpy_ashare.screener.data.screening_factor_maps import get_stock_industry_l1_map, get_stock_industry_map
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
