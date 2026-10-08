@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row
+from vnpy_ashare.domain.market.quote_row import QuoteRow
 
 
 def row_to_dict(row: Any) -> dict[str, Any]:
@@ -37,7 +37,3 @@ def restore_rows(rows: Sequence[Any], filtered_payloads: list[dict[str, Any]]) -
         if 0 <= index < len(rows):
             kept.append(rows[index])
     return kept
-
-
-def dicts_to_quote_rows(dicts: list[dict[str, Any]]) -> list[QuoteRow]:
-    return [coerce_quote_row({k: v for k, v in item.items() if k != "_row_idx"}) for item in dicts]

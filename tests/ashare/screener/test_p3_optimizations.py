@@ -8,8 +8,8 @@ from vnpy_ashare.quotes.radar.loaders import (
     RadarCardData,
     RadarRow,
     build_radar_resonance_list,
-    compute_radar_resonance_scores,
 )
+from vnpy_ashare.quotes.radar.loaders.resonance import compute_radar_resonance_scores
 from vnpy_ashare.screener.data.market_benchmark import market_benchmark_change_pct, relative_strength_pct
 from vnpy_ashare.screener.engine.dimensions.momentum import run_momentum
 

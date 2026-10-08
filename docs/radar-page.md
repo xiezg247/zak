@@ -32,7 +32,7 @@
 | `position_risk` | 持仓·风控 | 60s |
 | `outlook_*` | 未来·* | 手动 |
 
-加载：`load_radar_board()` → `radar_loaders.py`。共振预设「短线龙头」提高龙头/发现/板块权重；退潮/冰点可降权或空列表。
+加载：`load_radar_cards_batch()`（`quotes/radar/loaders`）。共振预设「短线龙头」提高龙头/发现/板块权重；退潮/冰点可降权或空列表。
 
 ---
 

@@ -26,6 +26,7 @@ from vnpy_ashare.quotes.radar.outlook_strategy_prefs import OUTLOOK_SIGNAL_CARD_
 from vnpy_ashare.quotes.radar.predict.predict_prefs import load_predict_model_mode, save_predict_model_mode
 from vnpy_ashare.quotes.radar.radar_board_store import set_radar_board_snapshot
 from vnpy_ashare.quotes.radar.radar_card_snapshot_cache import peek_radar_card_snapshot, radar_card_variant_key
+from vnpy_ashare.quotes.radar.radar_full_refresh_prefs import load_radar_full_refresh_every, save_radar_full_refresh_every
 from vnpy_ashare.quotes.radar.radar_catalog import (
     DEFAULT_LEADER_PICK_VARIANT,
     DEFAULT_LIMIT_LADDER_VARIANT,
@@ -35,7 +36,6 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
     RADAR_CARD_BY_ID,
     RadarGroupKey,
     auto_refresh_card_ids,
-    full_refresh_every_n_ticks,
     list_radar_cards,
     list_radar_cards_for_group,
     list_radar_cards_for_mode,
@@ -43,7 +43,6 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
     radar_card_group,
     split_radar_items_by_load_priority,
 )
-from vnpy_ashare.quotes.radar.radar_full_refresh_prefs import save_radar_full_refresh_every
 from vnpy_ashare.quotes.radar.radar_horizon import OUTLOOK_FORCE_RECOMPUTE_CARD_IDS
 from vnpy_ashare.quotes.radar.radar_market_emotion import is_stat_row
 from vnpy_ashare.quotes.radar.radar_models import (
@@ -372,7 +371,7 @@ class RadarController(QtCore.QObject):
         if existing and existing.rows:
             tick = self._auto_refresh_ticks.get(card_id, 0) + 1
             self._auto_refresh_ticks[card_id] = tick
-            if tick % full_refresh_every_n_ticks(card_id) != 0:
+            if tick % load_radar_full_refresh_every(card_id) != 0:
                 self.refresh_card(card_id, force_recompute=False, quote_only=True)
                 return
         self.refresh_card(card_id, force_recompute=False)

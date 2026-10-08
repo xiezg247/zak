@@ -40,12 +40,6 @@ _DAILY_K_READY_TTL_SEC = 60.0
 _daily_k_ready_cache: tuple[int, float, set[str]] | None = None
 
 
-def clear_daily_k_ready_cache() -> None:
-    """测试或本地日 K 批量更新后清空 overview 缓存。"""
-    global _daily_k_ready_cache
-    _daily_k_ready_cache = None
-
-
 def horizon_min_signal_bars(config: WatchlistSignalConfig | None = None) -> int:
     cfg = (config or load_outlook_signal_config()).normalized()
     return cfg.slow_window + 5
@@ -300,12 +294,12 @@ HORIZON_SCAN_VARIANTS: tuple[str, ...] = (
 )
 
 
-def run_horizon_outlook_scan(
+def _run_horizon_outlook_core(
     *,
-    top_n: int = 8,
-    variants: tuple[str, ...] = HORIZON_SCAN_VARIANTS,
-) -> tuple[HorizonScanResult, ...]:
-    """一次粗筛 + 批量算信号，产出关注/可持/情景榜。"""
+    top_n: int,
+    variants: tuple[str, ...],
+) -> tuple[tuple[HorizonScanResult, ...], list[str], HorizonScanStats]:
+    """粗筛 + 批量信号；返回 (榜单结果, prefilter, base_stats) 供预测复用。"""
     exclusion = collect_outlook_exclusion_vt_symbols()
     prefilter, base_stats = prefilter_horizon_universe(exclusion)
     cfg = load_outlook_signal_config().normalized()
@@ -325,7 +319,17 @@ def run_horizon_outlook_scan(
             scenario_metrics=scenario_metrics,
         )
         results.append(result)
-    return tuple(results)
+    return tuple(results), prefilter, base_stats
+
+
+def run_horizon_outlook_scan(
+    *,
+    top_n: int = 8,
+    variants: tuple[str, ...] = HORIZON_SCAN_VARIANTS,
+) -> tuple[HorizonScanResult, ...]:
+    """一次粗筛 + 批量算信号，产出关注/可持/情景榜。"""
+    results, _, _ = _run_horizon_outlook_core(top_n=top_n, variants=variants)
+    return results
 
 
 def run_horizon_outlook_scan_with_predict(
@@ -339,27 +343,7 @@ def run_horizon_outlook_scan_with_predict(
         scan_predict,
     )
 
-    exclusion = collect_outlook_exclusion_vt_symbols()
-    prefilter, base_stats = prefilter_horizon_universe(exclusion)
-    cfg = load_outlook_signal_config().normalized()
-    snapshots = batch_build_signal_snapshots(prefilter, config=cfg)
-    scenario_metrics = batch_build_scenario_metrics(prefilter, snapshots)
-
-    results: list[HorizonScanResult] = []
-    for variant in variants:
-        result = scan_horizon_variant(
-            variant,
-            top_n=top_n,
-            config=cfg,
-            exclusion=exclusion,
-            prefilter=prefilter,
-            snapshots=snapshots,
-            base_stats=base_stats,
-            scenario_metrics=scenario_metrics,
-        )
-        results.append(result)
-
-    # 预测扫描复用同一粗筛池，避免重复 prefilter_horizon_universe + load_screening_quote_snapshot
+    results, prefilter, base_stats = _run_horizon_outlook_core(top_n=top_n, variants=variants)
     quote_rows = _quote_rows_for_prefilter(prefilter)
     predict = scan_predict(
         top_n=top_n,
@@ -368,8 +352,7 @@ def run_horizon_outlook_scan_with_predict(
         quote_rows=quote_rows,
         persist=True,
     )
-
-    return predict, tuple(results)
+    return predict, results
 
 
 def cache_entry_from_scan(result: HorizonScanResult) -> HorizonCacheEntry:

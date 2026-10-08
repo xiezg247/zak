@@ -31,9 +31,6 @@ from vnpy_ashare.screener.data.quotes_loader import (
 )
 
 __all__ = [
-    "DEFAULT_LOOKBACK_DAYS",
-    "MarketQuotesLoadError",
-    "MarketQuotesSnapshot",
     "daily_basic_to_quote_rows",
     "enrich_recipe_rows",
     "fetch_daily_basic_with_fallback",
@@ -42,7 +39,6 @@ __all__ = [
     "fetch_moneyflow_with_fallback",
     "iter_trade_date_strs",
     "load_screening_quote_snapshot",
-    "load_screening_quote_snapshot_frame",
     "load_screening_quote_snapshot_uncached",
     "merge_quotes_into_fundamentals",
     "resolve_result_source_tag",
@@ -304,19 +300,6 @@ def enrich_recipe_rows(rows: QuoteRowsLike) -> list[ScreenerResultRow]:
 
         enriched.append(item)
     return screener_rows_from_mappings(enriched)
-
-
-def load_screening_quote_snapshot_frame() -> Any:
-    """全市场行情 Polars DataFrame（优先 ScreeningContext 缓存）。"""
-    from vnpy_ashare.screener.data.screening_context import get_screening_context
-    from vnpy_ashare.screener.engine.snapshot_frame import snapshot_rows_to_dataframe
-
-    ctx = get_screening_context()
-    if ctx is not None:
-        return ctx.get_quote_snapshot_frame()
-
-    snapshot = load_screening_quote_snapshot()
-    return snapshot_rows_to_dataframe(snapshot.rows)
 
 
 register_uncached_quote_snapshot_loader(load_screening_quote_snapshot_uncached)

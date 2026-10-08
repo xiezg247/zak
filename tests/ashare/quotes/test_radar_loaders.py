@@ -2,17 +2,19 @@
 
 import pytest
 
+from vnpy_ashare.quotes.radar.loaders.discovery import (
+    load_discovery_moneyflow_intraday,
+    load_discovery_volume_surge,
+)
 from vnpy_ashare.quotes.radar.loaders import (
     RadarCardData,
     RadarRow,
     build_radar_resonance_list,
     compute_radar_resonance,
     incremental_refresh_radar_card_quotes,
-    load_discovery_moneyflow_intraday,
-    load_discovery_volume_surge,
     load_radar_card,
-    load_screen_task,
 )
+from vnpy_ashare.quotes.radar.loaders.screener import load_screen_task
 from vnpy_ashare.quotes.radar.radar_catalog import RADAR_CARD_BY_ID
 
 

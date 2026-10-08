@@ -48,11 +48,3 @@ def blended_score(
     weight = blend if blend is not None else metric_score_blend()
     metric_part = metric_percentile(metric_value, metric_values)
     return round(rank_part * (1.0 - weight) + metric_part * weight, 1)
-
-
-def relative_ratio(current: float, baseline: float) -> float:
-    if current <= 0:
-        return 0.0
-    if baseline <= 0:
-        return current
-    return current / baseline

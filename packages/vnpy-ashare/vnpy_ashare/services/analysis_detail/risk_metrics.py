@@ -7,7 +7,7 @@ from typing import Any
 from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.domain.trading.signal_benchmark import SIGNAL_BENCHMARK_SYMBOL
-from vnpy_ashare.screener.sentiment.sentiment_gate import try_fetch_fear_greed_index
+from vnpy_ashare.screener.sentiment.fear_greed_provider import try_fetch_fear_greed_index
 
 
 def _bar_close_map(bars: list[Any]) -> dict[Any, float]:

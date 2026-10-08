@@ -19,7 +19,6 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
     DEFAULT_SECTOR_FLOW_HOT_VARIANT,
     DEFAULT_SECTOR_VARIANT,
     RADAR_CARD_BY_ID,
-    RADAR_CARD_SPECS,
 )
 from vnpy_ashare.quotes.radar.radar_first_board import load_first_board
 from vnpy_ashare.quotes.radar.radar_horizon import load_outlook_horizon
@@ -327,21 +326,3 @@ def load_radar_card(
         msg = f"雷达卡片加载失败：{card_id}"
         raise ValueError(msg)
     return data
-
-
-def load_radar_board(
-    *,
-    screen_task_variant: str = DEFAULT_SCREEN_TASK_VARIANT,
-    sector_variant: str = DEFAULT_SECTOR_VARIANT,
-) -> dict[str, RadarCardData]:
-    """加载全部雷达卡片（共享 ScreeningContext + 并行加载）。"""
-    items: list[tuple[str, dict[str, object]]] = [(spec.id, {}) for spec in RADAR_CARD_SPECS]
-    loaded, errors = load_radar_cards_batch(
-        items,
-        screen_task_variant=screen_task_variant,
-        sector_variant=sector_variant,
-    )
-    if errors:
-        first_id = next(iter(errors))
-        raise ValueError(f"{first_id}: {errors[first_id]}")
-    return loaded

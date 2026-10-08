@@ -18,10 +18,8 @@ from vnpy_ashare.screener.sentiment.emotion_gate import apply_emotion_modulation
 from vnpy_ashare.screener.sentiment.fear_greed_provider import try_fetch_fear_greed_index
 
 __all__ = [
-    "apply_emotion_modulation",
     "apply_sentiment_modulation",
     "sentiment_gate_enabled",
-    "try_fetch_fear_greed_index",
 ]
 
 

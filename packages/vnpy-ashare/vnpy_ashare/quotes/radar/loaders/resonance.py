@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from vnpy_ashare.quotes.radar.radar_catalog import radar_card_mode, radar_card_resonance_weight
+from vnpy_ashare.quotes.radar.radar_catalog import radar_card_mode
+from vnpy_ashare.quotes.radar.radar_resonance_prefs import radar_card_resonance_weight
 from vnpy_ashare.quotes.radar.radar_market_emotion import is_stat_row
 from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarResonanceEntry, RadarRow
 from vnpy_ashare.quotes.radar.radar_resonance_prefs import radar_card_participates_in_resonance

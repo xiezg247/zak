@@ -12,12 +12,6 @@ from vnpy_ashare.domain.radar.catalog import (
     RadarRefreshOption,
     RadarVariant,
 )
-from vnpy_ashare.quotes.radar.radar_full_refresh_prefs import (
-    full_refresh_every_n_ticks as _load_full_refresh_every_n_ticks,
-)
-from vnpy_ashare.quotes.radar.radar_resonance_prefs import (
-    radar_card_resonance_weight as _load_radar_card_resonance_weight,
-)
 
 __all__ = [
     "CARD_REFRESH_OPTIONS",
@@ -40,13 +34,11 @@ __all__ = [
     "RadarRefreshOption",
     "RadarVariant",
     "default_group_for_mode",
-    "full_refresh_every_n_ticks",
     "list_radar_cards",
     "list_radar_cards_for_group",
     "list_radar_cards_for_mode",
     "list_radar_groups_for_mode",
     "radar_card_group",
-    "radar_card_resonance_weight",
     "refresh_options_for_card",
 ]
 
@@ -299,11 +291,6 @@ def default_refresh_ms_for_card(card_id: str) -> int:
     return int(spec.auto_refresh_ms)
 
 
-def full_refresh_every_n_ticks(card_id: str) -> int:
-    """自动刷新时每隔多少次触发一次全量指标重算。"""
-    return _load_full_refresh_every_n_ticks(card_id)
-
-
 def full_refresh_options_for_card(card_id: str) -> tuple[RadarRefreshOption, ...]:
     if card_id not in CARD_REFRESH_OPTIONS:
         return ()
@@ -314,7 +301,3 @@ def full_refresh_options_for_card(card_id: str) -> tuple[RadarRefreshOption, ...
         RadarRefreshOption(ms=5, label="每5次"),
         RadarRefreshOption(ms=10, label="每10次"),
     )
-
-
-def radar_card_resonance_weight(card_id: str) -> float:
-    return _load_radar_card_resonance_weight(card_id)

@@ -8,7 +8,8 @@ from unittest.mock import patch
 from vnpy_ashare.quotes.market.emotion_cycle import classify_emotion_cycle
 from vnpy_ashare.quotes.market.emotion_cycle_inputs import EmotionCycleInputs
 from vnpy_ashare.quotes.radar.radar_leader import compute_leader_score, rank_sector_leaders, rank_unified_sector_leaders
-from vnpy_ashare.screener.sentiment.sentiment_gate import apply_emotion_modulation, apply_sentiment_modulation
+from vnpy_ashare.screener.sentiment.emotion_gate import apply_emotion_modulation
+from vnpy_ashare.screener.sentiment.sentiment_gate import apply_sentiment_modulation
 
 
 class LeaderScoreTest(unittest.TestCase):
