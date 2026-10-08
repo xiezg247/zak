@@ -16,12 +16,11 @@ from vnpy_ashare.quotes.radar.radar_horizon_cache import (
     build_horizon_subtitle,
     get_horizon_cache,
 )
-from vnpy_ashare.quotes.radar.radar_horizon_scan import (
-    cache_entry_from_scan,
+from vnpy_ashare.quotes.radar.radar_horizon_prefilter import (
     collect_daily_k_ready_vt_symbols,
     horizon_empty_message,
-    scan_horizon_variant,
 )
+from vnpy_ashare.quotes.radar.radar_horizon_scan import cache_entry_from_scan, scan_horizon_variant
 from vnpy_ashare.quotes.radar.radar_horizon_scenario import SCENARIO_VARIANT_LABELS, SCENARIO_VARIANTS
 from vnpy_ashare.domain.radar.horizon import HorizonScanStats
 from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow

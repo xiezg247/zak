@@ -203,12 +203,9 @@ def scan_strategy_outlook_cache(
 ) -> str:
     """为指定策略扫描关注/可持并写入本地缓存（供板块资金策略 B，轻量粗筛池）。"""
     from vnpy_ashare.quotes.radar.outlook_strategy_prefs import outlook_strategy_label
-    from vnpy_ashare.quotes.radar.radar_horizon_scan import (
-        batch_build_signal_snapshots,
-        collect_outlook_exclusion_vt_symbols,
-        prefilter_horizon_universe,
-        scan_horizon_variant,
-    )
+    from vnpy_ashare.quotes.radar.radar_horizon_prefilter import prefilter_horizon_universe
+    from vnpy_ashare.quotes.radar.radar_horizon_scan import batch_build_signal_snapshots, scan_horizon_variant
+    from vnpy_ashare.quotes.radar.radar_pool import collect_outlook_exclusion_vt_symbols
 
     def report(message: str) -> None:
         if on_progress is not None:

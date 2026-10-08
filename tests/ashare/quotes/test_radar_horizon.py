@@ -6,13 +6,13 @@ from unittest.mock import patch
 
 import pytest
 
+from vnpy_ashare.domain.radar.horizon import HorizonScanStats
 from vnpy_ashare.quotes.radar.radar_horizon_cache import (
     get_horizon_cache,
     horizon_cache_storage_key,
     put_horizon_cache,
 )
-from vnpy_ashare.domain.radar.horizon import HorizonScanStats
-from vnpy_ashare.quotes.radar.radar_horizon_scan import (
+from vnpy_ashare.quotes.radar.radar_horizon_prefilter import (
     horizon_empty_message,
     local_daily_k_insufficient,
     prefilter_horizon_universe,
@@ -20,7 +20,9 @@ from vnpy_ashare.quotes.radar.radar_horizon_scan import (
 
 
 def test_horizon_cache_storage_key_includes_strategy() -> None:
-    assert horizon_cache_storage_key("watch_next", "AshareDoubleMaStrategy:10:20") == ("watch_next|AshareDoubleMaStrategy:10:20")
+    assert horizon_cache_storage_key("watch_next", "AshareDoubleMaStrategy:10:20") == (
+        "watch_next|AshareDoubleMaStrategy:10:20"
+    )
 
 
 def test_horizon_cache_storage_key_without_strategy() -> None:
@@ -28,11 +30,40 @@ def test_horizon_cache_storage_key_without_strategy() -> None:
 
 
 @pytest.fixture
-def horizon_cache_db(tmp_path, monkeypatch):
-    db_path = tmp_path / "radar_horizon_cache.db"
+def horizon_cache_db(monkeypatch):
+    store: dict[str, dict[str, object]] = {}
+
+    class _FakeHorizonRepo:
+        def get_row(self, storage_key: str):
+            return store.get(storage_key)
+
+        def upsert(
+            self,
+            *,
+            storage_key: str,
+            rows_json: str,
+            scanned_total: int,
+            excluded_count: int,
+            prefilter_total: int,
+            refined_total: int,
+            kline_missing: int,
+            strategy_key: str,
+            computed_at: str,
+        ) -> None:
+            store[storage_key] = {
+                "rows_json": rows_json,
+                "scanned_total": scanned_total,
+                "excluded_count": excluded_count,
+                "prefilter_total": prefilter_total,
+                "refined_total": refined_total,
+                "kline_missing": kline_missing,
+                "strategy_key": strategy_key,
+                "computed_at": computed_at,
+            }
+
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar.radar_horizon_cache._db_path",
-        lambda: db_path,
+        "vnpy_ashare.quotes.radar.radar_horizon_cache.radar_horizon_repo",
+        _FakeHorizonRepo(),
     )
     yield
 
@@ -91,7 +122,7 @@ def test_local_daily_k_insufficient_requires_empty_refined() -> None:
 def test_horizon_empty_message_no_local_k() -> None:
     stats = HorizonScanStats(scanned_total=100, excluded_count=0, prefilter_total=0, refined_total=0, kline_missing=0)
     with patch(
-        "vnpy_ashare.quotes.radar.radar_horizon_scan.collect_daily_k_ready_vt_symbols",
+        "vnpy_ashare.quotes.radar.radar_horizon_prefilter.collect_daily_k_ready_vt_symbols",
         return_value=set(),
     ):
         message = horizon_empty_message(stats, card_title="未来·关注")
@@ -106,15 +137,15 @@ def test_prefilter_skips_symbols_without_local_daily_k() -> None:
     snapshot = type("Snap", (), {"rows": quote_rows, "total": len(quote_rows)})()
 
     with patch(
-        "vnpy_ashare.quotes.radar.radar_horizon_scan.load_screening_quote_snapshot",
+        "vnpy_ashare.quotes.radar.radar_horizon_prefilter.load_screening_quote_snapshot",
         return_value=snapshot,
     ):
         with patch(
-            "vnpy_ashare.quotes.radar.radar_horizon_scan.apply_recipe_filters",
+            "vnpy_ashare.quotes.radar.radar_horizon_prefilter.apply_recipe_filters",
             side_effect=lambda rows: rows,
         ):
             with patch(
-                "vnpy_ashare.quotes.radar.radar_horizon_scan.collect_daily_k_ready_vt_symbols",
+                "vnpy_ashare.quotes.radar.radar_horizon_prefilter.collect_daily_k_ready_vt_symbols",
                 return_value={"600000.SSE"},
             ):
                 prefilter, stats = prefilter_horizon_universe(set(), max_items=10)

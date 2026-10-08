@@ -12,7 +12,7 @@ from vnpy_ashare.quotes.radar.predict.predict_scan import (
 )
 from vnpy_ashare.quotes.radar.radar_ai_cache import resolve_ai_hint, rows_fingerprint
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
-from vnpy_ashare.quotes.radar.radar_horizon_scan import collect_daily_k_ready_vt_symbols
+from vnpy_ashare.quotes.radar.radar_horizon_prefilter import collect_daily_k_ready_vt_symbols
 from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow
 from vnpy_ashare.quotes.radar.radar_enrich import enrich_radar_rows
 
