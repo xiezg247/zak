@@ -38,7 +38,6 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
     list_radar_cards_for_mode,
     list_radar_groups_for_mode,
     radar_card_group,
-    split_radar_items_by_load_priority,
 )
 from vnpy_ashare.quotes.radar.radar_horizon import OUTLOOK_FORCE_RECOMPUTE_CARD_IDS
 from vnpy_ashare.quotes.radar.radar_market_emotion import is_stat_row
@@ -63,6 +62,12 @@ from vnpy_ashare.services.watchlist_short_term import (
 from vnpy_ashare.trading.plan.propose import _next_trade_date
 from vnpy_ashare.ui.features.stock_analysis.open import show_stock_analysis_from_quotes_page
 from vnpy_ashare.ui.quotes.page.config import save_radar_card_refresh_ms
+from vnpy_ashare.ui.quotes.radar.group_load_plan import (
+    RADAR_GROUP_LOAD_MIN_CARDS,
+    is_usable_cached_card,
+    plan_group_load,
+    sort_loaded_cards_for_apply,
+)
 from vnpy_ashare.ui.quotes.radar.resonance_weight_dialog import RadarResonanceWeightDialog
 from vnpy_ashare.ui.quotes.radar.variant_wiring import build_default_card_variants, card_load_variants
 from vnpy_ashare.ui.quotes.radar.worker import RadarCardLoadWorker, RadarGroupLoadWorker
@@ -80,7 +85,6 @@ _RADAR_CARD_REFRESH_STAGGER_MS = 80
 _RADAR_UI_APPLY_STAGGER_MS = 16
 _RADAR_CACHE_APPLY_STAGGER_MS = 8
 _RADAR_RESONANCE_SYNC_DEBOUNCE_MS = 120
-_RADAR_GROUP_LOAD_MIN_CARDS = 2
 _RADAR_PREFETCH_NOT_BEFORE_MS = 3000
 _RADAR_PREFETCH_NEXT_GROUP_MS = 800
 
@@ -407,7 +411,7 @@ class RadarController(QtCore.QObject):
             )
         if not load_items:
             return
-        if len(load_items) >= _RADAR_GROUP_LOAD_MIN_CARDS:
+        if len(load_items) >= RADAR_GROUP_LOAD_MIN_CARDS:
             self._refresh_queue.clear()
             self._refresh_stagger_timer.stop()
             self._start_group_load(load_items)
@@ -697,11 +701,7 @@ class RadarController(QtCore.QObject):
         cached = self._last_payload.get(card_id)
         if cached is None and card_id in RADAR_SNAPSHOT_CARD_IDS:
             cached = peek_radar_card_snapshot(card_id, variant_key=self._variant_key_for_card(card_id))
-        if cached is None:
-            return None
-        if not cached.rows and not cached.empty_message:
-            return None
-        return cached
+        return cached if is_usable_cached_card(cached) else None
 
     def _show_cached_cards(self, card_ids: frozenset[str] | set[str] | list[str]) -> None:
         """有缓存时先展示旧数据，后台刷新完成后再覆盖（分帧 apply，避免主线程卡顿）。"""
@@ -748,22 +748,15 @@ class RadarController(QtCore.QObject):
             self._prefetch_siblings.clear()
             self._cancel_prefetch_worker()
 
-        working_items = items
-        if not skip_viewport_split:
-            priority_batches = split_radar_items_by_load_priority(items)
-            if len(priority_batches) > 1:
-                self._deferred_tier_batches = priority_batches[1:]
-                working_items = priority_batches[0]
-
-        if not skip_viewport_split and len(working_items) >= _RADAR_GROUP_LOAD_MIN_CARDS:
-            visible_ids = set(self._board.visible_card_ids_for_current_group())
-            priority = [(card_id, kwargs) for card_id, kwargs in working_items if card_id in visible_ids]
-            deferred = [(card_id, kwargs) for card_id, kwargs in working_items if card_id not in visible_ids]
-            if priority and deferred:
-                self._deferred_group_items = deferred
-                self._run_group_worker(priority)
-                return
-        self._run_group_worker(working_items)
+        plan = plan_group_load(
+            items,
+            visible_ids=set(self._board.visible_card_ids_for_current_group()),
+            skip_viewport_split=skip_viewport_split,
+        )
+        self._deferred_group_items = plan.deferred_viewport
+        if plan.deferred_tiers:
+            self._deferred_tier_batches = plan.deferred_tiers
+        self._run_group_worker(plan.run_now)
 
     def _run_group_worker(self, items: list[tuple[str, dict[str, object]]]) -> None:
         card_ids = frozenset(card_id for card_id, _kwargs in items)
@@ -796,10 +789,7 @@ class RadarController(QtCore.QObject):
         if self._group_worker is not worker:
             return
         visible_ids = set(self._board.visible_card_ids_for_current_group())
-        self._pending_apply_queue = sorted(
-            loaded.items(),
-            key=lambda item: 0 if item[0] in visible_ids else 1,
-        )
+        self._pending_apply_queue = sort_loaded_cards_for_apply(loaded, visible_ids)
         for card_id, message in errors.items():
             self._on_card_failed(card_id, message)
         if self._pending_apply_queue:
@@ -848,7 +838,7 @@ class RadarController(QtCore.QObject):
             return
         group_key = self._prefetch_siblings.pop(0)
         items: list[tuple[str, dict[str, object]]] = [(spec.id, {}) for spec in list_radar_cards_for_group(self._prefetch_mode, cast(RadarGroupKey, group_key))]
-        if len(items) < _RADAR_GROUP_LOAD_MIN_CARDS:
+        if len(items) < RADAR_GROUP_LOAD_MIN_CARDS:
             QtCore.QTimer.singleShot(0, self._drain_prefetch_siblings)
             return
         self._start_prefetch_group(items)
