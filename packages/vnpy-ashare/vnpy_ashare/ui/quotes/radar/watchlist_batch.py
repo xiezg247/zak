@@ -69,3 +69,31 @@ def format_watchlist_batch_notify(
     if result.skipped:
         message += f"，跳过 {result.skipped} 只"
     return WatchlistNotify(message)
+
+
+def format_watchlist_pool_notify(*, watchlist_added: int, skipped: int) -> WatchlistNotify:
+    """龙一入自选等「仅写池」结果文案。"""
+    if watchlist_added == 0:
+        if skipped:
+            return WatchlistNotify("标的已在自选池或无法加入")
+        return WatchlistNotify("暂无可加入自选的标的", level="warning")
+    parts = [f"已加入自选 {watchlist_added} 只"]
+    if skipped:
+        parts.append(f"跳过 {skipped} 只")
+    return WatchlistNotify(" · ".join(parts))
+
+
+def format_short_term_focus_notify(
+    *,
+    group_name: str,
+    group_added: int,
+    watchlist_added: int,
+    skipped: int,
+) -> WatchlistNotify:
+    """写入短线关注分组结果文案。"""
+    parts = [f"已写入「{group_name}」{group_added} 只"]
+    if watchlist_added:
+        parts.append(f"新增自选 {watchlist_added} 只")
+    if skipped:
+        parts.append(f"跳过 {skipped} 只")
+    return WatchlistNotify(" · ".join(parts))

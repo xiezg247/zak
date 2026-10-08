@@ -11,14 +11,7 @@ from vnpy_ashare.app.engine_access import get_watchlist_service
 from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
 from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
-from vnpy_ashare.quotes.radar.loaders import (
-    RadarCardData,
-    build_eod_leader_prompt,
-    build_radar_ai_prompt,
-    build_radar_card_ai_prompt,
-    build_radar_resonance_ai_prompt,
-    compute_radar_resonance,
-)
+from vnpy_ashare.quotes.radar.loaders import RadarCardData, compute_radar_resonance
 from vnpy_ashare.quotes.radar.loaders.load import RADAR_SNAPSHOT_CARD_IDS
 from vnpy_ashare.quotes.radar.outlook_strategy_prefs import OUTLOOK_SIGNAL_CARD_IDS, save_outlook_strategy_class
 from vnpy_ashare.quotes.radar.predict.predict_prefs import load_predict_model_mode, save_predict_model_mode
@@ -37,13 +30,11 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
     radar_card_group,
 )
 from vnpy_ashare.quotes.radar.radar_horizon import OUTLOOK_FORCE_RECOMPUTE_CARD_IDS
-from vnpy_ashare.quotes.radar.radar_market_emotion import is_stat_row
 from vnpy_ashare.quotes.radar.radar_models import (
     collect_radar_quote_vt_symbols,
     quotes_for_vt_symbols,
     refresh_radar_card_quotes_from_map,
 )
-from vnpy_ashare.quotes.radar.radar_resonance_prefs import DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS
 from vnpy_ashare.quotes.radar.radar_resonance_store import set_radar_resonance_entries
 from vnpy_ashare.services.watchlist_short_term import (
     add_rows_to_watchlist_pool,
@@ -60,6 +51,14 @@ from vnpy_ashare.ui.quotes.radar.group_load_plan import (
     plan_group_load,
     sort_loaded_cards_for_apply,
 )
+from vnpy_ashare.ui.quotes.radar.ai_dispatch import (
+    RadarAiReject,
+    RadarAiRequest,
+    plan_eod_leader_ai,
+    plan_radar_board_ai,
+    plan_radar_card_ai,
+    plan_resonance_ai,
+)
 from vnpy_ashare.ui.quotes.radar.load_pipeline import RadarLoadPipeline
 from vnpy_ashare.ui.quotes.radar.payload_view import (
     build_resonance_panel_model,
@@ -67,11 +66,21 @@ from vnpy_ashare.ui.quotes.radar.payload_view import (
     format_radar_status_text,
     radar_row_hint_from_payload,
 )
+from vnpy_ashare.ui.quotes.radar.refresh_plan import (
+    live_quote_refresh_candidates,
+    reload_ids_after_resonance_weight_change,
+    should_run_card_auto_refresh,
+)
 from vnpy_ashare.ui.quotes.radar.resonance_weight_dialog import RadarResonanceWeightDialog
 from vnpy_ashare.ui.quotes.radar.signal_wiring import BOARD_WIRING, PANEL_WIRING, bind_signals
 from vnpy_ashare.ui.quotes.radar.stagger_queue import DebouncedCall, StaggerQueue
 from vnpy_ashare.ui.quotes.radar.variant_wiring import build_default_card_variants, card_load_variants
-from vnpy_ashare.ui.quotes.radar.watchlist_batch import add_vt_symbols_to_watchlist, format_watchlist_batch_notify
+from vnpy_ashare.ui.quotes.radar.watchlist_batch import (
+    add_vt_symbols_to_watchlist,
+    format_short_term_focus_notify,
+    format_watchlist_batch_notify,
+    format_watchlist_pool_notify,
+)
 from vnpy_ashare.ui.quotes.radar.worker import RadarCardLoadWorker, RadarGroupLoadWorker
 from vnpy_ashare.ui.quotes.radar.worker_host import RadarWorkerHost
 from vnpy_ashare.ui.quotes.watchlist_positions.plan_dialog import TradingPlanDialog
@@ -210,8 +219,7 @@ class RadarController(QtCore.QObject):
 
     def _reload_cards_after_resonance_weight_change(self) -> None:
         """权重变更后全量重算发现 / 板块 / 自选等指标卡（保留展望等缓存卡）。"""
-        reload_ids = [card_id for card_id in DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS if card_id in self._last_payload and not card_id.startswith("outlook_")]
-        for card_id in reload_ids:
+        for card_id in reload_ids_after_resonance_weight_change(self._last_payload):
             self._enqueue_refresh(card_id, force_recompute=True)
 
     def activate(self) -> None:
@@ -271,16 +279,12 @@ class RadarController(QtCore.QObject):
             return
         mode = self._board.current_mode()
         group_key = self._board.current_group(mode)
-        pending: list[tuple[str, RadarCardData]] = []
-        for spec in list_radar_cards_for_group(mode, group_key):
-            if not self._card_is_visible(spec.id):
-                continue
-            data = self._last_payload.get(spec.id)
-            if data is None or not data.rows:
-                continue
-            if all(is_stat_row(row.vt_symbol) for row in data.rows):
-                continue
-            pending.append((spec.id, data))
+        visible_ids = [
+            spec.id
+            for spec in list_radar_cards_for_group(mode, group_key)
+            if self._card_is_visible(spec.id)
+        ]
+        pending = live_quote_refresh_candidates(self._last_payload, visible_ids)
         if not pending:
             return
         quotes = quotes_for_vt_symbols(collect_radar_quote_vt_symbols([data for _card_id, data in pending]))
@@ -312,7 +316,11 @@ class RadarController(QtCore.QObject):
             timer.stop()
             return
         ms = widget.auto_refresh_ms()
-        if ms <= 0 or not is_ashare_trading_session():
+        if not should_run_card_auto_refresh(
+            visible=True,
+            interval_ms=ms,
+            in_session=is_ashare_trading_session(),
+        ):
             timer.stop()
             return
         timer.setInterval(max(int(ms), 1000))
@@ -481,88 +489,33 @@ class RadarController(QtCore.QObject):
             widget.set_loading(True)
         self._update_status()
 
-    def request_ai_summary(self) -> None:
-        if not self._last_payload:
-            page_notify(self._page, "请先刷新雷达数据", level="warning")
+    def _emit_ai_outcome(self, outcome: RadarAiRequest | RadarAiReject) -> None:
+        if isinstance(outcome, RadarAiReject):
+            page_notify(self._page, outcome.message, level=outcome.level)
             return
         if self._page.event_engine is None:
             page_notify(self._page, "AI 服务未就绪", level="warning")
             return
-        prompt = build_radar_ai_prompt(self._last_payload)
         self._page.event_engine.put(
             Event(
                 EVENT_ASK_AI,
-                AskAiRequest(prompt=prompt, source_page="雷达"),
+                AskAiRequest(prompt=outcome.prompt, source_page=outcome.source_page),
             )
         )
         if hasattr(self._page, "status_label"):
-            self._page.status_label.setText("已发送 AI 洞察请求")
+            self._page.status_label.setText(outcome.status_text)
+
+    def request_ai_summary(self) -> None:
+        self._emit_ai_outcome(plan_radar_board_ai(self._last_payload))
 
     def request_card_ai(self, card_id: str) -> None:
-        data = self._last_payload.get(card_id)
-        if data is None:
-            page_notify(self._page, "请先刷新该卡片", level="warning")
-            return
-        if self._page.event_engine is None:
-            page_notify(self._page, "AI 服务未就绪", level="warning")
-            return
-        resonance = compute_radar_resonance(self._last_payload)
-        prompt = build_radar_card_ai_prompt(
-            card_id,
-            data,
-            resonance_counts=resonance,
-        )
-        if not prompt:
-            page_notify(self._page, "该卡片暂无可解读内容", level="warning")
-            return
-        self._page.event_engine.put(
-            Event(
-                EVENT_ASK_AI,
-                AskAiRequest(prompt=prompt, source_page=f"雷达·{data.title}"),
-            )
-        )
-        if hasattr(self._page, "status_label"):
-            self._page.status_label.setText(f"已发送「{data.title}」AI 解读")
+        self._emit_ai_outcome(plan_radar_card_ai(self._last_payload, card_id))
 
     def request_eod_leader_ai(self) -> None:
-        if not self._last_payload:
-            page_notify(self._page, "请先刷新雷达数据", level="warning")
-            return
-        prompt = build_eod_leader_prompt(self._last_payload)
-        if not prompt:
-            page_notify(self._page, "缺少龙头/梯队卡片数据，请先刷新相关卡片", level="warning")
-            return
-        if self._page.event_engine is None:
-            page_notify(self._page, "AI 服务未就绪", level="warning")
-            return
-        self._page.event_engine.put(
-            Event(
-                EVENT_ASK_AI,
-                AskAiRequest(prompt=prompt, source_page="雷达"),
-            )
-        )
-        if hasattr(self._page, "status_label"):
-            self._page.status_label.setText("已发送盘后龙头解读请求")
+        self._emit_ai_outcome(plan_eod_leader_ai(self._last_payload))
 
     def request_resonance_ai_summary(self) -> None:
-        if not self._last_payload:
-            page_notify(self._page, "请先刷新雷达数据", level="warning")
-            return
-        prompt = build_radar_resonance_ai_prompt(self._last_payload)
-        if not prompt:
-            page_notify(self._page, "当前无共振标的", level="warning")
-            return
-        if self._page.event_engine is None:
-            page_notify(self._page, "AI 服务未就绪", level="warning")
-            return
-        self._page.event_engine.put(
-            Event(
-                EVENT_ASK_AI,
-                AskAiRequest(prompt=prompt, source_page="雷达"),
-            )
-        )
-        if hasattr(self._page, "status_label"):
-            self._page.status_label.setText("已发送共振 AI 解读请求")
+        self._emit_ai_outcome(plan_resonance_ai(self._last_payload))
 
     def _publish_radar_ai_context(self) -> None:
         from vnpy_ashare.ai.context.radar import format_radar_page_extra
@@ -605,12 +558,13 @@ class RadarController(QtCore.QObject):
         if not result.group_id:
             page_notify(self._page, "无法创建「短线关注」分组（分组数已满）", level="warning")
             return
-        parts = [f"已写入「{result.group_name}」{result.group_added} 只"]
-        if result.watchlist_added:
-            parts.append(f"新增自选 {result.watchlist_added} 只")
-        if result.skipped:
-            parts.append(f"跳过 {result.skipped} 只")
-        page_notify(self._page, " · ".join(parts))
+        notify = format_short_term_focus_notify(
+            group_name=result.group_name,
+            group_added=result.group_added,
+            watchlist_added=result.watchlist_added,
+            skipped=result.skipped,
+        )
+        page_notify(self._page, notify.message, level=notify.level)
 
     def _card_load_variants(self) -> dict[str, str]:
         return card_load_variants(self._card_variants)
@@ -988,16 +942,11 @@ class RadarController(QtCore.QObject):
         page_notify(self._page, notify.message, level=notify.level)
 
     def _notify_watchlist_pool_result(self, result) -> None:
-        if result.watchlist_added == 0:
-            if result.skipped:
-                page_notify(self._page, "标的已在自选池或无法加入")
-            else:
-                page_notify(self._page, "暂无可加入自选的标的", level="warning")
-            return
-        parts = [f"已加入自选 {result.watchlist_added} 只"]
-        if result.skipped:
-            parts.append(f"跳过 {result.skipped} 只")
-        page_notify(self._page, " · ".join(parts))
+        notify = format_watchlist_pool_notify(
+            watchlist_added=result.watchlist_added,
+            skipped=result.skipped,
+        )
+        page_notify(self._page, notify.message, level=notify.level)
 
     def _on_resonance_dragon_watchlist(self) -> None:
         service = get_watchlist_service(self._page._get_main_engine())
