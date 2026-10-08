@@ -14,7 +14,6 @@ from vnpy_ashare.quotes.radar.loaders import (
     incremental_refresh_radar_card_quotes,
     load_radar_card,
 )
-from vnpy_ashare.quotes.radar.loaders.screener import load_screen_task
 from vnpy_ashare.quotes.radar.radar_catalog import RADAR_CARD_BY_ID
 
 
@@ -49,16 +48,6 @@ def _sample_card(
         updated_at="",
         **kwargs,
     )
-
-
-def test_load_screen_task_latest_empty(monkeypatch) -> None:
-    from vnpy_ashare.domain.radar.catalog import RadarCardSpec
-
-    monkeypatch.setattr("vnpy_ashare.quotes.radar.loaders.screener.get_latest_run", lambda: None)
-    spec = RadarCardSpec(id="screen_task", title="选股结果·任务", category="screen")
-    data = load_screen_task(spec, variant="latest")
-    assert data.rows == ()
-    assert "暂无选股记录" in data.empty_message
 
 
 def test_load_discovery_moneyflow_intraday_empty(monkeypatch) -> None:

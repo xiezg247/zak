@@ -25,16 +25,20 @@
 
 ```bash
 cd zak
-bash bin/install.sh
+bash bin/install.sh          # 或 make install
 
 cp .env.example .env          # 填入 TICKFLOW_API_KEY、TUSHARE_TOKEN 等
-uv run python run.py                     # 启动 GUI（首次会自动从 .env 生成 vt_setting.json）
+make run                      # 启动 GUI（首次会自动从 .env 生成 vt_setting.json）
+# 等价：uv run python run.py
 
-uv run python cli.py job run sync_universe   # 首次建议：同步全 A 股列表
+make sync-universe            # 首次建议：同步全 A 股列表
+# 等价：uv run python cli.py job run sync_universe
 
 # 自选池有标的后，批量下载日 K：
 uv run python cli.py data download-batch --start 2020-01-01 --end 2026-06-08
 uv run python cli.py data list-bars
+
+make help                     # 查看常用目标（pg-up / db-upgrade / test 等）
 ```
 
 ### 多人共用 PostgreSQL

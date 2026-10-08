@@ -15,7 +15,6 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
     DEFAULT_LEADER_PICK_VARIANT,
     DEFAULT_LIMIT_LADDER_VARIANT,
     DEFAULT_SCENARIO_VARIANT,
-    DEFAULT_SCREEN_TASK_VARIANT,
     DEFAULT_SECTOR_FLOW_HOT_VARIANT,
     DEFAULT_SECTOR_VARIANT,
     RADAR_CARD_BY_ID,
@@ -100,7 +99,6 @@ def incremental_refresh_radar_card_quotes(data: RadarCardData) -> RadarCardData:
 def load_radar_card_uncached(
     card_id: str,
     *,
-    screen_task_variant: str = DEFAULT_SCREEN_TASK_VARIANT,
     sector_variant: str = DEFAULT_SECTOR_VARIANT,
     sector_flow_hot_variant: str = DEFAULT_SECTOR_FLOW_HOT_VARIANT,
     leader_pick_variant: str = DEFAULT_LEADER_PICK_VARIANT,
@@ -156,7 +154,6 @@ def load_radar_card_uncached(
 
 def _radar_load_variants(
     *,
-    screen_task_variant: str = DEFAULT_SCREEN_TASK_VARIANT,
     sector_variant: str = DEFAULT_SECTOR_VARIANT,
     sector_flow_hot_variant: str = DEFAULT_SECTOR_FLOW_HOT_VARIANT,
     leader_pick_variant: str = DEFAULT_LEADER_PICK_VARIANT,
@@ -164,7 +161,6 @@ def _radar_load_variants(
     scenario_variant: str = DEFAULT_SCENARIO_VARIANT,
 ) -> dict[str, str]:
     return {
-        "screen_task_variant": screen_task_variant,
         "sector_variant": sector_variant,
         "sector_flow_hot_variant": sector_flow_hot_variant,
         "leader_pick_variant": leader_pick_variant,
@@ -251,7 +247,6 @@ def _load_radar_cards_in_context(
 def load_radar_cards_batch(
     items: list[tuple[str, dict[str, object]]],
     *,
-    screen_task_variant: str = DEFAULT_SCREEN_TASK_VARIANT,
     sector_variant: str = DEFAULT_SECTOR_VARIANT,
     sector_flow_hot_variant: str = DEFAULT_SECTOR_FLOW_HOT_VARIANT,
     leader_pick_variant: str = DEFAULT_LEADER_PICK_VARIANT,
@@ -264,7 +259,6 @@ def load_radar_cards_batch(
         with tracer.trace(f"radar.load_cards[{card_ids}]"):
             raise_if_radar_load_cancelled()
             variants = _radar_load_variants(
-                screen_task_variant=screen_task_variant,
                 sector_variant=sector_variant,
                 sector_flow_hot_variant=sector_flow_hot_variant,
                 leader_pick_variant=leader_pick_variant,
@@ -301,7 +295,6 @@ def load_radar_cards_batch(
 def load_radar_card(
     card_id: str,
     *,
-    screen_task_variant: str = DEFAULT_SCREEN_TASK_VARIANT,
     sector_variant: str = DEFAULT_SECTOR_VARIANT,
     sector_flow_hot_variant: str = DEFAULT_SECTOR_FLOW_HOT_VARIANT,
     leader_pick_variant: str = DEFAULT_LEADER_PICK_VARIANT,
@@ -312,7 +305,6 @@ def load_radar_card(
     """加载单张雷达卡片；行情类卡片自动复用 ScreeningContext。"""
     loaded, errors = load_radar_cards_batch(
         [(card_id, {"force_recompute": force_recompute})],
-        screen_task_variant=screen_task_variant,
         sector_variant=sector_variant,
         sector_flow_hot_variant=sector_flow_hot_variant,
         leader_pick_variant=leader_pick_variant,

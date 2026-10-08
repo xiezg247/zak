@@ -218,7 +218,6 @@ SECTOR_FLOW_HOT_VARIANTS: tuple[RadarVariant, ...] = (
     RadarVariant(key="concept", label="概念"),
 )
 
-DEFAULT_SCREEN_TASK_VARIANT = "scheduled_post_close"
 DEFAULT_SECTOR_VARIANT = "leaders_tiered"
 DEFAULT_LEADER_PICK_VARIANT = "mainline"
 DEFAULT_LIMIT_LADDER_VARIANT = "by_height"

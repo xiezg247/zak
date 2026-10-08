@@ -96,25 +96,25 @@ SET search_path TO app, chat, auth, cache, system, public;
 ```text
 TickFlow → collect_quotes → Redis (~5k HASH + 10× ZSET 全量重建)
                 ↓
-         GUI Worker / 选股 Python 循环 (~5k dict 行)
+         GUI Worker / Polars 选股与雷达 Hub（共享 ScreeningContext）
                 ↓
-         PG K 线 (dbbardata 按 symbol 查询)
+         PG K 线 (dbbardata 批量 + 索引；见 Alembic 005/006)
                 ↓
          PyQt 主线程 (Model reset / Delegate 重绘)
 ```
 
-| 层级 | 现状（代码锚点） | 主要问题 |
+| 层级 | 现状（代码锚点） | 主要问题（相对 Phase 2 之后） |
 |------|------------------|----------|
-| 行情写入 | `quotes/core/redis_store.py` `write_quotes` | 每轮 ~5k HSET + 10 个 ZSET delete/zadd |
+| 行情写入 | `quotes/core/redis_store.py` `write_quotes` | 每轮 ~5k HSET + 10 个 ZSET delete/zadd（仍为写入热点） |
 | 行情读取 | `get_quotes` 300 批 hgetall + `QuoteSnapshot` 构造 | 对象分配多；同步 enrich Tushare |
-| 选股 | `screener/recipe/recipe_runner.py`、各 `dimensions/*` | Python for 循环；`screening_context` 已 preload 但无向量化 |
-| 雷达 | `ui/quotes/radar/worker.py` 多卡 Worker | 卡片间重复读 Redis / 映射 |
-| K 线 | `data/bars.py`、`load_daily_bars_batch` | 需统一批量 SQL；PG 索引与连接池 |
-| PG 业务 | Repository 层分散 session | 多人并发时连接数、长事务 |
+| 选股 | `screener/recipe/recipe_runner.py`、`engine/dimensions/*` | 硬过滤与主要维度已 Polars 向量化；剩余集中在 `screening_context` 体量与个别维度 |
+| 雷达 | `quotes/radar/loaders/load.py` 批量 + Hub | 组内共享快照；剩余是 UI God 模块（`controller` / `card`）与个别卡重算 |
+| K 线 | `data/bars.py`、`load_daily_bars_batch` | 批量 SQL / 索引已补；连接池与慢查询观测仍待加强 |
+| PG 业务 | Repository 层分散 session | 多人并发时连接数、长事务；缺 `pg_stat_statements` 常态化 |
 | UI | `watchlist_signals/table_view.py` 等 | 全量 refresh；复杂 Delegate 在主线程格式化 |
-| 观测 | `vnpy_common/startup_profile.py` | 仅启动分段；缺运行时 trace 与 CI 基准 |
+| 观测 | `vnpy_common/startup_profile.py`、`bench/` | 启动分段 + synthetic bench 已有；缺盘中 live SLI 归档 |
 
-**已有优势（保留）**：`ScreeningContext.preload_*`、`QUOTE_READ_BATCH_SIZE=300`、Worker 后台加载、`download_concurrency` 线程池、`ZAK_STARTUP_PROFILE=1`。
+**已有优势（保留）**：`ScreeningContext.preload_*`、Polars 硬过滤/维度、雷达 batch Hub、`QUOTE_READ_BATCH_SIZE=300`、Worker 后台加载、`download_concurrency` 线程池、`ZAK_STARTUP_PROFILE=1`。
 
 ---
 
