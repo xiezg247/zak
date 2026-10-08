@@ -48,7 +48,7 @@ from vnpy_ashare.ui.quotes.page.run_log import (
 from vnpy_ashare.ui.quotes.panels.depth import DepthPanel
 from vnpy_ashare.ui.quotes.panels.diagnose import DiagnosePanel
 from vnpy_ashare.ui.quotes.panels.loading_overlay import MarketTableHost
-from vnpy_ashare.ui.quotes.radar.card import RadarBoard
+from vnpy_ashare.ui.quotes.radar.board import RadarBoard
 from vnpy_ashare.ui.quotes.radar.controller import RadarController
 from vnpy_ashare.ui.quotes.radar.resonance_panel import RadarResonancePanel
 from vnpy_ashare.ui.quotes.stock_notes.panel import StockNotePanel

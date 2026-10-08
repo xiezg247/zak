@@ -80,7 +80,7 @@ from vnpy_common.ui.feedback import page_notify
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
-    from vnpy_ashare.ui.quotes.radar.card import RadarBoard
+    from vnpy_ashare.ui.quotes.radar.board import RadarBoard
     from vnpy_ashare.ui.quotes.radar.resonance_panel import RadarResonancePanel
 
 _RADAR_CARD_REFRESH_STAGGER_MS = 80

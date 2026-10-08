@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.features.watchlist.context_bar import WatchlistPoolContextBar
     from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_chip import EmotionCycleChip
     from vnpy_ashare.ui.quotes.market_overview.industry_filter_combo import IndustryFilterCombo
-    from vnpy_ashare.ui.quotes.radar.card import RadarBoard
+    from vnpy_ashare.ui.quotes.radar.board import RadarBoard
     from vnpy_ashare.ui.quotes.radar.controller import RadarController
     from vnpy_ashare.ui.quotes.radar.resonance_panel import RadarResonancePanel
     from vnpy_ashare.ui.quotes.stock_notes.panel import StockNotePanel
