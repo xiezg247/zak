@@ -10,7 +10,7 @@ from vnpy_ashare.domain.market.quote_row import QuoteRowLike
 from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.integrations.mcp.intraday_flow import fetch_intraday_moneyflow_map
 from vnpy_ashare.quotes.format import format_pct
-from vnpy_ashare.quotes.radar.radar_models import merge_row_quotes
+from vnpy_ashare.quotes.radar.radar_quotes import merge_row_quotes
 from vnpy_ashare.screener.data.data_source import fetch_moneyflow_with_fallback
 
 _MONEYFLOW_VT_CACHE: dict[str, float] = {}

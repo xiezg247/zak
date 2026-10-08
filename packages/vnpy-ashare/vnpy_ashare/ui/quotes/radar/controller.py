@@ -30,11 +30,8 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
     radar_card_group,
 )
 from vnpy_ashare.quotes.radar.radar_horizon import OUTLOOK_FORCE_RECOMPUTE_CARD_IDS
-from vnpy_ashare.quotes.radar.radar_models import (
-    collect_radar_quote_vt_symbols,
-    quotes_for_vt_symbols,
-    refresh_radar_card_quotes_from_map,
-)
+from vnpy_ashare.quotes.radar.radar_quotes import quotes_for_vt_symbols
+from vnpy_ashare.quotes.radar.radar_enrich import collect_radar_quote_vt_symbols, refresh_radar_card_quotes_from_map
 from vnpy_ashare.quotes.radar.radar_resonance_store import set_radar_resonance_entries
 from vnpy_ashare.services.watchlist_short_term import (
     add_rows_to_watchlist_pool,

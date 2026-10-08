@@ -19,7 +19,8 @@ from vnpy_ashare.quotes.radar.loaders.scheduled_intraday import (
     volume_hits_from_intraday_run,
 )
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
-from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, merge_row_quotes
+from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow
+from vnpy_ashare.quotes.radar.radar_quotes import merge_row_quotes
 from vnpy_ashare.quotes.radar.radar_pool import name_map_for_symbols
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError

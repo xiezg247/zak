@@ -12,7 +12,8 @@ from vnpy_ashare.domain.radar.scenario import ScenarioMetrics
 from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot, signal_is_fresh, signal_missing_kline
 from vnpy_ashare.quotes.radar.radar_horizon_rules import has_near_unlock, last_price_for_snapshot
-from vnpy_ashare.quotes.radar.radar_models import RadarRow, merge_row_quotes
+from vnpy_ashare.quotes.radar.radar_models import RadarRow
+from vnpy_ashare.quotes.radar.radar_quotes import merge_row_quotes
 
 # 日K加载起始偏移：25 根用于波动率计算，60 交易日 ≈ 90 天
 _BAR_START_LOOKBACK = timedelta(days=90)

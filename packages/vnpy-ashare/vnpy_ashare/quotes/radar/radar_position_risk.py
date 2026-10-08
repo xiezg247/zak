@@ -10,7 +10,8 @@ from vnpy_ashare.domain.trading.position import PositionRecord
 from vnpy_ashare.quotes.core.provider import quote_snapshot_from_row
 from vnpy_ashare.quotes.format import format_pct
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
-from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, merge_row_quotes
+from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow
+from vnpy_ashare.quotes.radar.radar_quotes import merge_row_quotes
 from vnpy_ashare.storage.repositories.positions import load_position_rows
 from vnpy_ashare.storage.repositories.symbols import build_symbol_name_map
 from vnpy_ashare.trading.exit.overnight_exit import evaluate_overnight_exit

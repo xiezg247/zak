@@ -11,7 +11,8 @@ from vnpy_ashare.domain.screener.result_row import ScreenerResultRow, screening_
 from vnpy_ashare.domain.symbols.stock import StockItem, parse_stock_symbol
 from vnpy_ashare.quotes.format import format_amount, format_pct, format_volume
 from vnpy_ashare.quotes.market.moneyflow_kind import classify_moneyflow_row, flow_kind_label
-from vnpy_ashare.quotes.radar.radar_models import RadarRow, merge_row_quotes
+from vnpy_ashare.quotes.radar.radar_models import RadarRow
+from vnpy_ashare.quotes.radar.radar_quotes import merge_row_quotes
 from vnpy_ashare.quotes.radar.radar_pool import name_map_for_symbols
 from vnpy_ashare.quotes.radar.radar_relative_strength import build_relative_strength_subline
 

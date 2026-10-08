@@ -13,7 +13,8 @@ from vnpy_ashare.quotes.radar.predict.predict_scan import (
 from vnpy_ashare.quotes.radar.radar_ai_cache import resolve_ai_hint, rows_fingerprint
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
 from vnpy_ashare.quotes.radar.radar_horizon_scan import collect_daily_k_ready_vt_symbols
-from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, enrich_radar_rows
+from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow
+from vnpy_ashare.quotes.radar.radar_enrich import enrich_radar_rows
 
 _DEFAULT_MODEL_HINT = "统计基线 · 模型估计非保证收益"
 

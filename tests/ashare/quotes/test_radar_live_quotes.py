@@ -8,11 +8,13 @@ import pytest
 
 from vnpy_ashare.domain.market.quote_row import QuoteRow
 from vnpy_ashare.quotes.radar.loaders import RadarRow
-from vnpy_ashare.quotes.radar.radar_models import enrich_radar_rows, merge_row_quotes, quotes_for_vt_symbols
+from vnpy_ashare.quotes.radar.radar_quotes import merge_row_quotes, quotes_for_vt_symbols
+from vnpy_ashare.quotes.radar.radar_enrich import enrich_radar_rows
 
 
 def test_merge_row_quotes_prefers_live_cache_during_session(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("vnpy_ashare.quotes.radar.radar_models.is_ashare_trading_session", lambda: True)
+    monkeypatch.setattr("vnpy_ashare.quotes.radar.radar_quotes.is_ashare_trading_session", lambda: True)
+    monkeypatch.setattr("vnpy_ashare.quotes.radar.radar_enrich.is_ashare_trading_session", lambda: True)
     stale = QuoteRow(
         symbol="600000",
         name="浦发",
@@ -29,7 +31,7 @@ def test_merge_row_quotes_prefers_live_cache_during_session(monkeypatch: pytest.
         last_price=10.8,
         change_pct=2.5,
     )
-    monkeypatch.setattr("vnpy_ashare.quotes.radar.radar_models.quote_map", lambda: {"600000.SSE": live})
+    monkeypatch.setattr("vnpy_ashare.quotes.radar.radar_quotes.quote_map", lambda: {"600000.SSE": live})
 
     merged = merge_row_quotes(stale)
     assert merged["last_price"] == 10.8
@@ -37,10 +39,11 @@ def test_merge_row_quotes_prefers_live_cache_during_session(monkeypatch: pytest.
 
 
 def test_quotes_for_vt_symbols_prefers_redis_during_session(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("vnpy_ashare.quotes.radar.radar_models.is_ashare_trading_session", lambda: True)
-    monkeypatch.setattr("vnpy_ashare.quotes.radar.radar_models.quote_map", lambda: {})
+    monkeypatch.setattr("vnpy_ashare.quotes.radar.radar_quotes.is_ashare_trading_session", lambda: True)
+    monkeypatch.setattr("vnpy_ashare.quotes.radar.radar_enrich.is_ashare_trading_session", lambda: True)
+    monkeypatch.setattr("vnpy_ashare.quotes.radar.radar_quotes.quote_map", lambda: {})
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar.radar_models.load_screening_quote_snapshot",
+        "vnpy_ashare.quotes.radar.radar_quotes.load_screening_quote_snapshot",
         lambda: MagicMock(rows=[{"vt_symbol": "600000.SSE", "last_price": 9.0, "change_pct": 0.5}]),
     )
 
@@ -54,9 +57,9 @@ def test_quotes_for_vt_symbols_prefers_redis_during_session(monkeypatch: pytest.
 
     store = MagicMock()
     store.get_quotes.return_value = {"600000": live_quote}
-    monkeypatch.setattr("vnpy_ashare.quotes.radar.radar_models.get_redis_quote_store", lambda: store)
+    monkeypatch.setattr("vnpy_ashare.quotes.radar.radar_quotes.get_redis_quote_store", lambda: store)
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar.radar_models.parse_tickflow_symbol",
+        "vnpy_ashare.quotes.radar.radar_quotes.parse_tickflow_symbol",
         lambda tf, _name: MagicMock(vt_symbol="600000.SSE", symbol="600000"),
     )
 
@@ -66,7 +69,8 @@ def test_quotes_for_vt_symbols_prefers_redis_during_session(monkeypatch: pytest.
 
 
 def test_enrich_radar_rows_updates_price_from_live(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("vnpy_ashare.quotes.radar.radar_models.is_ashare_trading_session", lambda: True)
+    monkeypatch.setattr("vnpy_ashare.quotes.radar.radar_quotes.is_ashare_trading_session", lambda: True)
+    monkeypatch.setattr("vnpy_ashare.quotes.radar.radar_enrich.is_ashare_trading_session", lambda: True)
     row = RadarRow(
         vt_symbol="600000.SSE",
         name="浦发",
@@ -79,7 +83,7 @@ def test_enrich_radar_rows_updates_price_from_live(monkeypatch: pytest.MonkeyPat
         sub_value="",
     )
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar.radar_models.quotes_for_vt_symbols",
+        "vnpy_ashare.quotes.radar.radar_enrich.quotes_for_vt_symbols",
         lambda _symbols: {
             "600000.SSE": {
                 "vt_symbol": "600000.SSE",
@@ -89,14 +93,15 @@ def test_enrich_radar_rows_updates_price_from_live(monkeypatch: pytest.MonkeyPat
             }
         },
     )
+    monkeypatch.setattr("vnpy_ashare.quotes.radar.radar_quotes.quote_map", lambda: {})
     from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar.radar_models.load_screening_quote_snapshot",
+        "vnpy_ashare.quotes.radar.radar_enrich.load_screening_quote_snapshot",
         lambda: (_ for _ in ()).throw(MarketQuotesLoadError("skip")),
     )
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar.radar_models.build_relative_strength_context",
+        "vnpy_ashare.quotes.radar.radar_enrich.build_relative_strength_context",
         lambda _rows: None,
     )
 

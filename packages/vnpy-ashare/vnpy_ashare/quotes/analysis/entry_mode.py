@@ -10,7 +10,7 @@ from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.domain.market.board import matches_board
 from vnpy_ashare.integrations.tushare.limit_list_fallback import load_limit_list_seal_map
 from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleSnapshot, format_mode_label, load_emotion_cycle_snapshot
-from vnpy_ashare.quotes.radar.radar_models import merge_row_quotes, quotes_for_vt_symbols
+from vnpy_ashare.quotes.radar.radar_quotes import merge_row_quotes, quotes_for_vt_symbols
 from vnpy_ashare.screener.hard_filters import is_at_limit_board
 from vnpy_ashare.trading.signals.seal_reopen import attach_seal_reopen_fields, seal_reopen_from_row
 from vnpy_common.domain.base import FrozenModel

@@ -227,23 +227,29 @@ def test_load_radar_card_unknown() -> None:
 def test_enrich_radar_rows_from_screening_snapshot(monkeypatch) -> None:
     from types import SimpleNamespace
 
-    from vnpy_ashare.quotes.radar.radar_models import enrich_radar_rows
+    from vnpy_ashare.quotes.radar.radar_enrich import enrich_radar_rows
 
-    monkeypatch.setattr("vnpy_ashare.quotes.radar.radar_models.quote_map", lambda: {})
-    monkeypatch.setattr("vnpy_ashare.quotes.radar.radar_models.is_ashare_trading_session", lambda: False)
+    monkeypatch.setattr("vnpy_ashare.quotes.radar.radar_quotes.quote_map", lambda: {})
+    monkeypatch.setattr("vnpy_ashare.quotes.radar.radar_quotes.is_ashare_trading_session", lambda: False)
+    monkeypatch.setattr("vnpy_ashare.quotes.radar.radar_enrich.is_ashare_trading_session", lambda: False)
+    snapshot = SimpleNamespace(
+        rows=[
+            {
+                "vt_symbol": "601916.SSE",
+                "symbol": "601916",
+                "name": "浙商银行",
+                "last_price": 3.21,
+                "change_pct": -0.62,
+            }
+        ]
+    )
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar.radar_models.load_screening_quote_snapshot",
-        lambda: SimpleNamespace(
-            rows=[
-                {
-                    "vt_symbol": "601916.SSE",
-                    "symbol": "601916",
-                    "name": "浙商银行",
-                    "last_price": 3.21,
-                    "change_pct": -0.62,
-                }
-            ]
-        ),
+        "vnpy_ashare.quotes.radar.radar_quotes.load_screening_quote_snapshot",
+        lambda: snapshot,
+    )
+    monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar.radar_enrich.load_screening_quote_snapshot",
+        lambda: snapshot,
     )
     rows = (
         RadarRow(
@@ -272,7 +278,7 @@ def test_incremental_refresh_radar_card_quotes(monkeypatch) -> None:
         rows=(original_row,),
     )
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar.radar_models.refresh_radar_rows_live_quotes",
+        "vnpy_ashare.quotes.radar.radar_enrich.refresh_radar_rows_live_quotes",
         lambda rows: tuple(
             RadarRow(
                 vt_symbol=row.vt_symbol,

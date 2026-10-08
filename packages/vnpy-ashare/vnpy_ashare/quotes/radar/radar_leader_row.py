@@ -5,7 +5,9 @@ from __future__ import annotations
 from vnpy_ashare.domain.radar.leader import LeaderScoredRow
 from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.quotes.radar.radar_leader import leader_tier_label
-from vnpy_ashare.quotes.radar.radar_models import RadarRow, apply_board_quality, merge_row_quotes
+from vnpy_ashare.quotes.radar.radar_models import RadarRow
+from vnpy_ashare.quotes.radar.radar_quotes import merge_row_quotes
+from vnpy_ashare.quotes.radar.radar_enrich import apply_board_quality
 
 
 def row_from_leader_scored(scored: LeaderScoredRow) -> RadarRow | None:

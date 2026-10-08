@@ -7,7 +7,7 @@ from typing import Any, cast
 from vnpy_ashare.domain.core.numbers import float_or_none
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.symbols.stock import StockItem, parse_stock_symbol
-from vnpy_ashare.quotes.radar.radar_models import merge_row_quotes
+from vnpy_ashare.quotes.radar.radar_quotes import merge_row_quotes
 from vnpy_ashare.quotes.radar.radar_moneyflow import enrich_quotes_with_moneyflow
 from vnpy_ashare.quotes.radar.radar_watchlist import (
     _intraday_score,

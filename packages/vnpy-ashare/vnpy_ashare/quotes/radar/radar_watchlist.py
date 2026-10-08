@@ -12,12 +12,8 @@ from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
 from vnpy_ashare.quotes.format import format_amount, format_pct
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
 from vnpy_ashare.quotes.radar.radar_horizon_scenario import batch_build_scenario_metrics, classify_scenario_hint
-from vnpy_ashare.quotes.radar.radar_models import (
-    RadarCardData,
-    RadarRow,
-    merge_row_quotes,
-    quote_map,
-)
+from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow
+from vnpy_ashare.quotes.radar.radar_quotes import merge_row_quotes, quote_map
 from vnpy_ashare.quotes.radar.radar_moneyflow import (
     enrich_quotes_with_moneyflow,
     moneyflow_score_boost,

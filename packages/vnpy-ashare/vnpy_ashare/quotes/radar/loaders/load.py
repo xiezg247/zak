@@ -92,7 +92,7 @@ def incremental_refresh_radar_card_quotes(data: RadarCardData) -> RadarCardData:
     """仅刷新卡片行的现价与涨幅，不重算发现 / 板块等指标。"""
     if not data.rows:
         return data
-    from vnpy_ashare.quotes.radar.radar_models import refresh_radar_rows_live_quotes
+    from vnpy_ashare.quotes.radar.radar_enrich import refresh_radar_rows_live_quotes
 
     refreshed = refresh_radar_rows_live_quotes(data.rows)
     return data.model_copy(update={"rows": refreshed})

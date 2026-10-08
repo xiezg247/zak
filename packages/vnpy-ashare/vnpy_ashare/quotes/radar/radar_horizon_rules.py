@@ -12,7 +12,8 @@ from vnpy_ashare.domain.trading.signal_snapshot import (
     signal_missing_kline,
     signal_sort_key,
 )
-from vnpy_ashare.quotes.radar.radar_models import RadarRow, merge_row_quotes
+from vnpy_ashare.quotes.radar.radar_models import RadarRow
+from vnpy_ashare.quotes.radar.radar_quotes import merge_row_quotes
 from vnpy_ashare.services.stock.events import build_disclosure_upcoming_hints
 
 

@@ -26,7 +26,7 @@ from vnpy_ashare.quotes.core.limit_times_cache import get_cached_limit_times_map
 from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
 from vnpy_ashare.quotes.radar.radar_leader import leader_tier_label, rank_sector_leaders
 from vnpy_ashare.quotes.radar.radar_limit_ladder import resolve_limit_times
-from vnpy_ashare.quotes.radar.radar_models import merge_row_quotes, quotes_for_vt_symbols
+from vnpy_ashare.quotes.radar.radar_quotes import merge_row_quotes, quotes_for_vt_symbols
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.sector.sector_summary import attach_sector_fields
