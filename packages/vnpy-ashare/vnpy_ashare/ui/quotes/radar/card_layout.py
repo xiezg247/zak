@@ -70,3 +70,16 @@ def fallback_visible_card_ids(card_ids: list[str] | tuple[str, ...], columns: in
     """视口不可用时回退首行卡片 id。"""
     n = max(1, int(columns))
     return list(card_ids[:n])
+
+
+_SECTOR_ACTION_CARD_IDS = frozenset({"sector_theme", "sector_flow_hot"})
+
+
+def card_shows_sector_actions(card_id: str) -> bool:
+    """是否展示板块资金 / 轮动入口。"""
+    return card_id in _SECTOR_ACTION_CARD_IDS
+
+
+def card_shows_add_watchlist_actions(card_id: str) -> bool:
+    """自选日内卡本身即自选列表，隐藏「加自选」。"""
+    return card_id != "watchlist_intraday"

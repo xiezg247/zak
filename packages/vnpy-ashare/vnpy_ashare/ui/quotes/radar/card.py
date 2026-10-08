@@ -9,23 +9,22 @@ from vnpy_ashare.quotes.radar.loaders import RadarCardData, RadarRow
 from vnpy_ashare.quotes.radar.radar_catalog import (
     RadarCardSpec,
     default_refresh_ms_for_card,
-    default_variant_for_card,
-    full_refresh_options_for_card,
-    refresh_options_for_card,
     supports_auto_refresh,
-    variants_for_card,
 )
 from vnpy_ashare.quotes.radar.radar_full_refresh_prefs import load_radar_full_refresh_every
-from vnpy_ashare.ui.quotes.page.config import load_radar_card_refresh_ms
+from vnpy_ashare.ui.quotes.radar.card_chrome import (
+    build_card_body,
+    build_card_footer,
+    build_card_header,
+)
 from vnpy_ashare.ui.quotes.radar.card_layout import (
     BODY_PAGE_EMPTY,
     BODY_PAGE_ROWS,
-    RADAR_ROW_SPACING,
     card_frame_object_name,
+    card_shows_add_watchlist_actions,
     count_resonance_hits,
     estimate_card_min_height,
     format_card_meta,
-    kind_badge_presentation,
     mode_badge_presentation,
 )
 from vnpy_ashare.ui.quotes.radar.row_widget import RadarStockRowWidget
@@ -67,217 +66,44 @@ class RadarCardWidget(QtWidgets.QFrame):
         )
         self.setMinimumHeight(estimate_card_min_height(spec.top_n))
 
-        header = QtWidgets.QHBoxLayout()
-        header.setSpacing(8)
-        header.setContentsMargins(0, 0, 0, 0)
-        self._title = QtWidgets.QLabel(spec.title)
-        self._title.setObjectName("RadarCardTitle")
-        header.addWidget(
-            self._title,
-            stretch=1,
-            alignment=QtCore.Qt.AlignmentFlag.AlignVCenter,
-        )
+        header = build_card_header(spec)
+        body = build_card_body()
+        footer = build_card_footer(spec)
 
-        actions = QtWidgets.QHBoxLayout()
-        actions.setSpacing(6)
-        actions.setContentsMargins(0, 0, 0, 0)
+        self._title = header.title
+        self._kind_badge = header.kind_badge
+        self._mode_badge = header.mode_badge
+        self._variant_combo = header.variant_combo
+        self._refresh_interval_combo = header.refresh_interval_combo
+        self._full_refresh_combo = header.full_refresh_combo
+        self._refresh_button = header.refresh_button
+        self._refresh_menu_button = header.refresh_menu_button
 
-        badge_group = QtWidgets.QWidget()
-        badge_group.setObjectName("RadarCardBadgeGroup")
-        badge_layout = QtWidgets.QHBoxLayout(badge_group)
-        badge_layout.setContentsMargins(0, 0, 0, 0)
-        badge_layout.setSpacing(4)
+        self._subtitle = body.subtitle
+        self._ai_hint = body.ai_hint
+        self._rows_host = body.rows_host
+        self._rows_layout = body.rows_layout
+        self._empty_label = body.empty_label
+        self._body_stack = body.body_stack
 
-        kind_text, kind_object = kind_badge_presentation(spec.mode)
-        self._kind_badge = QtWidgets.QLabel(kind_text)
-        self._kind_badge.setObjectName(kind_object)
-        badge_layout.addWidget(self._kind_badge)
+        self._meta_label = footer.meta_label
+        self._ai_button = footer.ai_button
+        self._view_run_button = footer.view_run_button
+        self._sector_flow_button = footer.sector_flow_button
+        self._sector_rotation_button = footer.sector_rotation_button
+        self._add_all_button = footer.add_all_button
 
-        self._mode_badge = QtWidgets.QLabel("")
-        self._mode_badge.setObjectName("RadarCardModeBadge")
         self._update_mode_badge()
-        badge_layout.addWidget(self._mode_badge)
-        actions.addWidget(badge_group)
-
-        self._variant_combo = QtWidgets.QComboBox()
-        self._variant_combo.setObjectName("RadarCardVariant")
-        if spec.has_task_variants:
-            for variant in variants_for_card(spec.id):
-                self._variant_combo.addItem(variant.label, variant.key)
-            default_key = default_variant_for_card(spec.id)
-            if default_key:
-                self.set_variant_key(default_key)
-            self._variant_combo.setSizeAdjustPolicy(QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
-            self._variant_combo.setMinimumContentsLength(5)
-            self._variant_combo.setMaximumWidth(108)
-            self._variant_combo.currentIndexChanged.connect(self._emit_variant_changed)
-            actions.addWidget(self._variant_combo)
-        else:
-            self._variant_combo.hide()
-
-        self._refresh_interval_combo = QtWidgets.QComboBox()
-        self._refresh_interval_combo.setObjectName("RadarCardRefreshInterval")
-        self._refresh_interval_combo.setToolTip("自动刷新周期")
-        refresh_options = refresh_options_for_card(spec.id)
-        if refresh_options:
-            for option in refresh_options:
-                self._refresh_interval_combo.addItem(option.label, option.ms)
-            default_ms = load_radar_card_refresh_ms(spec.id, default_refresh_ms_for_card(spec.id))
-            self.set_auto_refresh_ms(default_ms)
-            self._refresh_interval_combo.currentIndexChanged.connect(self._emit_auto_refresh_changed)
-            actions.addWidget(self._refresh_interval_combo)
-        else:
-            self._refresh_interval_combo.hide()
-
-        self._full_refresh_combo = QtWidgets.QComboBox()
-        self._full_refresh_combo.setObjectName("RadarCardFullRefreshInterval")
-        self._full_refresh_combo.setToolTip("自动刷新时，每隔多少次全量重算指标（其余仅更新现价 / 涨幅）")
-        full_refresh_options = full_refresh_options_for_card(spec.id)
-        if full_refresh_options:
-            for option in full_refresh_options:
-                self._full_refresh_combo.addItem(option.label, option.ms)
-            default_every = load_radar_full_refresh_every(spec.id)
-            self.set_full_refresh_every(default_every)
-            self._full_refresh_combo.currentIndexChanged.connect(self._emit_full_refresh_interval_changed)
-            actions.addWidget(self._full_refresh_combo)
-        else:
-            self._full_refresh_combo.hide()
-
-        self._refresh_button = QtWidgets.QToolButton()
-        self._refresh_button.setObjectName("RadarCardRefresh")
-        self._refresh_button.setText("↻")
-        self._refresh_button.setToolTip("全量刷新")
-        self._refresh_button.clicked.connect(lambda: self.refresh_requested.emit(self.card_id))
-
-        self._refresh_menu_button = QtWidgets.QToolButton()
-        self._refresh_menu_button.setObjectName("RadarCardRefreshMenu")
-        self._refresh_menu_button.setText("▾")
-        self._refresh_menu_button.setToolTip("更多刷新选项")
-        self._refresh_menu_button.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
-        refresh_menu = QtWidgets.QMenu(self._refresh_menu_button)
-        refresh_menu.addAction("全量刷新", lambda: self.refresh_requested.emit(self.card_id))
-        refresh_menu.addAction("仅更新行情", lambda: self.quote_refresh_requested.emit(self.card_id))
-        self._refresh_menu_button.setMenu(refresh_menu)
-
-        refresh_group = QtWidgets.QWidget()
-        refresh_group.setObjectName("RadarCardRefreshGroup")
-        refresh_layout = QtWidgets.QHBoxLayout(refresh_group)
-        refresh_layout.setContentsMargins(0, 0, 0, 0)
-        refresh_layout.setSpacing(4)
-        refresh_layout.addWidget(self._refresh_button)
-        refresh_layout.addWidget(self._refresh_menu_button)
-
-        header_divider = QtWidgets.QWidget()
-        header_divider.setObjectName("RadarCardHeaderDivider")
-        header_divider.setFixedSize(1, 14)
-        actions.addWidget(header_divider)
-        actions.addWidget(refresh_group)
-
-        actions_host = QtWidgets.QWidget()
-        actions_host.setObjectName("RadarCardHeaderActions")
-        actions_host.setLayout(actions)
-        header.addWidget(
-            actions_host,
-            alignment=QtCore.Qt.AlignmentFlag.AlignVCenter | QtCore.Qt.AlignmentFlag.AlignRight,
-        )
-
-        self._subtitle = QtWidgets.QLabel("")
-        self._subtitle.setObjectName("RadarCardSubtitle")
-        self._subtitle.setWordWrap(True)
-        self._subtitle.setMaximumHeight(30)
-        self._subtitle.setMinimumHeight(0)
-
-        self._ai_hint = QtWidgets.QLabel("")
-        self._ai_hint.setObjectName("RadarCardAiHint")
-        self._ai_hint.setWordWrap(True)
-        self._ai_hint.hide()
-
-        self._rows_host = QtWidgets.QWidget()
-        self._rows_host.setObjectName("RadarCardRowsHost")
-        self._rows_layout = QtWidgets.QVBoxLayout(self._rows_host)
-        self._rows_layout.setContentsMargins(0, 0, 0, 0)
-        self._rows_layout.setSpacing(RADAR_ROW_SPACING)
-
-        self._rows_page = QtWidgets.QWidget()
-        self._rows_page.setObjectName("RadarCardRowsPage")
-        rows_page_layout = QtWidgets.QVBoxLayout(self._rows_page)
-        rows_page_layout.setContentsMargins(0, 0, 0, 0)
-        rows_page_layout.setSpacing(0)
-        rows_page_layout.addWidget(self._rows_host)
-
-        self._empty_label = QtWidgets.QLabel("")
-        self._empty_label.setObjectName("RadarCardEmpty")
-        self._empty_label.setWordWrap(True)
-        self._empty_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-
-        self._empty_page = QtWidgets.QWidget()
-        self._empty_page.setObjectName("RadarCardEmptyPage")
-        empty_page_layout = QtWidgets.QVBoxLayout(self._empty_page)
-        empty_page_layout.setContentsMargins(0, 0, 0, 0)
-        empty_page_layout.addStretch(1)
-        empty_page_layout.addWidget(self._empty_label)
-        empty_page_layout.addStretch(1)
-
-        self._body_stack = QtWidgets.QStackedWidget()
-        self._body_stack.setObjectName("RadarCardBodyStack")
-        self._body_stack.addWidget(self._rows_page)
-        self._body_stack.addWidget(self._empty_page)
-        self._body_stack.setCurrentIndex(BODY_PAGE_ROWS)
-        self._body_stack.setSizePolicy(
-            QtWidgets.QSizePolicy.Policy.Expanding,
-            QtWidgets.QSizePolicy.Policy.Minimum,
-        )
-
-        footer = QtWidgets.QHBoxLayout()
-        footer.setSpacing(8)
-        self._meta_label = QtWidgets.QLabel("")
-        self._meta_label.setObjectName("RadarCardMeta")
-        footer.addWidget(self._meta_label, stretch=1)
-        self._ai_button = QtWidgets.QPushButton("AI")
-        self._ai_button.setObjectName("RadarCardAi")
-        self._ai_button.setFlat(True)
-        self._ai_button.setToolTip("解读本卡片")
-        self._ai_button.clicked.connect(lambda: self.ai_requested.emit(self.card_id))
-        footer.addWidget(self._ai_button)
-        self._view_run_button = QtWidgets.QPushButton("查看完整")
-        self._view_run_button.setObjectName("RadarCardViewRun")
-        self._view_run_button.setFlat(True)
-        self._view_run_button.hide()
-        self._view_run_button.clicked.connect(self._on_view_run_clicked)
-        footer.addWidget(self._view_run_button)
-        self._sector_flow_button: QtWidgets.QPushButton | None = None
-        self._sector_rotation_button: QtWidgets.QPushButton | None = None
-        if spec.id in ("sector_theme", "sector_flow_hot"):
-            self._sector_flow_button = QtWidgets.QPushButton("板块资金")
-            self._sector_flow_button.setObjectName("RadarCardSectorFlow")
-            self._sector_flow_button.setFlat(True)
-            self._sector_flow_button.setToolTip("打开板块资金监控页并预选主线行业")
-            self._sector_flow_button.clicked.connect(lambda: self.sector_flow_requested.emit(self.card_id))
-            footer.addWidget(self._sector_flow_button)
-            self._sector_rotation_button = QtWidgets.QPushButton("近15日轮动")
-            self._sector_rotation_button.setObjectName("RadarCardSectorRotation")
-            self._sector_rotation_button.setFlat(True)
-            self._sector_rotation_button.setToolTip("打开板块资金页近15日轮动矩阵并预选主线行业")
-            self._sector_rotation_button.clicked.connect(lambda: self.sector_rotation_requested.emit(self.card_id))
-            footer.addWidget(self._sector_rotation_button)
-        else:
-            self._sector_flow_button = None
-            self._sector_rotation_button = None
-        self._add_all_button = QtWidgets.QPushButton("全部加自选")
-        self._add_all_button.setObjectName("RadarCardAddAll")
-        self._add_all_button.setFlat(True)
-        self._add_all_button.hide()
-        self._add_all_button.clicked.connect(self._on_add_all_clicked)
-        footer.addWidget(self._add_all_button)
+        self._wire_chrome_signals()
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(4)
-        layout.addLayout(header)
+        layout.addLayout(header.layout)
         layout.addWidget(self._subtitle)
         layout.addWidget(self._ai_hint)
         layout.addWidget(self._body_stack)
-        layout.addLayout(footer)
+        layout.addLayout(footer.layout)
 
         self._run_id = ""
         self._detail_page_key = ""
@@ -286,9 +112,33 @@ class RadarCardWidget(QtWidgets.QFrame):
         self._loading = False
         self._updated_at_text = ""
         self._row_widgets: list[RadarStockRowWidget] = []
-        self._show_add_watchlist_actions = spec.id != "watchlist_intraday"
+        self._show_add_watchlist_actions = card_shows_add_watchlist_actions(spec.id)
 
         theme_manager().register_callback(lambda _tokens: self._refresh_row_widgets())
+
+    def _wire_chrome_signals(self) -> None:
+        if self._spec.has_task_variants:
+            self._variant_combo.currentIndexChanged.connect(self._emit_variant_changed)
+        if self._refresh_interval_combo.count() > 0:
+            self._refresh_interval_combo.currentIndexChanged.connect(self._emit_auto_refresh_changed)
+        if self._full_refresh_combo.count() > 0:
+            self._full_refresh_combo.currentIndexChanged.connect(self._emit_full_refresh_interval_changed)
+
+        self._refresh_button.clicked.connect(lambda: self.refresh_requested.emit(self.card_id))
+        refresh_menu = self._refresh_menu_button.menu()
+        if refresh_menu is not None:
+            refresh_menu.addAction("全量刷新", lambda: self.refresh_requested.emit(self.card_id))
+            refresh_menu.addAction("仅更新行情", lambda: self.quote_refresh_requested.emit(self.card_id))
+
+        self._ai_button.clicked.connect(lambda: self.ai_requested.emit(self.card_id))
+        self._view_run_button.clicked.connect(self._on_view_run_clicked)
+        if self._sector_flow_button is not None:
+            self._sector_flow_button.clicked.connect(lambda: self.sector_flow_requested.emit(self.card_id))
+        if self._sector_rotation_button is not None:
+            self._sector_rotation_button.clicked.connect(
+                lambda: self.sector_rotation_requested.emit(self.card_id)
+            )
+        self._add_all_button.clicked.connect(self._on_add_all_clicked)
 
     @property
     def card_id(self) -> str:

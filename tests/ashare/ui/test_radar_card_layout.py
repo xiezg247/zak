@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from vnpy_ashare.ui.quotes.radar.card_layout import (
     card_frame_object_name,
+    card_shows_add_watchlist_actions,
+    card_shows_sector_actions,
     count_resonance_hits,
     estimate_card_min_height,
     fallback_visible_card_ids,
@@ -69,3 +71,14 @@ def test_fallback_visible_card_ids() -> None:
     assert fallback_visible_card_ids(ids, 2) == ["a", "b"]
     assert fallback_visible_card_ids(ids, 5) == ids
     assert fallback_visible_card_ids([], 2) == []
+
+
+def test_card_shows_sector_actions() -> None:
+    assert card_shows_sector_actions("sector_theme")
+    assert card_shows_sector_actions("sector_flow_hot")
+    assert not card_shows_sector_actions("leader_pick")
+
+
+def test_card_shows_add_watchlist_actions() -> None:
+    assert not card_shows_add_watchlist_actions("watchlist_intraday")
+    assert card_shows_add_watchlist_actions("leader_pick")
