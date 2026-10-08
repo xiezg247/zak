@@ -29,9 +29,6 @@ from vnpy_ashare.quotes.radar.radar_card_snapshot_cache import peek_radar_card_s
 from vnpy_ashare.quotes.radar.radar_full_refresh_prefs import load_radar_full_refresh_every, save_radar_full_refresh_every
 from vnpy_ashare.quotes.radar.radar_catalog import (
     DEFAULT_LEADER_PICK_VARIANT,
-    DEFAULT_LIMIT_LADDER_VARIANT,
-    DEFAULT_SCENARIO_VARIANT,
-    DEFAULT_SECTOR_FLOW_HOT_VARIANT,
     DEFAULT_SECTOR_VARIANT,
     RADAR_CARD_BY_ID,
     RadarGroupKey,
@@ -67,6 +64,7 @@ from vnpy_ashare.trading.plan.propose import _next_trade_date
 from vnpy_ashare.ui.features.stock_analysis.open import show_stock_analysis_from_quotes_page
 from vnpy_ashare.ui.quotes.page.config import save_radar_card_refresh_ms
 from vnpy_ashare.ui.quotes.radar.resonance_weight_dialog import RadarResonanceWeightDialog
+from vnpy_ashare.ui.quotes.radar.variant_wiring import build_default_card_variants, card_load_variants
 from vnpy_ashare.ui.quotes.radar.worker import RadarCardLoadWorker, RadarGroupLoadWorker
 from vnpy_ashare.ui.quotes.watchlist_positions.plan_dialog import TradingPlanDialog
 from vnpy_ashare.ui.shell.deferred_idle import run_when_idle
@@ -108,13 +106,7 @@ class RadarController(QtCore.QObject):
         self._prefetch_siblings: list[str] = []
         self._retired_workers: list[QtCore.QThread] = []
         self._sector_variant = DEFAULT_SECTOR_VARIANT
-        self._card_variants: dict[str, str] = {
-            "sector_theme": DEFAULT_SECTOR_VARIANT,
-            "leader_pick": DEFAULT_LEADER_PICK_VARIANT,
-            "discovery_limit_ladder": DEFAULT_LIMIT_LADDER_VARIANT,
-            "outlook_scenario": DEFAULT_SCENARIO_VARIANT,
-            "outlook_predict": load_predict_model_mode(),
-        }
+        self._card_variants: dict[str, str] = build_default_card_variants()
         self._last_payload: dict[str, RadarCardData] = {}
         self._cached_resonance: dict[str, int] = {}
         self._auto_refresh_ticks: dict[str, int] = {}
@@ -517,11 +509,7 @@ class RadarController(QtCore.QObject):
         self._cancel_card_worker(card_id)
         worker = RadarCardLoadWorker(
             card_id=card_id,
-            sector_variant=self._card_variants.get("sector_theme", DEFAULT_SECTOR_VARIANT),
-            sector_flow_hot_variant=self._card_variants.get("sector_flow_hot", DEFAULT_SECTOR_FLOW_HOT_VARIANT),
-            leader_pick_variant=self._card_variants.get("leader_pick", DEFAULT_LEADER_PICK_VARIANT),
-            limit_ladder_variant=self._card_variants.get("discovery_limit_ladder", DEFAULT_LIMIT_LADDER_VARIANT),
-            scenario_variant=self._card_variants.get("outlook_scenario", DEFAULT_SCENARIO_VARIANT),
+            **self._card_load_variants(),
             force_recompute=force_recompute,
             quote_only=quote_only,
             existing_data=existing if quote_only else None,
@@ -700,13 +688,7 @@ class RadarController(QtCore.QObject):
         release_thread(self._retired_workers, worker, timeout_ms=0)
 
     def _card_load_variants(self) -> dict[str, str]:
-        return {
-            "sector_variant": self._card_variants.get("sector_theme", DEFAULT_SECTOR_VARIANT),
-            "sector_flow_hot_variant": self._card_variants.get("sector_flow_hot", DEFAULT_SECTOR_FLOW_HOT_VARIANT),
-            "leader_pick_variant": self._card_variants.get("leader_pick", DEFAULT_LEADER_PICK_VARIANT),
-            "limit_ladder_variant": self._card_variants.get("discovery_limit_ladder", DEFAULT_LIMIT_LADDER_VARIANT),
-            "scenario_variant": self._card_variants.get("outlook_scenario", DEFAULT_SCENARIO_VARIANT),
-        }
+        return card_load_variants(self._card_variants)
 
     def _variant_key_for_card(self, card_id: str) -> str:
         return radar_card_variant_key(card_id, self._card_load_variants())
