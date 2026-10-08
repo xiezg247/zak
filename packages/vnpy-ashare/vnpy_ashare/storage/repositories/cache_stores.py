@@ -302,10 +302,10 @@ class WatchlistPositionCacheRepository(CacheBaseRepository):
             return int(cur.rowcount or 0)
 
 
-_radar_ai_hint_repo = RadarAiHintCacheRepository()
-_radar_horizon_repo = RadarHorizonCacheRepository()
-_radar_predict_repo = RadarPredictCacheRepository()
-_radar_card_snapshot_repo = RadarCardSnapshotRepository()
-_sector_outlook_repo = SectorFlowOutlookLlmCacheRepository()
-_signal_cache_repo = WatchlistSignalCacheRepository()
-_position_cache_repo = WatchlistPositionCacheRepository()
+radar_ai_hint_repo = RadarAiHintCacheRepository()
+radar_horizon_repo = RadarHorizonCacheRepository()
+radar_predict_repo = RadarPredictCacheRepository()
+radar_card_snapshot_repo = RadarCardSnapshotRepository()
+sector_outlook_repo = SectorFlowOutlookLlmCacheRepository()
+signal_cache_repo = WatchlistSignalCacheRepository()
+position_cache_repo = WatchlistPositionCacheRepository()

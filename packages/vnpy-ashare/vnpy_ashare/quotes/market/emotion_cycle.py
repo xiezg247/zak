@@ -23,7 +23,7 @@ from vnpy_ashare.quotes.market.emotion_cycle_hysteresis import (
     apply_stage_hysteresis,
 )
 from vnpy_ashare.quotes.market.emotion_cycle_inputs import build_emotion_cycle_inputs
-from vnpy_ashare.quotes.market.market_overview_loaders import _load_breadth
+from vnpy_ashare.quotes.market.market_overview_loaders import load_breadth
 from vnpy_ashare.quotes.market.quote_source import load_quote_rows_for_market, peek_market_quote_rows
 from vnpy_common.domain.serialize import dump_python
 
@@ -187,7 +187,7 @@ def load_emotion_cycle_snapshot(
                 return None
         else:
             return None
-        breadth = _load_breadth(rows, updated_at=updated_at)
+        breadth = load_breadth(rows, updated_at=updated_at)
     if breadth is None:
         return None
     inputs = build_emotion_cycle_inputs(breadth, include_auxiliary=not cache_only)

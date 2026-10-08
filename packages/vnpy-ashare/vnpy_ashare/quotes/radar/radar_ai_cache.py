@@ -6,7 +6,7 @@ import hashlib
 from datetime import datetime, timedelta
 
 from vnpy_ashare.quotes.radar.radar_models import RadarRow
-from vnpy_ashare.storage.repositories.cache_stores import _radar_ai_hint_repo
+from vnpy_ashare.storage.repositories.cache_stores import radar_ai_hint_repo
 
 
 def rows_fingerprint(rows: tuple[RadarRow, ...]) -> str:
@@ -27,7 +27,7 @@ def get_cached_hint(
 ) -> str | None:
     key = _cache_key(card_id, variant, fingerprint)
     now = datetime.now().isoformat(timespec="seconds")
-    return _radar_ai_hint_repo.get_hint_if_fresh(key, now_text=now)
+    return radar_ai_hint_repo.get_hint_if_fresh(key, now_text=now)
 
 
 def put_cached_hint(
@@ -44,7 +44,7 @@ def put_cached_hint(
     key = _cache_key(card_id, variant, fingerprint)
     updated_at = datetime.now()
     expires_at = updated_at + timedelta(hours=max(1, int(ttl_hours)))
-    _radar_ai_hint_repo.upsert(
+    radar_ai_hint_repo.upsert(
         cache_key=key,
         card_id=card_id,
         variant=variant,

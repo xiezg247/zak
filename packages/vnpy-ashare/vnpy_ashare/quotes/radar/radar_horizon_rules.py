@@ -26,7 +26,7 @@ def event_hint(vt_symbol: str) -> str:
     return hints[0][:24]
 
 
-def _has_near_unlock(vt_symbol: str, *, within_days: int = 3) -> bool:
+def has_near_unlock(vt_symbol: str, *, within_days: int = 3) -> bool:
     hint = event_hint(vt_symbol)
     if "解禁" not in hint:
         return False
@@ -49,7 +49,7 @@ def matches_watch(snapshot: SignalSnapshot, *, last_price: float | None) -> bool
         return False
     if snapshot.signal == "sell" and signal_is_fresh(snapshot):
         return False
-    if _has_near_unlock(snapshot.vt_symbol):
+    if has_near_unlock(snapshot.vt_symbol):
         return False
     if snapshot.signal == "buy" and signal_is_fresh(snapshot):
         return True
@@ -75,7 +75,7 @@ def matches_hold(snapshot: SignalSnapshot, *, last_price: float | None) -> bool:
         return False
     if snapshot.signal == "sell" and signal_is_fresh(snapshot):
         return False
-    if _has_near_unlock(snapshot.vt_symbol):
+    if has_near_unlock(snapshot.vt_symbol):
         return False
     if snapshot.signal not in ("buy", "hold"):
         return False

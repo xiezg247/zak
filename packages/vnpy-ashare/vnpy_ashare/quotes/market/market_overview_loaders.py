@@ -92,7 +92,7 @@ def load_sector_ranks(rows: QuoteRowsLike, *, top_n: int = SECTOR_TOP_N) -> list
     ]
 
 
-def _load_breadth(
+def load_breadth(
     rows: QuoteRowsLike,
     *,
     updated_at: str | None,
@@ -195,7 +195,7 @@ def load_market_overview(*, intraday: bool = True, force: bool = False) -> Marke
 
     if not intraday:
         cached = peek_market_overview_data(intraday=False) if not force else None
-        breadth = _load_breadth(rows, updated_at=updated_at, merge_official=False)
+        breadth = load_breadth(rows, updated_at=updated_at, merge_official=False)
         if force and (breadth is None or breadth.total_amount <= 0 or not rows):
             breadth = _load_off_session_breadth(trade_date=factor_date, force=force) or breadth
         elif not force and cached is not None and cached.breadth is not None:
@@ -216,7 +216,7 @@ def load_market_overview(*, intraday: bool = True, force: bool = False) -> Marke
 
     data = MarketOverviewData(
         indices=indices,
-        breadth=_load_breadth(rows, updated_at=updated_at),
+        breadth=load_breadth(rows, updated_at=updated_at),
         sectors=load_sector_ranks(rows),
         environment=environment,
     )
@@ -243,7 +243,7 @@ def build_overview_from_market_rows(
         return None, []
 
     if not intraday:
-        breadth = _load_breadth(rows, updated_at=updated_at, merge_official=False)
+        breadth = load_breadth(rows, updated_at=updated_at, merge_official=False)
         if explicit_intraday:
             peeked = peek_market_overview_data(intraday=False)
             sectors = list(peeked.sectors) if peeked is not None else []
@@ -255,4 +255,4 @@ def build_overview_from_market_rows(
                     sectors = list(peeked.sectors)
         return breadth, sectors
 
-    return _load_breadth(rows, updated_at=updated_at), load_sector_ranks(rows)
+    return load_breadth(rows, updated_at=updated_at), load_sector_ranks(rows)

@@ -161,7 +161,7 @@ class MarketOverviewLoaderTests(unittest.TestCase):
                 return_value=fresh_env,
             ),
             patch(
-                "vnpy_ashare.quotes.market.market_overview_loaders._load_breadth",
+                "vnpy_ashare.quotes.market.market_overview_loaders.load_breadth",
                 return_value=None,
             ) as load_breadth,
             patch("vnpy_ashare.quotes.market.market_overview_loaders.store_market_overview_data"),

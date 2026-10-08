@@ -95,7 +95,7 @@ def _today_trade_date() -> str:
     return format_china_date()
 
 
-def _proxy_flow_yi(row: QuoteRowLike) -> float:
+def proxy_flow_yi(row: QuoteRowLike) -> float:
     net_mf = float(row.get("net_mf_amount") or 0)
     if net_mf != 0:
         return net_mf / 10000.0
@@ -168,7 +168,7 @@ def aggregate_sector_rows(
         up_count = sum(1 for value in changes if value > 0)
         up_ratio = up_count / len(items)
         strength = round(up_ratio * 100 + avg_change, 2)
-        net_yi = sum(_proxy_flow_yi(item) for item in items)
+        net_yi = sum(proxy_flow_yi(item) for item in items)
         source = _flow_source_for_rows(items)
         sector_id = l2_index.get(industry, industry) if l2_index else industry
 

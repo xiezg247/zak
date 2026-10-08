@@ -6,7 +6,7 @@ from vnpy_ashare.jobs.core.result import JobResult
 from vnpy_ashare.quotes.core.quote_rows import set_market_quote_rows_cache
 from vnpy_ashare.quotes.market.emotion_cycle import classify_emotion_cycle, store_emotion_cycle_snapshot
 from vnpy_ashare.quotes.market.emotion_cycle_inputs import build_emotion_cycle_inputs
-from vnpy_ashare.quotes.market.market_overview_loaders import _load_breadth
+from vnpy_ashare.quotes.market.market_overview_loaders import load_breadth
 from vnpy_ashare.quotes.market.quote_source import load_intraday_market_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 
@@ -28,7 +28,7 @@ def warm_market_summary(*, enrich_factors: bool = False) -> JobResult:
 
     set_market_quote_rows_cache(rows)
 
-    breadth = _load_breadth(rows, updated_at=snapshot.updated_at)
+    breadth = load_breadth(rows, updated_at=snapshot.updated_at)
     if breadth is None:
         return JobResult(success=False, message="无法计算市场广度")
 

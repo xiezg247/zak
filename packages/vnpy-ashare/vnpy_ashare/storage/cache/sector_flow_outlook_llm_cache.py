@@ -11,7 +11,7 @@ from vnpy_ashare.domain.market.sector_flow import (
     SectorFlowOutlookSnapshot,
     SectorFlowRow,
 )
-from vnpy_ashare.storage.repositories.cache_stores import _sector_outlook_repo
+from vnpy_ashare.storage.repositories.cache_stores import sector_outlook_repo
 
 
 def outlook_llm_cache_key(*, sector_kind: str, strategy_key: str, fingerprint: str) -> str:
@@ -87,7 +87,7 @@ def get_outlook_llm_cache(
 ) -> SectorFlowOutlookSnapshot | None:
     key = outlook_llm_cache_key(sector_kind=sector_kind, strategy_key=strategy_key, fingerprint=fingerprint)
     now = __import__("datetime").datetime.now().isoformat(timespec="seconds")
-    row = _sector_outlook_repo.get_row_if_fresh(key, now_text=now)
+    row = sector_outlook_repo.get_row_if_fresh(key, now_text=now)
     if row is None:
         return None
     try:
@@ -139,7 +139,7 @@ def put_outlook_llm_cache(
     expires_at = updated_at + timedelta(hours=max(1, int(ttl_hours)))
     rows_json = json.dumps([_row_to_dict(row) for row in snapshot.rows], ensure_ascii=False)
     forward_dates_json = json.dumps(list(snapshot.forward_dates), ensure_ascii=False)
-    _sector_outlook_repo.upsert(
+    sector_outlook_repo.upsert(
         cache_key=key,
         sector_kind=snapshot.sector_kind,
         strategy_key=strategy_key,

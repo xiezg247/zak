@@ -42,7 +42,7 @@ def test_warm_market_summary_stores_emotion() -> None:
     )
     with (
         patch("vnpy_ashare.jobs.market.summary_warmup.load_intraday_market_snapshot", return_value=snapshot),
-        patch("vnpy_ashare.jobs.market.summary_warmup._load_breadth", return_value=breadth),
+        patch("vnpy_ashare.jobs.market.summary_warmup.load_breadth", return_value=breadth),
     ):
         result = warm_market_summary(enrich_factors=True)
 

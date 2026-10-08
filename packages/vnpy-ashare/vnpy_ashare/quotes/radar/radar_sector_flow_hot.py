@@ -14,7 +14,7 @@ from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, merge
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.sector.sector_summary import attach_industry, attach_sector_fields
-from vnpy_ashare.services.sector_flow import aggregate_sector_rows, format_sector_net_flow_yi
+from vnpy_ashare.services.sector_flow import aggregate_sector_rows, format_sector_net_flow_yi, proxy_flow_yi
 
 SectorFlowHotVariant = Literal["industry", "concept"]
 
@@ -75,9 +75,7 @@ def _aggregate_concept_sectors(rows: list) -> list[tuple[SectorFlowRow, list[dic
         up_ratio = up_count / len(items)
         net_yi = sum(float(item.get("net_mf_amount") or 0) for item in items) / 10000.0
         if net_yi == 0:
-            from vnpy_ashare.services.sector_flow import _proxy_flow_yi
-
-            net_yi = sum(_proxy_flow_yi(item) for item in items)
+            net_yi = sum(proxy_flow_yi(item) for item in items)
         sector = SectorFlowRow(
             sector_id=concept,
             name=concept,

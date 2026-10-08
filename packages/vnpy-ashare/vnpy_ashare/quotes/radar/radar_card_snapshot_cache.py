@@ -7,7 +7,7 @@ from datetime import datetime
 
 from vnpy_ashare.domain.radar.card import RadarCardData
 from vnpy_ashare.domain.time.china import CHINA_TZ, DATETIME_FMT, DATETIME_MINUTE_FMT, china_now, format_china_datetime_minute
-from vnpy_ashare.storage.repositories.cache_stores import _radar_card_snapshot_repo
+from vnpy_ashare.storage.repositories.cache_stores import radar_card_snapshot_repo
 
 _DEFAULT_MAX_AGE_SEC = 120.0
 
@@ -60,7 +60,7 @@ def peek_radar_card_snapshot(
         return None
     key = str(variant_key or "")
     ttl = card_snapshot_max_age_sec(text_id) if max_age_sec is None else max_age_sec
-    row = _radar_card_snapshot_repo.get_row(text_id, key)
+    row = radar_card_snapshot_repo.get_row(text_id, key)
     if row is None:
         return None
     computed = _parse_computed_at(str(row["computed_at"] or ""))
@@ -91,7 +91,7 @@ def put_radar_card_snapshot(
     key = str(variant_key or "")
     stamp = format_china_datetime_minute() if computed_at is None else computed_at
     payload = data.model_dump(mode="json")
-    _radar_card_snapshot_repo.upsert(
+    radar_card_snapshot_repo.upsert(
         card_id=text_id,
         variant_key=key,
         payload_json=json.dumps(payload, ensure_ascii=False),
@@ -100,4 +100,4 @@ def put_radar_card_snapshot(
 
 
 def invalidate_radar_card_snapshots() -> None:
-    _radar_card_snapshot_repo.clear_all()
+    radar_card_snapshot_repo.clear_all()

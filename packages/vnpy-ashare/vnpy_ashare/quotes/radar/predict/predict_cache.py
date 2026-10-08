@@ -12,14 +12,14 @@ from vnpy_ashare.quotes.radar.radar_models import (
     radar_row_from_cache_dict,
     radar_row_to_cache_dict,
 )
-from vnpy_ashare.storage.repositories.cache_stores import _radar_predict_repo
+from vnpy_ashare.storage.repositories.cache_stores import radar_predict_repo
 
 
 def get_predict_cache(variant: str) -> PredictCacheEntry | None:
     text = str(variant or "").strip()
     if not text:
         return None
-    row = _radar_predict_repo.get_row(text)
+    row = radar_predict_repo.get_row(text)
     if row is None:
         return None
     try:
@@ -61,7 +61,7 @@ def put_predict_cache(
 ) -> None:
     payload = [radar_row_to_cache_dict(row) for row in rows]
     ts = computed_at or format_china_datetime_minute()
-    _radar_predict_repo.upsert(
+    radar_predict_repo.upsert(
         variant=variant,
         rows_json=json.dumps(payload, ensure_ascii=False),
         scanned_total=stats.scanned_total,

@@ -11,7 +11,7 @@ from vnpy_ashare.data.pattern_bars import pattern_load_max_workers
 from vnpy_ashare.domain.radar.scenario import ScenarioMetrics
 from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot, signal_is_fresh, signal_missing_kline
-from vnpy_ashare.quotes.radar.radar_horizon_rules import _has_near_unlock, last_price_for_snapshot
+from vnpy_ashare.quotes.radar.radar_horizon_rules import has_near_unlock, last_price_for_snapshot
 from vnpy_ashare.quotes.radar.radar_models import RadarRow, merge_row_quotes
 
 # 日K加载起始偏移：25 根用于波动率计算，60 交易日 ≈ 90 天
@@ -165,7 +165,7 @@ def volatility_score(metrics: ScenarioMetrics) -> float:
 
 
 def _has_near_unlock_snapshot(snapshot: SignalSnapshot) -> bool:
-    return _has_near_unlock(snapshot.vt_symbol)
+    return has_near_unlock(snapshot.vt_symbol)
 
 
 def matches_scenario(metrics: ScenarioMetrics, *, variant: str) -> bool:

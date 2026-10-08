@@ -7,12 +7,12 @@ from datetime import datetime, timedelta
 
 from vnpy_ashare.jobs.core.result import JobResult
 from vnpy_ashare.storage.repositories.cache_stores import (
-    _position_cache_repo,
-    _radar_ai_hint_repo,
-    _radar_horizon_repo,
-    _radar_predict_repo,
-    _sector_outlook_repo,
-    _signal_cache_repo,
+    position_cache_repo,
+    radar_ai_hint_repo,
+    radar_horizon_repo,
+    radar_predict_repo,
+    sector_outlook_repo,
+    signal_cache_repo,
 )
 
 
@@ -33,12 +33,12 @@ def purge_stale_cache_job() -> JobResult:
     radar_snapshot_cutoff = (now - timedelta(days=_env_int("CACHE_RADAR_SNAPSHOT_RETENTION_DAYS", 30))).isoformat(timespec="seconds")
 
     deleted: dict[str, int] = {
-        "radar_ai_hint": _radar_ai_hint_repo.delete_expired_before(now_text),
-        "sector_flow_outlook_llm": _sector_outlook_repo.delete_expired_before(now_text),
-        "watchlist_signal": _signal_cache_repo.delete_updated_before(signal_cutoff),
-        "watchlist_position": _position_cache_repo.delete_updated_before(position_cutoff),
-        "radar_predict": _radar_predict_repo.delete_computed_before(radar_snapshot_cutoff),
-        "radar_horizon": _radar_horizon_repo.delete_computed_before(radar_snapshot_cutoff),
+        "radar_ai_hint": radar_ai_hint_repo.delete_expired_before(now_text),
+        "sector_flow_outlook_llm": sector_outlook_repo.delete_expired_before(now_text),
+        "watchlist_signal": signal_cache_repo.delete_updated_before(signal_cutoff),
+        "watchlist_position": position_cache_repo.delete_updated_before(position_cutoff),
+        "radar_predict": radar_predict_repo.delete_computed_before(radar_snapshot_cutoff),
+        "radar_horizon": radar_horizon_repo.delete_computed_before(radar_snapshot_cutoff),
     }
 
     total = sum(deleted.values())

@@ -11,7 +11,7 @@ from vnpy_ashare.quotes.radar.radar_models import (
     radar_row_from_cache_dict,
     radar_row_to_cache_dict,
 )
-from vnpy_ashare.storage.repositories.cache_stores import _radar_horizon_repo
+from vnpy_ashare.storage.repositories.cache_stores import radar_horizon_repo
 from vnpy_common.storage.compat import DbRow
 
 
@@ -51,7 +51,7 @@ def get_horizon_cache(variant: str, *, strategy_key: str = "") -> HorizonCacheEn
         return None
     key = str(strategy_key or "").strip()
     storage_key = horizon_cache_storage_key(text, key) if key else text
-    row = _radar_horizon_repo.get_row(storage_key)
+    row = radar_horizon_repo.get_row(storage_key)
     if row is None:
         return None
     cached_key = str(row["strategy_key"] or "").strip()
@@ -80,7 +80,7 @@ def put_horizon_cache(
         return
     stamp = computed_at or format_china_datetime_minute()
     payload = json.dumps([radar_row_to_cache_dict(row) for row in rows], ensure_ascii=False)
-    _radar_horizon_repo.upsert(
+    radar_horizon_repo.upsert(
         storage_key=storage_key,
         rows_json=payload,
         scanned_total=int(scanned_total),
