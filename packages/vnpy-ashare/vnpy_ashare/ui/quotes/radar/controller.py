@@ -67,6 +67,7 @@ from vnpy_ashare.ui.quotes.radar.payload_view import (
     radar_row_hint_from_payload,
 )
 from vnpy_ashare.ui.quotes.radar.resonance_weight_dialog import RadarResonanceWeightDialog
+from vnpy_ashare.ui.quotes.radar.stagger_queue import DebouncedCall, StaggerQueue
 from vnpy_ashare.ui.quotes.radar.variant_wiring import build_default_card_variants, card_load_variants
 from vnpy_ashare.ui.quotes.radar.watchlist_batch import add_vt_symbols_to_watchlist, format_watchlist_batch_notify
 from vnpy_ashare.ui.quotes.radar.worker import RadarCardLoadWorker, RadarGroupLoadWorker
@@ -111,22 +112,26 @@ class RadarController(QtCore.QObject):
         self._cached_resonance: dict[str, int] = {}
         self._auto_refresh_ticks: dict[str, int] = {}
         self._auto_refresh_timers: dict[str, QtCore.QTimer] = {}
-        self._refresh_queue: list[tuple[str, dict[str, object]]] = []
-        self._pending_apply_queue: list[tuple[str, RadarCardData]] = []
-        self._pending_cache_apply_queue: list[str] = []
-        self._apply_stagger_timer = QtCore.QTimer(self)
-        self._apply_stagger_timer.setSingleShot(True)
-        self._apply_stagger_timer.timeout.connect(self._dequeue_apply)
-        self._cache_apply_timer = QtCore.QTimer(self)
-        self._cache_apply_timer.setSingleShot(True)
-        self._cache_apply_timer.timeout.connect(self._dequeue_cached_apply)
-        self._refresh_stagger_timer = QtCore.QTimer(self)
-        self._refresh_stagger_timer.setSingleShot(True)
-        self._refresh_stagger_timer.timeout.connect(self._dequeue_refresh)
-        self._resonance_sync_timer = QtCore.QTimer(self)
-        self._resonance_sync_timer.setSingleShot(True)
-        self._resonance_sync_timer.setInterval(_RADAR_RESONANCE_SYNC_DEBOUNCE_MS)
-        self._resonance_sync_timer.timeout.connect(self._flush_resonance_sync)
+        self._apply_queue: StaggerQueue[tuple[str, RadarCardData]] = StaggerQueue(
+            self,
+            interval_ms=_RADAR_UI_APPLY_STAGGER_MS,
+            on_item=lambda item: self._on_card_loaded(item[0], item[1]),
+        )
+        self._cache_apply_queue: StaggerQueue[str] = StaggerQueue(
+            self,
+            interval_ms=_RADAR_CACHE_APPLY_STAGGER_MS,
+            on_item=self._apply_cached_card,
+        )
+        self._refresh_queue: StaggerQueue[tuple[str, dict[str, object]]] = StaggerQueue(
+            self,
+            interval_ms=_RADAR_CARD_REFRESH_STAGGER_MS,
+            on_item=self._apply_refresh_item,
+        )
+        self._resonance_sync = DebouncedCall(
+            self,
+            interval_ms=_RADAR_RESONANCE_SYNC_DEBOUNCE_MS,
+            callback=self._flush_resonance_sync,
+        )
         self._session_timer = QtCore.QTimer(self)
         self._session_timer.setInterval(30_000)
         self._session_timer.timeout.connect(self._on_session_tick)
@@ -269,12 +274,9 @@ class RadarController(QtCore.QObject):
         self._prefetch_siblings.clear()
         self._prefetch_mode = None
         self._refresh_queue.clear()
-        self._pending_apply_queue.clear()
-        self._pending_cache_apply_queue.clear()
-        self._apply_stagger_timer.stop()
-        self._cache_apply_timer.stop()
-        self._refresh_stagger_timer.stop()
-        self._resonance_sync_timer.stop()
+        self._apply_queue.clear()
+        self._cache_apply_queue.clear()
+        self._resonance_sync.stop()
 
     def _setup_auto_refresh_timers(self) -> None:
         for card_id in auto_refresh_card_ids():
@@ -409,27 +411,17 @@ class RadarController(QtCore.QObject):
             return
         if len(load_items) >= RADAR_GROUP_LOAD_MIN_CARDS:
             self._refresh_queue.clear()
-            self._refresh_stagger_timer.stop()
             self._start_group_load(load_items)
             return
-        kick = not self._refresh_queue and not self._refresh_stagger_timer.isActive()
-        for card_id, kwargs in load_items:
-            self._refresh_queue = [(cid, kw) for cid, kw in self._refresh_queue if cid != card_id]
-            self._refresh_queue.append((card_id, kwargs))
-        if kick:
-            self._dequeue_refresh()
+        self._refresh_queue.upsert_by_key(load_items, key=lambda item: item[0])
 
-    def _dequeue_refresh(self) -> None:
-        if not self._refresh_queue:
-            return
-        card_id, kwargs = self._refresh_queue.pop(0)
+    def _apply_refresh_item(self, item: tuple[str, dict[str, object]]) -> None:
+        card_id, kwargs = item
         self.refresh_card(
             card_id,
             force_recompute=bool(kwargs.get("force_recompute", False)),
             quote_only=bool(kwargs.get("quote_only", False)),
         )
-        if self._refresh_queue:
-            self._refresh_stagger_timer.start(_RADAR_CARD_REFRESH_STAGGER_MS)
 
     def _on_outlook_strategy_changed(self, class_name: str) -> None:
         if not class_name:
@@ -680,21 +672,18 @@ class RadarController(QtCore.QObject):
         queue = [card_id for card_id in card_ids if self._resolve_cached_card(card_id) is not None]
         if not queue:
             return
-        self._pending_cache_apply_queue = [cid for cid in self._pending_cache_apply_queue if cid not in queue]
-        self._pending_cache_apply_queue.extend(queue)
-        if not self._cache_apply_timer.isActive():
-            self._dequeue_cached_apply()
+        self._cache_apply_queue.extend_unique(queue, key=lambda card_id: card_id)
 
-    def _dequeue_cached_apply(self) -> None:
-        if not self._pending_cache_apply_queue:
-            return
-        card_id = self._pending_cache_apply_queue.pop(0)
+    def _apply_cached_card(self, card_id: str) -> None:
         cached = self._resolve_cached_card(card_id)
         if cached is not None:
             self._last_payload.setdefault(card_id, cached)
             self._board.apply_card(card_id, cached, resonance_counts=self._cached_resonance)
-        if self._pending_cache_apply_queue:
-            self._cache_apply_timer.start(_RADAR_CACHE_APPLY_STAGGER_MS)
+
+    # 测试兼容：缓存 apply 剩余队列
+    @property
+    def _pending_cache_apply_queue(self) -> list[str]:
+        return self._cache_apply_queue.pending
 
     def _set_cards_loading(self, card_ids: frozenset[str] | set[str], *, loading: bool) -> None:
         for card_id in card_ids:
@@ -758,11 +747,11 @@ class RadarController(QtCore.QObject):
         if not self._workers.is_current_group(worker):
             return
         visible_ids = set(self._board.visible_card_ids_for_current_group())
-        self._pending_apply_queue = sort_loaded_cards_for_apply(loaded, visible_ids)
+        apply_items = sort_loaded_cards_for_apply(loaded, visible_ids)
         for card_id, message in errors.items():
             self._on_card_failed(card_id, message)
-        if self._pending_apply_queue:
-            self._dequeue_apply()
+        if apply_items:
+            self._apply_queue.replace(apply_items)
         else:
             self._update_status()
         if self._deferred_group_items:
@@ -842,14 +831,6 @@ class RadarController(QtCore.QObject):
         page_notify(self._page, f"雷达批量加载失败：{message}", level="warning")
         self._update_status()
 
-    def _dequeue_apply(self) -> None:
-        if not self._pending_apply_queue:
-            return
-        card_id, data = self._pending_apply_queue.pop(0)
-        self._on_card_loaded(card_id, data)
-        if self._pending_apply_queue:
-            self._apply_stagger_timer.start(_RADAR_UI_APPLY_STAGGER_MS)
-
     def _on_card_loaded(
         self,
         card_id: str,
@@ -870,7 +851,7 @@ class RadarController(QtCore.QObject):
         self._schedule_resonance_sync()
 
     def _schedule_resonance_sync(self) -> None:
-        self._resonance_sync_timer.start(_RADAR_RESONANCE_SYNC_DEBOUNCE_MS)
+        self._resonance_sync.schedule()
 
     def _flush_resonance_sync(self) -> None:
         if not self._last_payload:
