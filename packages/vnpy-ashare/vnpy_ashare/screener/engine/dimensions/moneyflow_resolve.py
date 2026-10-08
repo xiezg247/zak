@@ -39,10 +39,6 @@ def moneyflow_score_adjustment(row: dict[str, Any], base_score: float) -> float:
     return score
 
 
-# 兼容旧测例私有名
-_moneyflow_score_adjustment = moneyflow_score_adjustment
-
-
 def count_positive_moneyflow_streak(vt_symbol: str, *, max_days: int = 5) -> int:
     """连续净流入天数（仅读本地 Tushare 缓存，无缓存则跳过）。"""
     from vnpy_ashare.screener.engine.dimensions.moneyflow_streak import build_positive_moneyflow_streak_map

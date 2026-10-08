@@ -5,29 +5,13 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike, coerce_quote_row, quote_row_copy
-from vnpy_ashare.quotes.market.moneyflow_kind import enrich_moneyflow_row_with_kind
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike, quote_row_copy
+from vnpy_ashare.screener.engine.row_normalize import normalize_quote_row
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters
 
 # Tushare daily_basic.total_mv 单位为万元；50 亿 = 500000 万元
 MIN_TOTAL_MV_50YI = 500_000.0
 STRONG_UP_MIN_CHANGE_PCT = 5.0
-
-
-def _quote_liquidity_key(row: QuoteRowLike) -> float:
-    """成交量优先；缺失时用成交额或总市值排序（盘后 daily_basic 常无 amount）。"""
-    volume = float(row.get("volume") or 0)
-    if volume > 0:
-        return volume
-    amount = float(row.get("amount") or 0)
-    if amount > 0:
-        return amount
-    total_mv = float(row.get("total_mv") or row.get("circ_mv") or 0)
-    if total_mv > 0:
-        return total_mv
-    return float(row.get("turnover_rate") or 0)
 
 
 def apply_quote_preset(
@@ -54,7 +38,7 @@ def apply_quote_preset(
         max_change_pct=max_change_pct,
         min_turnover=min_turnover,
     )
-    return [_quote_row(q) for q in sorted_quotes]
+    return [normalize_quote_row(q) for q in sorted_quotes]
 
 
 def apply_low_pe(rows: QuoteRowsLike, *, top_n: int, max_pe_ttm: float = 15.0) -> list[QuoteRow]:
@@ -92,36 +76,6 @@ def apply_moneyflow_in(rows: QuoteRowsLike, *, top_n: int) -> list[QuoteRow]:
     return apply_moneyflow_in_polars(list(rows), top_n=top_n)
 
 
-_DISPLAY_FUNDAMENTAL_KEYS = ("close", "pe_ttm", "pb", "total_mv", "circ_mv", "trade_date")
-
-
-def _quote_row(row: QuoteRowLike) -> QuoteRow:
-    last_price = row.get("last_price") or row.get("close") or 0
-    close = row.get("close") or last_price or 0
-    updates: dict[str, Any] = {
-        "symbol": row.get("symbol", ""),
-        "name": row.get("name", ""),
-        "vt_symbol": row.get("vt_symbol", ""),
-        "last_price": last_price or close,
-        "close": close,
-        "prev_close": float(row.get("prev_close") or 0),
-        "open_price": float(row.get("open_price") or 0),
-        "high_price": float(row.get("high_price") or 0),
-        "low_price": float(row.get("low_price") or 0),
-        "change_pct": float(row.get("change_pct") or 0),
-        "turnover_rate": float(row.get("turnover_rate") or 0),
-        "volume": float(row.get("volume") or 0),
-        "amount": float(row.get("amount") or 0),
-        "volume_ratio": float(row.get("volume_ratio") or 0),
-        "source": row.get("source", "quote"),
-    }
-    for key in _DISPLAY_FUNDAMENTAL_KEYS:
-        value = row.get(key)
-        if value not in (None, ""):
-            updates[key] = value
-    return quote_row_copy(row, **updates)
-
-
 def _limit_up_row(row: QuoteRowLike) -> QuoteRow:
     vt_symbol = str(row.get("vt_symbol") or "")
     symbol = vt_symbol.split(".")[0] if vt_symbol else ""
@@ -152,26 +106,3 @@ def _fundamental_row(row: QuoteRowLike) -> QuoteRow:
         trade_date=str(row.get("trade_date") or ""),
         source=str(row.get("source") or "tushare"),
     )
-
-
-def _moneyflow_row(row: QuoteRowLike) -> QuoteRow:
-    payload: dict[str, Any] = {
-        "symbol": row.get("symbol", ""),
-        "name": row.get("name", ""),
-        "vt_symbol": row.get("vt_symbol", ""),
-        "net_mf_amount": row.get("net_mf_amount", 0),
-        "buy_elg_amount": row.get("buy_elg_amount", 0),
-        "sell_elg_amount": row.get("sell_elg_amount", 0),
-        "buy_lg_amount": row.get("buy_lg_amount", 0),
-        "sell_lg_amount": row.get("sell_lg_amount", 0),
-        "buy_md_amount": row.get("buy_md_amount", 0),
-        "sell_md_amount": row.get("sell_md_amount", 0),
-        "change_pct": float(row.get("change_pct") or row.get("pct_chg") or 0),
-        "turnover_rate": row.get("turnover_rate", 0),
-        "trade_date": row.get("trade_date", ""),
-        "moneyflow_source": row.get("moneyflow_source", "tushare"),
-        "source": "tushare",
-    }
-    if row.get("moneyflow_proxy"):
-        payload["moneyflow_proxy"] = row["moneyflow_proxy"]
-    return coerce_quote_row(enrich_moneyflow_row_with_kind(payload))

@@ -31,7 +31,7 @@ from vnpy_ashare.screener.engine.snapshot_frame import (
     snapshot_rows_to_dataframe,
 )
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters
-from vnpy_ashare.screener.preset.rules import _quote_row
+from vnpy_ashare.screener.engine.row_normalize import normalize_quote_row
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
 
 
@@ -91,7 +91,7 @@ def build_momentum_hit_rows(
     for item in filtered_rows[:pool_size]:
         hit_rows.append(
             quote_row_copy(
-                _quote_row(item),
+                normalize_quote_row(item),
                 benchmark_change_pct=market_benchmark,
                 relative_strength=float(item.get("relative_strength") or 0),
                 strength_basis=str(item.get("strength_basis") or "大盘"),

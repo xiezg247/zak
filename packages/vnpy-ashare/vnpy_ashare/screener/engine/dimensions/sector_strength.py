@@ -12,7 +12,7 @@ from vnpy_ashare.domain.screener.dimension_hit import DimensionHit
 from vnpy_ashare.screener.engine.dimensions.hits import quote_hits, run_with_quote_snapshot
 from vnpy_ashare.screener.engine.sector_stats import compute_sector_distribution_polars
 from vnpy_ashare.screener.engine.snapshot_frame import attach_industry_columns, change_pct_expr, frame_to_row_dicts, snapshot_rows_to_dataframe
-from vnpy_ashare.screener.preset.rules import _quote_row
+from vnpy_ashare.screener.engine.row_normalize import normalize_quote_row
 
 
 def _sector_reason(row: dict, rank: int) -> str:
@@ -69,7 +69,7 @@ def run_sector_strength_polars(
 
     hit_rows: list[QuoteRow] = []
     for item in frame_to_row_dicts(candidates):
-        base = _quote_row(item)
+        base = normalize_quote_row(item)
         base["industry"] = str(item.get("industry") or "")
         if item.get("industry_advance_pct") is not None:
             base["industry_advance_pct"] = float(item.get("industry_advance_pct") or 0)

@@ -15,8 +15,8 @@ from vnpy_ashare.screener.engine.dimensions.history_signals import (
     positive_day_count,
     rolling_high_before_last,
 )
-from vnpy_ashare.screener.engine.dimensions.moneyflow_resolve import moneyflow_score_adjustment as _moneyflow_score_adjustment
-from vnpy_ashare.screener.engine.dimensions.volume_ratio import volume_ratio_tier_factor as _volume_ratio_tier_factor
+from vnpy_ashare.screener.engine.dimensions.moneyflow_resolve import moneyflow_score_adjustment
+from vnpy_ashare.screener.engine.dimensions.volume_ratio import volume_ratio_tier_factor
 from vnpy_ashare.screener.hard_filter_prefs import PRESET_AGGRESSIVE, PRESET_CONSERVATIVE, hard_filter_preset
 from vnpy_ashare.screener.hard_filters import is_at_limit_board, is_new_listing
 from vnpy_ashare.screener.sentiment.snapshot_prefilter import apply_sentiment_snapshot_prefilter
@@ -55,16 +55,16 @@ def test_positive_day_count() -> None:
 
 
 def test_volume_ratio_tier_factor() -> None:
-    assert _volume_ratio_tier_factor(1.5) == 1.0
-    assert _volume_ratio_tier_factor(2.5) == 1.06
-    assert _volume_ratio_tier_factor(6.0) == 1.12
+    assert volume_ratio_tier_factor(1.5) == 1.0
+    assert volume_ratio_tier_factor(2.5) == 1.06
+    assert volume_ratio_tier_factor(6.0) == 1.12
 
 
 def test_moneyflow_streak_tiers() -> None:
     base = 80.0
     row3 = {"moneyflow_streak_days": 3, "net_mf_amount": 1000, "change_pct": 2.0}
     row5 = {"moneyflow_streak_days": 5, "net_mf_amount": 1000, "change_pct": 2.0}
-    assert _moneyflow_score_adjustment(row5, base) > _moneyflow_score_adjustment(row3, base)
+    assert moneyflow_score_adjustment(row5, base) > moneyflow_score_adjustment(row3, base)
 
 
 def test_is_new_listing_and_limit_board() -> None:

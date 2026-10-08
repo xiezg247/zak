@@ -12,7 +12,7 @@ from vnpy_ashare.domain.screener.dimension_hit import DimensionHit
 from vnpy_ashare.screener.engine.dimensions.hits import quote_hits, run_with_quote_snapshot
 from vnpy_ashare.screener.engine.snapshot_frame import frame_to_row_dicts, snapshot_rows_to_dataframe
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters
-from vnpy_ashare.screener.preset.rules import _quote_row
+from vnpy_ashare.screener.engine.row_normalize import normalize_quote_row
 
 
 def _volume_surge_reason(row: dict[str, Any], rank: int) -> str:
@@ -67,7 +67,7 @@ def run_volume_surge_polars(
     filtered = apply_recipe_filters(frame_to_row_dicts(df))
     hit_rows: list[QuoteRow] = []
     for item in filtered[:pool_size]:
-        base = _quote_row(item)
+        base = normalize_quote_row(item)
         base["volume_ratio"] = float(item.get("volume_ratio") or 0)
         base["relative_volume"] = float(item.get("relative_volume") or 0)
         hit_rows.append(base)

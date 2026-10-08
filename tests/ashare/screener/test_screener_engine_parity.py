@@ -168,10 +168,6 @@ def test_quote_preset_volume_ratio(disable_pg_side_effects, monkeypatch):
         "vnpy_ashare.screener.engine.presets.get_volume_ratio_map",
         lambda: {"600030.SSE": 2.0, "600031.SSE": 4.0},
     )
-    monkeypatch.setattr(
-        "vnpy_ashare.screener.preset.rules.get_volume_ratio_map",
-        lambda: {"600030.SSE": 2.0, "600031.SSE": 4.0},
-    )
     assert _symbols(apply_quote_preset("量比排行", quotes, top_n=2)) == ["600031", "600030"]
 
 

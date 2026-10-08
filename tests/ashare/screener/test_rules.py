@@ -129,8 +129,8 @@ def test_apply_large_cap():
 
 def test_apply_moneyflow_in_sets_flow_kind(monkeypatch):
     monkeypatch.setattr(
-        "vnpy_ashare.screener.preset.rules.apply_recipe_filters",
-        lambda rows: rows,
+        "vnpy_ashare.screener.engine.dimensions.moneyflow_in.apply_recipe_filters",
+        lambda rows: list(rows),
     )
     rows = apply_moneyflow_in(
         [
@@ -149,7 +149,11 @@ def test_apply_moneyflow_in_sets_flow_kind(monkeypatch):
     assert rows[0]["flow_kind"] == "main"
 
 
-def test_apply_moneyflow_in():
+def test_apply_moneyflow_in(monkeypatch):
+    monkeypatch.setattr(
+        "vnpy_ashare.screener.engine.dimensions.moneyflow_in.apply_recipe_filters",
+        lambda rows: list(rows),
+    )
     rows = apply_moneyflow_in(
         [
             {"symbol": "A", "name": "A", "vt_symbol": "A.SSE", "net_mf_amount": 100},
@@ -191,7 +195,11 @@ def test_apply_quote_volume_ratio(monkeypatch):
     assert [row["symbol"] for row in rows] == ["B", "C"]
 
 
-def test_apply_limit_up_sorts_by_limit_times():
+def test_apply_limit_up_sorts_by_limit_times(monkeypatch):
+    monkeypatch.setattr(
+        "vnpy_ashare.screener.preset.rules.apply_recipe_filters",
+        lambda rows: list(rows),
+    )
     rows = apply_limit_up(
         [
             {"vt_symbol": "000001.SZSE", "name": "A", "limit_times": 1},

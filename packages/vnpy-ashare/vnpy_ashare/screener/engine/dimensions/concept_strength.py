@@ -11,7 +11,7 @@ from vnpy_ashare.integrations.tushare.concept_board import build_hot_concept_vt_
 from vnpy_ashare.domain.screener.dimension_hit import DimensionHit
 from vnpy_ashare.screener.engine.dimensions.hits import quote_hits, run_with_quote_snapshot
 from vnpy_ashare.screener.engine.snapshot_frame import change_pct_expr, frame_to_row_dicts, snapshot_rows_to_dataframe
-from vnpy_ashare.screener.preset.rules import _quote_row
+from vnpy_ashare.screener.engine.row_normalize import normalize_quote_row
 
 
 def _concept_reason(row: dict[str, Any], rank: int) -> str:
@@ -53,7 +53,7 @@ def run_concept_strength_polars(
 
     hit_rows: list[QuoteRow] = []
     for item in frame_to_row_dicts(df):
-        base = _quote_row(item)
+        base = normalize_quote_row(item)
         base["concept_name"] = str(item.get("concept_name") or "")
         base["hot_concepts"] = item.get("hot_concepts") or hot_names[:5]
         hit_rows.append(base)

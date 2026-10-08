@@ -10,7 +10,7 @@ from vnpy_ashare.domain.market.quote_row import QuoteRow
 from vnpy_ashare.screener.engine.dimensions.moneyflow_in import apply_moneyflow_in_polars
 from vnpy_ashare.screener.engine.dimensions.moneyflow_streak import build_positive_moneyflow_streak_map
 from vnpy_ashare.screener.engine.snapshot_frame import frame_to_row_dicts
-from vnpy_ashare.screener.preset.rules import _moneyflow_row
+from vnpy_ashare.screener.engine.row_normalize import normalize_moneyflow_row
 
 
 def rank_moneyflow_by_tier_polars(rows: list[QuoteRow], *, pool_size: int) -> list[QuoteRow]:
@@ -24,7 +24,7 @@ def rank_moneyflow_by_tier_polars(rows: list[QuoteRow], *, pool_size: int) -> li
     net = pl.col("net_mf_amount").cast(pl.Float64, strict=False).fill_null(0.0)
     tier = pl.when(elg != 0).then(elg).otherwise(net)
     ranked = df.with_columns(tier.alias("_tier")).sort("_tier", descending=True, nulls_last=True).head(max(1, pool_size))
-    return [_moneyflow_row(item) for item in frame_to_row_dicts(ranked)]
+    return [normalize_moneyflow_row(item) for item in frame_to_row_dicts(ranked)]
 
 
 def rank_post_close_moneyflow_rows_polars(raw_rows: list[Any], *, pool_size: int) -> list[QuoteRow]:

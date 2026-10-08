@@ -33,7 +33,7 @@ from vnpy_ashare.screener.engine.dimensions.volume_dedup import build_volume_dis
 from vnpy_ashare.screener.engine.dimensions.volume_ratio import run_volume_ratio
 from vnpy_ashare.screener.engine.dimensions.volume_surge import run_volume_surge
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters
-from vnpy_ashare.screener.preset.rules import _quote_liquidity_key
+from vnpy_ashare.screener.engine.row_normalize import quote_liquidity_key
 
 
 def discovery_hits_card(
@@ -123,7 +123,7 @@ def volume_liquidity_proxy(pool_size: int, total: int):
     except MarketQuotesLoadError:
         return [], total
 
-    ranked = sorted(apply_recipe_filters(snapshot.rows), key=_quote_liquidity_key, reverse=True)
+    ranked = sorted(apply_recipe_filters(snapshot.rows), key=quote_liquidity_key, reverse=True)
     hits: list[DimensionHit] = []
     for index, row in enumerate(ranked[:pool_size], start=1):
         vt_symbol = str(row.get("vt_symbol") or "")
