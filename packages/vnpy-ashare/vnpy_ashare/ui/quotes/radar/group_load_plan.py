@@ -42,6 +42,34 @@ def sort_loaded_cards_for_apply(
     )
 
 
+def group_fully_in_payload(
+    card_ids: Sequence[str],
+    payload: Mapping[str, RadarCardData],
+) -> bool:
+    """分组内卡片是否均已在内存 payload（可跳过后台重算直接展示）。"""
+    return bool(card_ids) and all(card_id in payload for card_id in card_ids)
+
+
+def sibling_group_keys(
+    groups: Sequence[tuple[str, str]],
+    current: str,
+) -> list[str]:
+    """同 mode 下除当前组外的 sibling group_key。"""
+    return [group_key for group_key, _label in groups if group_key != current]
+
+
+def merge_prefetch_into_payload(
+    payload: dict[str, RadarCardData],
+    loaded: Mapping[str, RadarCardData],
+    errors: Mapping[str, str],
+) -> None:
+    """预取成功写入 payload；失败卡从 payload 剔除。"""
+    for card_id, data in loaded.items():
+        payload[card_id] = data
+    for card_id in errors:
+        payload.pop(card_id, None)
+
+
 def plan_group_load(
     items: Sequence[RadarLoadItem],
     *,

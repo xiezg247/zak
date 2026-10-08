@@ -14,7 +14,7 @@ from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.quotes.radar.loaders import RadarCardData, compute_radar_resonance
 from vnpy_ashare.quotes.radar.loaders.load import RADAR_SNAPSHOT_CARD_IDS
 from vnpy_ashare.quotes.radar.outlook_strategy_prefs import OUTLOOK_SIGNAL_CARD_IDS, save_outlook_strategy_class
-from vnpy_ashare.quotes.radar.predict.predict_prefs import load_predict_model_mode, save_predict_model_mode
+from vnpy_ashare.quotes.radar.predict.predict_prefs import load_predict_model_mode
 from vnpy_ashare.quotes.radar.radar_board_store import set_radar_board_snapshot
 from vnpy_ashare.quotes.radar.radar_card_snapshot_cache import peek_radar_card_snapshot, radar_card_variant_key
 from vnpy_ashare.quotes.radar.radar_full_refresh_prefs import load_radar_full_refresh_every, save_radar_full_refresh_every
@@ -47,9 +47,17 @@ from vnpy_ashare.ui.features.stock_analysis.open import show_stock_analysis_from
 from vnpy_ashare.ui.quotes.page.config import save_radar_card_refresh_ms
 from vnpy_ashare.ui.quotes.radar.group_load_plan import (
     RADAR_GROUP_LOAD_MIN_CARDS,
+    group_fully_in_payload,
     is_usable_cached_card,
+    merge_prefetch_into_payload,
     plan_group_load,
+    sibling_group_keys,
     sort_loaded_cards_for_apply,
+)
+from vnpy_ashare.ui.quotes.radar.navigation import (
+    find_shell_host,
+    require_host_method,
+    sector_flow_call_kwargs,
 )
 from vnpy_ashare.ui.quotes.radar.ai_dispatch import (
     RadarAiReject,
@@ -74,10 +82,16 @@ from vnpy_ashare.ui.quotes.radar.refresh_plan import (
 from vnpy_ashare.ui.quotes.radar.resonance_weight_dialog import RadarResonanceWeightDialog
 from vnpy_ashare.ui.quotes.radar.signal_wiring import BOARD_WIRING, PANEL_WIRING, bind_signals
 from vnpy_ashare.ui.quotes.radar.stagger_queue import DebouncedCall, StaggerQueue
-from vnpy_ashare.ui.quotes.radar.variant_wiring import build_default_card_variants, card_load_variants
+from vnpy_ashare.ui.quotes.radar.variant_wiring import (
+    build_default_card_variants,
+    card_load_variants,
+    mirrors_sector_variant,
+    persist_variant_preference,
+)
 from vnpy_ashare.ui.quotes.radar.watchlist_batch import (
     add_vt_symbols_to_watchlist,
     format_short_term_focus_notify,
+    format_single_watchlist_add,
     format_watchlist_batch_notify,
     format_watchlist_pool_notify,
 )
@@ -151,8 +165,9 @@ class RadarController(QtCore.QObject):
 
     def _on_open_screener_resonance(self) -> None:
         host = self._find_main_window()
-        if host is None or not hasattr(host, "open_screener_radar_resonance"):
-            page_notify(self._page, "无法打开选股页", level="warning")
+        reject = require_host_method(host, "open_screener_radar_resonance", fail_message="无法打开选股页")
+        if reject is not None:
+            page_notify(self._page, reject.message, level=reject.level)
             return
         host.open_screener_radar_resonance()
 
@@ -169,8 +184,9 @@ class RadarController(QtCore.QObject):
         if focus:
             self._board.focus_card("leader_pick")
         host = self._find_main_window()
-        if host is None or not hasattr(host, "open_screener_leader_screen"):
-            page_notify(self._page, "无法打开选股页", level="warning")
+        reject = require_host_method(host, "open_screener_leader_screen", fail_message="无法打开选股页")
+        if reject is not None:
+            page_notify(self._page, reject.message, level=reject.level)
             return
         variant = self._card_variants.get("leader_pick", DEFAULT_LEADER_PICK_VARIANT)
         host.open_screener_leader_screen(variant=variant)
@@ -191,7 +207,7 @@ class RadarController(QtCore.QObject):
         """外部入口（板块资金页等）定位卡片并可选刷新。"""
         if variant and card_id in self._card_variants:
             self._card_variants[card_id] = variant
-            if card_id == "sector_theme":
+            if mirrors_sector_variant(card_id):
                 self._sector_variant = variant
             card_widget = self._board.card(card_id)
             if card_widget is not None:
@@ -430,9 +446,7 @@ class RadarController(QtCore.QObject):
         mode = self._board.current_mode()
         group_key = self._board.current_group(mode)
         card_ids = [spec.id for spec in list_radar_cards_for_group(mode, group_key)]
-        if not card_ids:
-            return False
-        if not all(card_id in self._last_payload for card_id in card_ids):
+        if not group_fully_in_payload(card_ids, self._last_payload):
             return False
         self._apply_group_from_cache(card_ids)
         return True
@@ -714,7 +728,7 @@ class RadarController(QtCore.QObject):
             return
         mode = self._board.current_mode()
         current = self._board.current_group(mode)
-        siblings: list[str] = [group_key for group_key, _label in list_radar_groups_for_mode(mode) if group_key != current]
+        siblings = sibling_group_keys(list_radar_groups_for_mode(mode), current)
         if not siblings:
             return
         self._pipeline.arm_prefetch(mode, siblings)
@@ -765,10 +779,7 @@ class RadarController(QtCore.QObject):
     ) -> None:
         if not self._workers.is_current_prefetch(worker):
             return
-        for card_id, data in loaded.items():
-            self._last_payload[card_id] = data
-        for card_id in errors:
-            self._last_payload.pop(card_id, None)
+        merge_prefetch_into_payload(self._last_payload, loaded, errors)
         QtCore.QTimer.singleShot(_RADAR_PREFETCH_NEXT_GROUP_MS, self._drain_prefetch_siblings)
 
     def _on_group_failed(self, message: str) -> None:
@@ -855,14 +866,9 @@ class RadarController(QtCore.QObject):
         if not variant_key or card_id not in self._card_variants:
             return
         self._card_variants[card_id] = variant_key
-        if card_id == "sector_theme":
+        if mirrors_sector_variant(card_id):
             self._sector_variant = variant_key
-        elif card_id == "sector_flow_hot":
-            pass
-        elif card_id == "outlook_scenario":
-            pass
-        elif card_id == "outlook_predict":
-            save_predict_model_mode(variant_key)  # type: ignore[arg-type]
+        persist_variant_preference(card_id, variant_key)
         self.refresh_card(card_id)
 
     def _on_row_activated(self, vt_symbol: str) -> None:
@@ -872,40 +878,34 @@ class RadarController(QtCore.QObject):
 
     def _on_view_run(self, run_id: str, page_key: str) -> None:
         host = self._find_main_window()
-        if host is None or not hasattr(host, "open_screener_run"):
-            page_notify(self._page, "无法打开选股结果页", level="warning")
+        reject = require_host_method(host, "open_screener_run", fail_message="无法打开选股结果页")
+        if reject is not None:
+            page_notify(self._page, reject.message, level=reject.level)
             return
         host.open_screener_run(run_id, page_key=page_key)
 
     def _on_sector_flow(self, card_id: str) -> None:
         host = self._find_main_window()
-        if host is None or not hasattr(host, "open_sector_flow"):
-            page_notify(self._page, "无法打开板块资金页", level="warning")
+        reject = require_host_method(host, "open_sector_flow", fail_message="无法打开板块资金页")
+        if reject is not None:
+            page_notify(self._page, reject.message, level=reject.level)
             return
         card = self._board.card(card_id)
         sector_ids = card.sector_names() if card is not None else []
-        host.open_sector_flow(sector_ids if sector_ids else None)
+        host.open_sector_flow(**sector_flow_call_kwargs(sector_ids))
 
     def _on_sector_rotation(self, card_id: str) -> None:
         host = self._find_main_window()
-        if host is None or not hasattr(host, "open_sector_flow"):
-            page_notify(self._page, "无法打开板块资金页", level="warning")
+        reject = require_host_method(host, "open_sector_flow", fail_message="无法打开板块资金页")
+        if reject is not None:
+            page_notify(self._page, reject.message, level=reject.level)
             return
         card = self._board.card(card_id)
         sector_ids = card.sector_names() if card is not None else []
-        host.open_sector_flow(
-            sector_ids if sector_ids else None,
-            tab="rotation",
-            sector_kind="industry",
-        )
+        host.open_sector_flow(**sector_flow_call_kwargs(sector_ids, rotation=True))
 
     def _find_main_window(self) -> QtWidgets.QWidget | None:
-        widget: QtWidgets.QWidget | None = self._page
-        while widget is not None:
-            if hasattr(widget, "open_screener_run") or hasattr(widget, "open_sector_flow") or hasattr(widget, "open_screener_radar_resonance"):
-                return widget
-            widget = widget.parentWidget()
-        return None
+        return find_shell_host(self._page)
 
     def _on_add_watchlist(self, vt_symbol: str) -> None:
         service = get_watchlist_service(self._page._get_main_engine())
@@ -916,14 +916,15 @@ class RadarController(QtCore.QObject):
         if item is None:
             page_notify(self._page, f"无法解析合约：{vt_symbol}", level="warning")
             return
-        if not service.add(item.symbol, item.exchange, item.name):
-            reason = service.add_failure_reason(item.symbol, item.exchange)
-            if reason == "full":
-                page_notify(self._page, "自选池已满", level="warning")
-            else:
-                page_notify(self._page, f"已在自选池中：{vt_symbol}")
-            return
-        page_notify(self._page, f"已加入自选：{item.name or vt_symbol}")
+        ok = service.add(item.symbol, item.exchange, item.name)
+        reason = None if ok else service.add_failure_reason(item.symbol, item.exchange)
+        notify = format_single_watchlist_add(
+            ok=ok,
+            display_name=item.name or "",
+            vt_symbol=vt_symbol,
+            reason=reason,
+        )
+        page_notify(self._page, notify.message, level=notify.level)
 
     def _on_batch_add_watchlist(self, card_id: str) -> None:
         service = get_watchlist_service(self._page._get_main_engine())

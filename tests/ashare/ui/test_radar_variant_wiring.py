@@ -9,7 +9,12 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
     DEFAULT_SECTOR_FLOW_HOT_VARIANT,
     DEFAULT_SECTOR_VARIANT,
 )
-from vnpy_ashare.ui.quotes.radar.variant_wiring import build_default_card_variants, card_load_variants
+from vnpy_ashare.ui.quotes.radar.variant_wiring import (
+    build_default_card_variants,
+    card_load_variants,
+    mirrors_sector_variant,
+    persist_variant_preference,
+)
 
 
 def test_build_default_card_variants_keys(monkeypatch) -> None:
@@ -39,3 +44,21 @@ def test_card_load_variants_maps_and_defaults() -> None:
         "limit_ladder_variant": DEFAULT_LIMIT_LADDER_VARIANT,
         "scenario_variant": DEFAULT_SCENARIO_VARIANT,
     }
+
+
+def test_mirrors_sector_variant() -> None:
+    assert mirrors_sector_variant("sector_theme")
+    assert not mirrors_sector_variant("leader_pick")
+
+
+def test_persist_variant_preference(monkeypatch) -> None:
+    saved: list[str] = []
+    monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar.predict.predict_prefs.save_predict_model_mode",
+        lambda mode: saved.append(mode),
+    )
+    persist_variant_preference("leader_pick", "x")
+    assert saved == []
+    persist_variant_preference("outlook_predict", "baseline")
+    assert saved == ["baseline"]
+

@@ -40,3 +40,16 @@ def card_load_variants(card_variants: Mapping[str, str]) -> dict[str, str]:
         load_kw: str(card_variants.get(card_id) or default)
         for card_id, load_kw, default in _CARD_ID_TO_LOAD_KW
     }
+
+
+def mirrors_sector_variant(card_id: str) -> bool:
+    """变体变更是否同步到 controller._sector_variant。"""
+    return card_id == "sector_theme"
+
+
+def persist_variant_preference(card_id: str, variant_key: str) -> None:
+    """需要落盘的变体偏好（目前仅预测模型）。"""
+    if card_id == "outlook_predict":
+        from vnpy_ashare.quotes.radar.predict.predict_prefs import save_predict_model_mode
+
+        save_predict_model_mode(variant_key)  # type: ignore[arg-type]

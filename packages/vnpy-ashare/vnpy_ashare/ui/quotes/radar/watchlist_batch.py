@@ -71,6 +71,21 @@ def format_watchlist_batch_notify(
     return WatchlistNotify(message)
 
 
+def format_single_watchlist_add(
+    *,
+    ok: bool,
+    display_name: str,
+    vt_symbol: str,
+    reason: Literal["duplicate", "full"] | None = None,
+) -> WatchlistNotify:
+    """单标的加入自选结果文案。"""
+    if ok:
+        return WatchlistNotify(f"已加入自选：{display_name or vt_symbol}")
+    if reason == "full":
+        return WatchlistNotify("自选池已满", level="warning")
+    return WatchlistNotify(f"已在自选池中：{vt_symbol}")
+
+
 def format_watchlist_pool_notify(*, watchlist_added: int, skipped: int) -> WatchlistNotify:
     """龙一入自选等「仅写池」结果文案。"""
     if watchlist_added == 0:

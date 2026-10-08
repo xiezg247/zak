@@ -6,8 +6,11 @@ from unittest.mock import patch
 
 from vnpy_ashare.quotes.radar.loaders import RadarCardData
 from vnpy_ashare.ui.quotes.radar.group_load_plan import (
+    group_fully_in_payload,
     is_usable_cached_card,
+    merge_prefetch_into_payload,
     plan_group_load,
+    sibling_group_keys,
     sort_loaded_cards_for_apply,
 )
 
@@ -91,3 +94,27 @@ def test_plan_group_load_skip_viewport_keeps_items() -> None:
     assert plan.run_now == list(items)
     assert plan.deferred_viewport == []
     assert plan.deferred_tiers == []
+
+
+def test_group_fully_in_payload() -> None:
+    payload = {"a": _card("a", rows=True), "b": _card("b", empty="空")}
+    assert group_fully_in_payload(["a", "b"], payload)
+    assert not group_fully_in_payload(["a", "c"], payload)
+    assert not group_fully_in_payload([], payload)
+
+
+def test_sibling_group_keys() -> None:
+    groups = [("g1", "一组"), ("g2", "二组"), ("g3", "三组")]
+    assert sibling_group_keys(groups, "g2") == ["g1", "g3"]
+
+
+def test_merge_prefetch_into_payload() -> None:
+    payload = {"old": _card("old", rows=True), "fail": _card("fail", empty="x")}
+    merge_prefetch_into_payload(
+        payload,
+        {"new": _card("new", rows=True)},
+        {"fail": "timeout"},
+    )
+    assert "new" in payload
+    assert "fail" not in payload
+    assert "old" in payload
