@@ -60,6 +60,7 @@ from vnpy_ashare.ui.quotes.radar.group_load_plan import (
     plan_group_load,
     sort_loaded_cards_for_apply,
 )
+from vnpy_ashare.ui.quotes.radar.load_pipeline import RadarLoadPipeline
 from vnpy_ashare.ui.quotes.radar.payload_view import (
     build_resonance_panel_model,
     failed_card_placeholder,
@@ -103,10 +104,7 @@ class RadarController(QtCore.QObject):
         self._board = board
         self._resonance_panel = resonance_panel
         self._workers = RadarWorkerHost()
-        self._deferred_group_items: list[tuple[str, dict[str, object]]] = []
-        self._deferred_tier_batches: list[list[tuple[str, dict[str, object]]]] = []
-        self._prefetch_mode: str | None = None
-        self._prefetch_siblings: list[str] = []
+        self._pipeline = RadarLoadPipeline()
         self._sector_variant = DEFAULT_SECTOR_VARIANT
         self._card_variants: dict[str, str] = build_default_card_variants()
         self._last_payload: dict[str, RadarCardData] = {}
@@ -242,10 +240,7 @@ class RadarController(QtCore.QObject):
         self._stop_auto_refresh()
         self._workers.cancel_all()
         self._clear_all_card_loading()
-        self._deferred_group_items.clear()
-        self._deferred_tier_batches.clear()
-        self._prefetch_siblings.clear()
-        self._prefetch_mode = None
+        self._pipeline.reset()
         self._refresh_queue.clear()
         self._apply_queue.clear()
         self._cache_apply_queue.clear()
@@ -405,8 +400,7 @@ class RadarController(QtCore.QObject):
 
     def _on_board_mode_changed(self, mode: str) -> None:
         self._workers.cancel_prefetch()
-        self._prefetch_siblings.clear()
-        self._prefetch_mode = None
+        self._pipeline.clear_prefetch()
         self._sync_resonance_tab_from_board(mode)
         self._start_auto_refresh()
         if self._try_apply_current_group_from_cache():
@@ -417,8 +411,7 @@ class RadarController(QtCore.QObject):
         if mode != self._board.current_mode():
             return
         self._workers.cancel_prefetch()
-        self._prefetch_siblings.clear()
-        self._prefetch_mode = None
+        self._pipeline.clear_prefetch()
         self._start_auto_refresh()
         if self._try_apply_current_group_from_cache():
             return
@@ -622,7 +615,7 @@ class RadarController(QtCore.QObject):
     def _card_load_variants(self) -> dict[str, str]:
         return card_load_variants(self._card_variants)
 
-    # 测试兼容：直接读写当前分组 Worker
+    # 测试兼容：Worker / 流水线状态直读
     @property
     def _group_worker(self) -> RadarGroupLoadWorker | None:
         return self._workers.group
@@ -630,6 +623,38 @@ class RadarController(QtCore.QObject):
     @_group_worker.setter
     def _group_worker(self, worker: RadarGroupLoadWorker | None) -> None:
         self._workers.group = worker
+
+    @property
+    def _deferred_group_items(self) -> list[tuple[str, dict[str, object]]]:
+        return self._pipeline.deferred_viewport
+
+    @_deferred_group_items.setter
+    def _deferred_group_items(self, value: list[tuple[str, dict[str, object]]]) -> None:
+        self._pipeline.deferred_viewport = value
+
+    @property
+    def _deferred_tier_batches(self) -> list[list[tuple[str, dict[str, object]]]]:
+        return self._pipeline.deferred_tiers
+
+    @_deferred_tier_batches.setter
+    def _deferred_tier_batches(self, value: list[list[tuple[str, dict[str, object]]]]) -> None:
+        self._pipeline.deferred_tiers = value
+
+    @property
+    def _prefetch_mode(self) -> str | None:
+        return self._pipeline.prefetch_mode
+
+    @_prefetch_mode.setter
+    def _prefetch_mode(self, value: str | None) -> None:
+        self._pipeline.prefetch_mode = value
+
+    @property
+    def _prefetch_siblings(self) -> list[str]:
+        return self._pipeline.prefetch_siblings
+
+    @_prefetch_siblings.setter
+    def _prefetch_siblings(self, value: list[str]) -> None:
+        self._pipeline.prefetch_siblings = value
 
     def _variant_key_for_card(self, card_id: str) -> str:
         return radar_card_variant_key(card_id, self._card_load_variants())
@@ -676,10 +701,8 @@ class RadarController(QtCore.QObject):
         *,
         skip_viewport_split: bool = False,
     ) -> None:
-        if not skip_viewport_split:
-            self._deferred_group_items.clear()
-            self._deferred_tier_batches.clear()
-            self._prefetch_siblings.clear()
+        fresh = not skip_viewport_split
+        if fresh:
             self._workers.cancel_prefetch()
 
         plan = plan_group_load(
@@ -687,9 +710,7 @@ class RadarController(QtCore.QObject):
             visible_ids=set(self._board.visible_card_ids_for_current_group()),
             skip_viewport_split=skip_viewport_split,
         )
-        self._deferred_group_items = plan.deferred_viewport
-        if plan.deferred_tiers:
-            self._deferred_tier_batches = plan.deferred_tiers
+        self._pipeline.apply_plan(plan, fresh=fresh)
         self._run_group_worker(plan.run_now)
 
     def _run_group_worker(self, items: list[tuple[str, dict[str, object]]]) -> None:
@@ -727,14 +748,9 @@ class RadarController(QtCore.QObject):
             self._apply_queue.replace(apply_items)
         else:
             self._update_status()
-        if self._deferred_group_items:
-            deferred = self._deferred_group_items
-            self._deferred_group_items = []
-            self._start_group_load(deferred, skip_viewport_split=True)
-            return
-        if self._deferred_tier_batches:
-            next_batch = self._deferred_tier_batches.pop(0)
-            self._start_group_load(next_batch, skip_viewport_split=True)
+        continuation = self._pipeline.pop_continuation()
+        if continuation is not None:
+            self._start_group_load(continuation, skip_viewport_split=True)
             return
         self._schedule_sibling_prefetch()
 
@@ -747,8 +763,7 @@ class RadarController(QtCore.QObject):
         siblings: list[str] = [group_key for group_key, _label in list_radar_groups_for_mode(mode) if group_key != current]
         if not siblings:
             return
-        self._prefetch_mode = mode
-        self._prefetch_siblings = siblings
+        self._pipeline.arm_prefetch(mode, siblings)
 
         def _kick() -> None:
             self._drain_prefetch_siblings()
@@ -756,19 +771,21 @@ class RadarController(QtCore.QObject):
         run_when_idle(host, _kick, not_before_ms=_RADAR_PREFETCH_NOT_BEFORE_MS)
 
     def _drain_prefetch_siblings(self) -> None:
-        if not self._prefetch_siblings:
+        if not self._pipeline.has_prefetch:
             return
         if self._workers.group_is_active():
             QtCore.QTimer.singleShot(_RADAR_PREFETCH_NEXT_GROUP_MS, self._drain_prefetch_siblings)
             return
         if self._workers.prefetch_is_active():
             return
-        if self._prefetch_mode is None or self._board.current_mode() != self._prefetch_mode:
-            self._prefetch_siblings.clear()
-            self._prefetch_mode = None
+        if not self._pipeline.prefetch_still_valid(self._board.current_mode()):
             return
-        group_key = self._prefetch_siblings.pop(0)
-        items: list[tuple[str, dict[str, object]]] = [(spec.id, {}) for spec in list_radar_cards_for_group(self._prefetch_mode, cast(RadarGroupKey, group_key))]
+        group_key = self._pipeline.pop_prefetch_sibling()
+        if group_key is None or self._pipeline.prefetch_mode is None:
+            return
+        items: list[tuple[str, dict[str, object]]] = [
+            (spec.id, {}) for spec in list_radar_cards_for_group(self._pipeline.prefetch_mode, cast(RadarGroupKey, group_key))
+        ]
         if len(items) < RADAR_GROUP_LOAD_MIN_CARDS:
             QtCore.QTimer.singleShot(0, self._drain_prefetch_siblings)
             return
