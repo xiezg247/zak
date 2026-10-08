@@ -17,8 +17,6 @@ from vnpy_ashare.quotes.radar.loaders import (
     build_radar_ai_prompt,
     build_radar_card_ai_prompt,
     build_radar_resonance_ai_prompt,
-    build_radar_resonance_list,
-    collect_radar_risk_vt_symbols,
     compute_radar_resonance,
 )
 from vnpy_ashare.quotes.radar.loaders.load import RADAR_SNAPSHOT_CARD_IDS
@@ -30,7 +28,6 @@ from vnpy_ashare.quotes.radar.radar_full_refresh_prefs import load_radar_full_re
 from vnpy_ashare.quotes.radar.radar_catalog import (
     DEFAULT_LEADER_PICK_VARIANT,
     DEFAULT_SECTOR_VARIANT,
-    RADAR_CARD_BY_ID,
     RadarGroupKey,
     auto_refresh_card_ids,
     list_radar_cards,
@@ -48,11 +45,6 @@ from vnpy_ashare.quotes.radar.radar_models import (
 )
 from vnpy_ashare.quotes.radar.radar_resonance_prefs import DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS
 from vnpy_ashare.quotes.radar.radar_resonance_store import set_radar_resonance_entries
-from vnpy_ashare.quotes.radar.radar_snapshot import (
-    build_radar_board_snapshot,
-    enrich_resonance_entries,
-    row_lookup_from_payload,
-)
 from vnpy_ashare.services.watchlist_short_term import (
     add_rows_to_watchlist_pool,
     add_short_term_focus,
@@ -68,8 +60,15 @@ from vnpy_ashare.ui.quotes.radar.group_load_plan import (
     plan_group_load,
     sort_loaded_cards_for_apply,
 )
+from vnpy_ashare.ui.quotes.radar.payload_view import (
+    build_resonance_panel_model,
+    failed_card_placeholder,
+    format_radar_status_text,
+    radar_row_hint_from_payload,
+)
 from vnpy_ashare.ui.quotes.radar.resonance_weight_dialog import RadarResonanceWeightDialog
 from vnpy_ashare.ui.quotes.radar.variant_wiring import build_default_card_variants, card_load_variants
+from vnpy_ashare.ui.quotes.radar.watchlist_batch import add_vt_symbols_to_watchlist, format_watchlist_batch_notify
 from vnpy_ashare.ui.quotes.radar.worker import RadarCardLoadWorker, RadarGroupLoadWorker
 from vnpy_ashare.ui.quotes.watchlist_positions.plan_dialog import TradingPlanDialog
 from vnpy_ashare.ui.shell.deferred_idle import run_when_idle
@@ -934,27 +933,20 @@ class RadarController(QtCore.QObject):
         panel = self._resonance_panel
         if panel is None:
             return
-        snapshot = build_radar_board_snapshot(self._last_payload)
+        model = build_resonance_panel_model(self._last_payload)
+        snapshot = model.snapshot
         set_radar_board_snapshot(snapshot)
         set_radar_resonance_entries(snapshot.resonance_entries)
-        statistical = enrich_resonance_entries(
-            build_radar_resonance_list(self._last_payload, mode="statistical"),
-            self._last_payload,
-        )
-        predictive = enrich_resonance_entries(
-            build_radar_resonance_list(self._last_payload, mode="predictive"),
-            self._last_payload,
-        )
         panel.apply_entries(
             snapshot.resonance_entries,
-            statistical=statistical,
-            predictive=predictive,
+            statistical=model.statistical,
+            predictive=model.predictive,
             allow_new_positions=snapshot.allow_new_positions,
             emotion_stage_label=snapshot.emotion_stage_label,
-            row_lookup=row_lookup_from_payload(self._last_payload),
+            row_lookup=model.row_lookup,
             resonance_count=snapshot.resonance_count,
             dragon_1_count=snapshot.dragon_1_count,
-            risk_vt_symbols=collect_radar_risk_vt_symbols(self._last_payload),
+            risk_vt_symbols=model.risk_vt_symbols,
         )
         self._publish_radar_ai_context()
 
@@ -966,17 +958,7 @@ class RadarController(QtCore.QObject):
                 resonance = compute_radar_resonance(self._last_payload)
                 widget.apply_data(data, resonance_counts=resonance)
             else:
-                spec = RADAR_CARD_BY_ID.get(card_id)
-                widget.apply_data(
-                    RadarCardData(
-                        card_id=card_id,
-                        title=spec.title if spec is not None else card_id,
-                        subtitle="",
-                        rows=(),
-                        empty_message=f"加载失败：{message}",
-                        updated_at="",
-                    )
-                )
+                widget.apply_data(failed_card_placeholder(card_id, message))
         self._schedule_resonance_sync()
         page_notify(self._page, f"卡片加载失败：{message}", level="warning")
         self._update_status()
@@ -987,14 +969,13 @@ class RadarController(QtCore.QObject):
         active = sum(1 for worker in self._card_workers.values() if thread_is_active(worker))
         if self._group_worker is not None and thread_is_active(self._group_worker):
             active += 1
-        if active:
-            self._page.status_label.setText(f"雷达加载中…（{active} 张卡）")
-            return
-        counts = resonance if resonance is not None else compute_radar_resonance(self._last_payload)
-        status = "就绪"
-        if counts:
-            status += f" · 共振 {len(counts)} 只"
-        self._page.status_label.setText(status)
+        self._page.status_label.setText(
+            format_radar_status_text(
+                active_workers=active,
+                payload=self._last_payload,
+                resonance=resonance,
+            )
+        )
 
     def _on_variant_changed(self, card_id: str, variant_key: str) -> None:
         if not variant_key or card_id not in self._card_variants:
@@ -1079,31 +1060,12 @@ class RadarController(QtCore.QObject):
         if data is None or not data.rows:
             page_notify(self._page, "该卡片暂无可加入标的", level="warning")
             return
-        added = skipped = 0
-        full_hit = False
-        for row in data.rows:
-            item = parse_stock_symbol(row.vt_symbol)
-            if item is None:
-                skipped += 1
-                continue
-            if service.add(item.symbol, item.exchange, row.name or item.name):
-                added += 1
-            else:
-                reason = service.add_failure_reason(item.symbol, item.exchange)
-                if reason == "full":
-                    full_hit = True
-                    break
-                skipped += 1
-        if full_hit:
-            page_notify(self._page, f"自选池已满，已加入 {added} 只", level="warning")
-            return
-        if added == 0 and skipped:
-            page_notify(self._page, f"全部已在自选池中（{skipped} 只）")
-            return
-        message = f"已加入 {added} 只"
-        if skipped:
-            message += f"，跳过 {skipped} 只"
-        page_notify(self._page, message)
+        result = add_vt_symbols_to_watchlist(
+            service,
+            ((row.vt_symbol, row.name or "") for row in data.rows),
+        )
+        notify = format_watchlist_batch_notify(result)
+        page_notify(self._page, notify.message, level=notify.level)
 
     def _notify_watchlist_pool_result(self, result) -> None:
         if result.watchlist_added == 0:
@@ -1141,57 +1103,26 @@ class RadarController(QtCore.QObject):
         if service is None:
             page_notify(self._page, "自选服务未就绪", level="warning")
             return
-        added = skipped = 0
-        full_hit = False
-        for entry in entries:
-            item = parse_stock_symbol(entry.vt_symbol)
-            if item is None:
-                skipped += 1
-                continue
-            if service.add(item.symbol, item.exchange, entry.name or item.name):
-                added += 1
-            else:
-                reason = service.add_failure_reason(item.symbol, item.exchange)
-                if reason == "full":
-                    full_hit = True
-                    break
-                skipped += 1
-        if full_hit:
-            page_notify(self._page, f"自选池已满，已加入 {added} 只", level="warning")
-            return
-        if added == 0 and skipped:
-            page_notify(self._page, f"共振标的全部已在自选池中（{skipped} 只）")
-            return
-        message = f"共振标的已加入 {added} 只"
-        if skipped:
-            message += f"，跳过 {skipped} 只"
-        page_notify(self._page, message)
+        result = add_vt_symbols_to_watchlist(
+            service,
+            ((entry.vt_symbol, entry.name or "") for entry in entries),
+        )
+        notify = format_watchlist_batch_notify(
+            result,
+            all_skipped_message="共振标的全部已在自选池中",
+            success_prefix="共振标的已加入",
+        )
+        page_notify(self._page, notify.message, level=notify.level)
 
     def _on_stock_analysis(self, vt_symbol: str) -> None:
         item = parse_stock_symbol(vt_symbol)
         if item is None:
             page_notify(self._page, f"无法解析合约：{vt_symbol}", level="warning")
             return
-        row_hint = self._radar_row_hint(vt_symbol)
+        row_hint = radar_row_hint_from_payload(self._last_payload, vt_symbol)
         show_stock_analysis_from_quotes_page(
             item=item,
             page=self._page,
             row_hint=row_hint,
             parent=self._page,
         )
-
-    def _radar_row_hint(self, vt_symbol: str) -> dict[str, object] | None:
-        for data in self._last_payload.values():
-            for row in data.rows:
-                if row.vt_symbol == vt_symbol:
-                    hint: dict[str, object] = {
-                        "vt_symbol": row.vt_symbol,
-                        "symbol": row.symbol,
-                        "name": row.name,
-                    }
-                    if row.price is not None:
-                        hint["last_price"] = row.price
-                    if row.change_pct is not None:
-                        hint["change_pct"] = row.change_pct
-                    return hint
-        return None
