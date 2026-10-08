@@ -7,13 +7,10 @@ from typing import Any, cast
 from vnpy_ashare.domain.core.numbers import float_or_none
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.symbols.stock import StockItem, parse_stock_symbol
-from vnpy_ashare.quotes.radar.radar_quotes import merge_row_quotes
 from vnpy_ashare.quotes.radar.radar_moneyflow import enrich_quotes_with_moneyflow
-from vnpy_ashare.quotes.radar.radar_watchlist import (
-    _intraday_score,
-    _quotes_for_candidates,
-    _watchlist_metric,
-)
+from vnpy_ashare.quotes.radar.radar_quotes import merge_row_quotes
+from vnpy_ashare.quotes.radar.radar_watchlist_quotes import quotes_for_candidates
+from vnpy_ashare.quotes.radar.radar_watchlist_score import intraday_score, watchlist_metric
 from vnpy_ashare.quotes.watchlist_multiview.models import WatchlistMultiBoardData, WatchlistMultiRow, WatchlistMultiSortKey
 from vnpy_ashare.quotes.watchlist_multiview.sort import sort_multiview_rows
 from vnpy_ashare.storage.repositories.watchlist import load_watchlist_rows
@@ -71,7 +68,7 @@ def _assemble_multiview_board(
         name = str(stored_names.get(vt_symbol) or merged.get("name") or item.name or vt_symbol)
         price_raw = merged.get("last_price") or merged.get("close")
         last_price = float(price_raw) if isinstance(price_raw, (int, float)) and float(price_raw) > 0 else None
-        metric_label, metric_value, sub_label, sub_value = _watchlist_metric(merged)
+        metric_label, metric_value, sub_label, sub_value = watchlist_metric(merged)
         rows.append(
             WatchlistMultiRow(
                 vt_symbol=vt_symbol,
@@ -87,7 +84,7 @@ def _assemble_multiview_board(
                 metric_value=metric_value,
                 sub_label=sub_label,
                 sub_value=sub_value,
-                anomaly_score=_intraday_score(raw, pool_median_change=pool_median),
+                anomaly_score=intraday_score(raw, pool_median_change=pool_median),
             )
         )
 
@@ -153,7 +150,7 @@ def build_watchlist_multiview_board(
         sort_orders[vt_symbol] = index
         name_by_vt[vt_symbol] = name or ""
 
-    quotes_by_vt = _quotes_for_candidates(candidates)
+    quotes_by_vt = quotes_for_candidates(candidates)
     try:
         quotes_by_vt = enrich_quotes_with_moneyflow(quotes_by_vt)
     except Exception:

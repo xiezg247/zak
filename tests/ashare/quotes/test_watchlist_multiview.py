@@ -163,7 +163,7 @@ class WatchlistMultiViewLoaderTests(unittest.TestCase):
                 return_value=watchlist,
             ),
             patch(
-                "vnpy_ashare.quotes.watchlist_multiview.loader._quotes_for_candidates",
+                "vnpy_ashare.quotes.watchlist_multiview.loader.quotes_for_candidates",
                 return_value=quotes,
             ),
             patch(
