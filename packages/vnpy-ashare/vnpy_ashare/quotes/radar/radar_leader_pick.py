@@ -13,7 +13,7 @@ from vnpy_ashare.quotes.radar.radar_leader_pool_cache import (
     store_leader_candidate_pool,
 )
 from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, enrich_radar_rows, merge_row_quotes
-from vnpy_ashare.quotes.radar.radar_sector import _row_from_leader_scored
+from vnpy_ashare.quotes.radar.radar_leader_row import row_from_leader_scored
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.engine.dimensions.sector_strength import run_sector_strength
@@ -181,7 +181,7 @@ def load_leader_pick(spec: RadarCardSpec, *, variant: LeaderPickVariant = "mainl
     rows: list[RadarRow] = []
     sector_names: list[str] = []
     for scored in ranked:
-        parsed = _row_from_leader_scored(scored)
+        parsed = row_from_leader_scored(scored)
         if parsed is None:
             continue
         rows.append(parsed)

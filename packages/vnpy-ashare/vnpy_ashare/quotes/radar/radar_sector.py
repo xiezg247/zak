@@ -10,7 +10,9 @@ from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.integrations.tushare.concept_board import build_hot_concept_vt_symbol_map
 from vnpy_ashare.quotes.format import format_pct
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
-from vnpy_ashare.quotes.radar.radar_leader import LeaderScoredRow, leader_tier_label, rank_unified_sector_leaders
+from vnpy_ashare.domain.radar.leader import LeaderScoredRow
+from vnpy_ashare.quotes.radar.radar_leader import rank_unified_sector_leaders
+from vnpy_ashare.quotes.radar.radar_leader_row import row_from_leader_scored
 from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, apply_board_quality, enrich_radar_rows, merge_row_quotes
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
@@ -25,6 +27,9 @@ from vnpy_ashare.screener.sector.sector_summary import (
 )
 from vnpy_ashare.trading.signals.intraday_seal_time import attach_first_time_fields
 
+# 兼容旧私有名
+_row_from_leader_scored = row_from_leader_scored
+
 _CONCEPT_POOL_TOP = 5
 
 
@@ -36,40 +41,6 @@ def _sector_metric(row: QuoteRowLike) -> tuple[str, str, str, str]:
     if amount > 0:
         return "行业", industry[:8], "涨幅", format_pct(change)
     return "行业", industry[:8], "涨幅", format_pct(change)
-
-
-def _row_from_leader_scored(scored: LeaderScoredRow) -> RadarRow | None:
-    row = merge_row_quotes(scored.row)
-    vt_symbol = str(row.get("vt_symbol") or "").strip()
-    if not vt_symbol:
-        return None
-    item = parse_stock_symbol(vt_symbol)
-    name = str(row.get("name") or (item.name if item else "") or vt_symbol)
-    symbol = str(row.get("symbol") or (item.symbol if item else vt_symbol.split(".")[0]))
-    price_raw = row.get("last_price") or row.get("close")
-    price = float(price_raw) if isinstance(price_raw, (int, float)) else None
-    change_raw = row.get("change_pct")
-    change_pct = float(change_raw) if isinstance(change_raw, (int, float)) else None
-    tier_label = leader_tier_label(scored.leader_tier)
-    axis_label = "概念" if scored.sector_axis == "concept" else "行业"
-    sector_name = scored.sector_name or str(row.get("industry") or row.get("concept") or "—")
-    return apply_board_quality(
-        RadarRow(
-            vt_symbol=vt_symbol,
-            name=name,
-            symbol=symbol,
-            price=price,
-            change_pct=change_pct,
-            metric_label=tier_label or "龙头分",
-            metric_value=f"{scored.leader_score:.0f}" if tier_label else f"{scored.leader_score:.0f}",
-            sub_label=axis_label,
-            sub_value=sector_name[:8],
-            leader_score=scored.leader_score,
-            leader_tier=scored.leader_tier,
-            limit_times=scored.limit_times if scored.limit_times >= 1 else None,
-        ),
-        row,
-    )
 
 
 def _row_from_sector_hit(row: QuoteRowLike) -> RadarRow | None:

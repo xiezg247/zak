@@ -6,7 +6,7 @@ from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRow
 from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.quotes.core.limit_times_cache import get_cached_limit_times_map
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
-from vnpy_ashare.quotes.radar.radar_leader import _seal_quality_proxy
+from vnpy_ashare.quotes.radar.radar_leader_score import amount_rank_in_group, seal_quality_proxy
 from vnpy_ashare.quotes.radar.radar_limit_ladder import (
     build_limit_ladder_candidates,
     resolve_limit_times,
@@ -20,23 +20,6 @@ from vnpy_ashare.trading.signals.intraday_seal_time import attach_first_time_fie
 from vnpy_ashare.trading.signals.seal_time import format_seal_time_label, seal_time_score
 
 _STRONG_INDUSTRY_TOP = 5
-
-
-def _amount_rank_map(rows: QuoteRowsLike) -> dict[str, float]:
-    amounts = [(str(row.get("vt_symbol") or ""), float(row.get("amount") or 0)) for row in rows]
-    amounts = [(vt, amt) for vt, amt in amounts if vt]
-    if not amounts:
-        return {}
-    sorted_amounts = sorted(amount for _, amount in amounts)
-    n = len(sorted_amounts)
-    result: dict[str, float] = {}
-    for vt, amount in amounts:
-        if amount <= 0:
-            result[vt] = 0.0
-            continue
-        rank = sum(1 for value in sorted_amounts if value <= amount)
-        result[vt] = rank / n
-    return result
 
 
 def _strong_industries() -> set[str]:
@@ -68,7 +51,7 @@ def compute_first_board_score(
     sector_bonus: float,
     seal_score: float,
 ) -> float:
-    seal_quality = _seal_quality_proxy(row)
+    seal_quality = seal_quality_proxy(row)
     if seal_score <= 0:
         seal_score = seal_quality * 0.6
     parts = {
@@ -92,7 +75,7 @@ def rank_first_board_pool(
     if not candidates:
         return []
     time_map = first_time_map or {}
-    amount_ranks = _amount_rank_map(candidates)
+    amount_ranks = amount_rank_in_group(candidates)
     strong = strong_industries if strong_industries is not None else _strong_industries()
     scored: list[tuple[QuoteRowLike, float, str]] = []
     for row in candidates:
