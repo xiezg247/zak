@@ -67,6 +67,7 @@ from vnpy_ashare.ui.quotes.radar.payload_view import (
     radar_row_hint_from_payload,
 )
 from vnpy_ashare.ui.quotes.radar.resonance_weight_dialog import RadarResonanceWeightDialog
+from vnpy_ashare.ui.quotes.radar.signal_wiring import BOARD_WIRING, PANEL_WIRING, bind_signals
 from vnpy_ashare.ui.quotes.radar.stagger_queue import DebouncedCall, StaggerQueue
 from vnpy_ashare.ui.quotes.radar.variant_wiring import build_default_card_variants, card_load_variants
 from vnpy_ashare.ui.quotes.radar.watchlist_batch import add_vt_symbols_to_watchlist, format_watchlist_batch_notify
@@ -137,37 +138,9 @@ class RadarController(QtCore.QObject):
         self._session_timer.timeout.connect(self._on_session_tick)
         self._setup_auto_refresh_timers()
 
-        board.variant_changed.connect(self._on_variant_changed)
-        board.row_activated.connect(self._on_row_activated)
-        board.add_watchlist_requested.connect(self._on_add_watchlist)
-        board.batch_add_watchlist_requested.connect(self._on_batch_add_watchlist)
-        board.stock_analysis_requested.connect(self._on_stock_analysis)
-        board.view_run_requested.connect(self._on_view_run)
-        board.sector_flow_requested.connect(self._on_sector_flow)
-        board.sector_rotation_requested.connect(self._on_sector_rotation)
-        board.refresh_requested.connect(self._on_card_refresh_requested)
-        board.quote_refresh_requested.connect(self._on_card_quote_refresh_requested)
-        board.ai_requested.connect(self.request_card_ai)
-        board.auto_refresh_changed.connect(self._on_auto_refresh_changed)
-        board.full_refresh_interval_changed.connect(self._on_full_refresh_interval_changed)
-        board.mode_changed.connect(self._on_board_mode_changed)
-        board.group_changed.connect(self._on_board_group_changed)
-        board.outlook_strategy_changed.connect(self._on_outlook_strategy_changed)
-
-        panel = self._resonance_panel
-        if panel is not None:
-            panel.row_activated.connect(self._on_row_activated)
-            panel.add_watchlist_requested.connect(self._on_add_watchlist)
-            panel.batch_add_watchlist_requested.connect(self._on_resonance_batch_add_watchlist)
-            panel.add_dragon_watchlist_requested.connect(self._on_resonance_dragon_watchlist)
-            panel.stock_analysis_requested.connect(self._on_stock_analysis)
-            panel.ai_resonance_requested.connect(self.request_resonance_ai_summary)
-            panel.propose_trading_plan_requested.connect(self._on_propose_trading_plan)
-            panel.eod_leader_ai_requested.connect(self.request_eod_leader_ai)
-            panel.open_screener_requested.connect(self._on_open_screener_resonance)
-            panel.open_leader_screener_requested.connect(self._on_open_screener_leader)
-            panel.resonance_weights_requested.connect(self._on_resonance_weights_requested)
-            panel.add_short_term_focus_requested.connect(self._on_resonance_short_term_focus)
+        bind_signals(board, self, BOARD_WIRING)
+        if self._resonance_panel is not None:
+            bind_signals(self._resonance_panel, self, PANEL_WIRING)
 
     def _on_open_screener_resonance(self) -> None:
         host = self._find_main_window()
