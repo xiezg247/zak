@@ -133,7 +133,7 @@ def is_st_stock(name: str) -> bool:
     return "ST" in text
 
 
-def _screening_vt_name_map() -> dict[str, str]:
+def screening_vt_name_map() -> dict[str, str]:
     """vt_symbol → 名称；用于 row.name 缺失或与 universe 不一致时的 ST 判定。"""
     mapping: dict[str, str] = {}
     for (symbol, exchange), name in build_symbol_name_map().items():
@@ -175,7 +175,7 @@ def clear_suspend_screening_cache() -> None:
     _industry_map_cache = None
 
 
-def _suspended_keys_for_screening() -> frozenset[tuple[str, str]]:
+def suspended_keys_for_screening() -> frozenset[tuple[str, str]]:
     global _suspend_keys_cache
 
     day = last_trading_day()
@@ -191,7 +191,7 @@ def is_row_suspended(row: ScreeningFilterRow, suspended_keys: frozenset[tuple[st
     return key is not None and key in suspended_keys
 
 
-def _list_date_map_for_screening() -> dict[str, str]:
+def list_date_map_for_screening() -> dict[str, str]:
     global _list_date_map_cache
 
     day = last_trading_day()
@@ -212,7 +212,7 @@ def _list_date_map_for_screening() -> dict[str, str]:
     return mapping
 
 
-def _market_board_map_for_screening() -> dict[str, str]:
+def market_board_map_for_screening() -> dict[str, str]:
     global _market_board_map_cache
 
     day = last_trading_day()
@@ -225,7 +225,7 @@ def _market_board_map_for_screening() -> dict[str, str]:
     return mapping
 
 
-def _industry_map_for_screening() -> dict[str, str]:
+def industry_map_for_screening() -> dict[str, str]:
     global _industry_map_cache
 
     day = last_trading_day()
@@ -294,7 +294,7 @@ def row_industry(row: ScreeningFilterRow, industry_map: dict[str, str] | None = 
     ts_code = vt_symbol_to_ts_code(vt_symbol)
     if not ts_code:
         return ""
-    mapping = industry_map if industry_map is not None else _industry_map_for_screening()
+    mapping = industry_map if industry_map is not None else industry_map_for_screening()
     return str(mapping.get(ts_code) or "").strip()
 
 
@@ -317,7 +317,7 @@ def is_new_listing(row: ScreeningFilterRow, list_date_map: dict[str, str] | None
         return False
     list_date_raw = str(row.get("list_date") or "").strip()
     if not list_date_raw:
-        mapping = list_date_map if list_date_map is not None else _list_date_map_for_screening()
+        mapping = list_date_map if list_date_map is not None else list_date_map_for_screening()
         list_date_raw = str(mapping.get(vt_symbol) or "").strip()
     if not list_date_raw or len(list_date_raw) < 8:
         return False
@@ -335,7 +335,7 @@ def limit_board_threshold_pct(row: ScreeningFilterRow, market_board_map: dict[st
     vt_symbol = str(row.get("vt_symbol") or "").strip()
     market = str(row.get("market") or "").strip()
     if not market and vt_symbol:
-        mapping = market_board_map if market_board_map is not None else _market_board_map_for_screening()
+        mapping = market_board_map if market_board_map is not None else market_board_map_for_screening()
         market = str(mapping.get(vt_symbol) or "").strip()
     if market in ("创业板", "科创板"):
         return 19.5

@@ -19,7 +19,7 @@ from vnpy_ashare.storage.repositories.trading_plans import (
 )
 
 
-def _next_trade_date(from_day: date | None = None) -> str:
+def next_trade_date(from_day: date | None = None) -> str:
     day = from_day or datetime.now(CHINA_TZ).date()
     return (day + timedelta(days=1)).isoformat()
 
@@ -31,7 +31,7 @@ def build_trading_plan_draft(
 ) -> dict[str, Any]:
     """基于情绪周期 + 信号区/共振生成计划草案（不写入 DB）。"""
     emotion = load_emotion_cycle_snapshot(fetch_if_missing=True)
-    target_date = trade_date or _next_trade_date()
+    target_date = trade_date or next_trade_date()
     max_position_pct = 0.0
     emotion_expected = ""
     if emotion is not None:

@@ -207,7 +207,7 @@ def test_apply_recipe_filters_excludes_st_via_name_map(monkeypatch):
         {"name": "正常股份", "vt_symbol": "600000.SSE", "amount": 100_000_000},
     ]
     monkeypatch.setattr(
-        "vnpy_ashare.screener.hard_filters._screening_vt_name_map",
+        "vnpy_ashare.screener.hard_filters.screening_vt_name_map",
         lambda: {"002789.SZSE": "*ST建艺", "600000.SSE": "浦发银行"},
     )
     filtered = apply_recipe_filters(rows)

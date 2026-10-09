@@ -84,7 +84,7 @@ def test_hard_filter_excludes_low_amount(disable_pg_side_effects, monkeypatch):
         lambda: True,
     )
     monkeypatch.setattr(
-        "vnpy_ashare.screener.hard_filters._screening_vt_name_map",
+        "vnpy_ashare.screener.hard_filters.screening_vt_name_map",
         lambda: {},
     )
     assert _symbols(apply_recipe_filters(rows)) == ["600001"]

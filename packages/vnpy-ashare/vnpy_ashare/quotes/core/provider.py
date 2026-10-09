@@ -221,7 +221,7 @@ def _merge_richer_quote(base: QuoteSnapshot, incoming: QuoteSnapshot) -> QuoteSn
     )
 
 
-def _fetch_live_quote(item: StockItem) -> QuoteSnapshot | None:
+def fetch_live_quote(item: StockItem) -> QuoteSnapshot | None:
     tf_symbol = item.tickflow_symbol
     try:
         quotes = get_redis_quote_store().get_quotes([tf_symbol])
@@ -243,7 +243,7 @@ def _fetch_live_quote(item: StockItem) -> QuoteSnapshot | None:
 def _enrich_sparse_quote(item: StockItem, quote: QuoteSnapshot) -> QuoteSnapshot:
     if not _quote_is_sparse(quote):
         return quote
-    live = _fetch_live_quote(item)
+    live = fetch_live_quote(item)
     if live is None:
         return quote
     return _merge_richer_quote(quote, live)

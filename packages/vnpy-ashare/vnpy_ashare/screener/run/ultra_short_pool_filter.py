@@ -8,7 +8,7 @@ from vnpy_ashare.domain.radar.card import RadarResonanceEntry
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.screener.hard_filter_prefs import PRESET_AGGRESSIVE, hard_filter_preset
 from vnpy_ashare.screener.hard_filters import (
-    _suspended_keys_for_screening,
+    suspended_keys_for_screening,
     is_row_suspended,
     is_st_stock,
     limit_board_threshold_pct,
@@ -74,7 +74,7 @@ def _passes_aggressive_hard_filter(row: ScreenerResultRow) -> bool:
     if prefs.exclude_st and is_st_stock(name):
         return False
     if prefs.exclude_suspended:
-        if is_row_suspended(mapping, _suspended_keys_for_screening()):
+        if is_row_suspended(mapping, suspended_keys_for_screening()):
             return False
     amount = float(mapping.get("amount") or 0) or row_amount_yuan(mapping)
     if amount > 0 and amount < prefs.min_amount_yuan:

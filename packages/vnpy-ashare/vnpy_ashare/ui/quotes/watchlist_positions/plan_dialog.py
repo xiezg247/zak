@@ -18,7 +18,7 @@ from vnpy_ashare.services.trading_plan import (
     update_trading_plan_meta,
 )
 from vnpy_ashare.trading.plan.propose import (
-    _next_trade_date,
+    next_trade_date,
     build_trading_plan_draft,
     sync_plan_to_watchlist_pool,
 )
@@ -147,7 +147,7 @@ class TradingPlanDialog(QtWidgets.QDialog):
         service = self._page._get_watchlist_service()
         draft = build_trading_plan_draft(
             watchlist_service=service,
-            trade_date=self._trade_date() or _next_trade_date(),
+            trade_date=self._trade_date() or next_trade_date(),
         )
         self._max_pct_spin.setValue(int(round(float(draft.get("max_position_pct") or 0) * 100)))
         self._emotion_label.setText(str(draft.get("emotion_stage_label") or draft.get("emotion_expected") or "—"))

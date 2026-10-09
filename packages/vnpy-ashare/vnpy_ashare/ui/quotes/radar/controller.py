@@ -39,7 +39,7 @@ from vnpy_ashare.services.watchlist_short_term import (
     collect_dragon_1_rows,
     resonance_entries_to_rows,
 )
-from vnpy_ashare.trading.plan.propose import _next_trade_date
+from vnpy_ashare.trading.plan.propose import next_trade_date
 from vnpy_ashare.ui.features.stock_analysis.open import show_stock_analysis_from_quotes_page
 from vnpy_ashare.ui.quotes.page.config import save_radar_card_refresh_ms
 from vnpy_ashare.ui.quotes.radar.group_load_plan import (
@@ -172,7 +172,7 @@ class RadarController(QtCore.QObject):
         dialog = TradingPlanDialog(
             page=self._page,
             parent=self._page,
-            trade_date=_next_trade_date(),
+            trade_date=next_trade_date(),
             auto_draft=True,
         )
         dialog.exec()

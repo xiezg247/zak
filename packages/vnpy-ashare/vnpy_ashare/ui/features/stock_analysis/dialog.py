@@ -469,9 +469,9 @@ class StockAnalysisDialog(QtWidgets.QDialog):
 
     def _refresh_live_quote(self) -> None:
         if is_ashare_trading_session():
-            from vnpy_ashare.quotes.core.provider import _fetch_live_quote
+            from vnpy_ashare.quotes.core.provider import fetch_live_quote
 
-            live = _fetch_live_quote(self._item)
+            live = fetch_live_quote(self._item)
             if live is not None:
                 self._quote = live
                 self._render_header_quote()

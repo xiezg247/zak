@@ -75,6 +75,7 @@ def _ensure_columns(df: pl.DataFrame, names: Sequence[str]) -> pl.DataFrame:
 
 
 _OPTIONAL_COLS = (
+    "vt_symbol",
     "symbol",
     "exchange",
     "name",
@@ -122,14 +123,14 @@ def apply_recipe_filters_polars(rows: Sequence[Any]) -> list[Any]:
 
     allowed_industries = hf.recipe_allowed_industries()
     if allowed_industries:
-        industry_map = hf._industry_map_for_screening()
+        industry_map = hf.industry_map_for_screening()
         df = df.with_columns(pl.col("_vt_symbol").map_elements(lambda vt: vt_symbol_to_ts_code(str(vt or "")) or "", return_dtype=pl.Utf8).alias("_ts_code"))
         df = _join_map(df, "_ts_code", industry_map, "_mapped_industry")
         industry_col = pl.coalesce(pl.col("industry").cast(pl.Utf8, strict=False), pl.col("_mapped_industry"))
         mask = mask & industry_col.is_in(list(allowed_industries))
 
     if hf.recipe_exclude_suspended_enabled():
-        suspended_keys = hf._suspended_keys_for_screening()
+        suspended_keys = hf.suspended_keys_for_screening()
         if suspended_keys:
             sym = pl.coalesce(pl.col("symbol").cast(pl.Utf8, strict=False), pl.col("_symbol"))
             ex = pl.coalesce(
@@ -142,14 +143,14 @@ def apply_recipe_filters_polars(rows: Sequence[Any]) -> list[Any]:
             mask = mask & (~has_suspend_key | ~suspend_key.is_in(suspended_labels))
 
     if hf.recipe_exclude_st_enabled():
-        name_map = hf._screening_vt_name_map()
+        name_map = hf.screening_vt_name_map()
         df = _join_map(df, "_vt_symbol", name_map, "_mapped_name")
         mask = mask & ~_st_mask(pl.col("name").cast(pl.Utf8, strict=False), pl.col("_mapped_name"))
 
     if hf.recipe_exclude_new_listing_enabled():
         min_days = hf.recipe_min_listing_days()
         if min_days > 0:
-            list_date_map = hf._list_date_map_for_screening()
+            list_date_map = hf.list_date_map_for_screening()
             df = _join_map(df, "_vt_symbol", list_date_map, "_mapped_list_date")
             list_date_raw = pl.coalesce(
                 pl.col("list_date").cast(pl.Utf8, strict=False),
@@ -162,7 +163,7 @@ def apply_recipe_filters_polars(rows: Sequence[Any]) -> list[Any]:
 
     market_board_map: dict[str, str] | None = None
     if hf.recipe_exclude_limit_board_enabled() or hf.recipe_exclude_one_word_enabled():
-        market_board_map = hf._market_board_map_for_screening()
+        market_board_map = hf.market_board_map_for_screening()
         df = _join_map(df, "_vt_symbol", market_board_map, "_mapped_market")
         market_col = pl.coalesce(pl.col("market").cast(pl.Utf8, strict=False), pl.col("_mapped_market"))
         df = df.with_columns(market_col.alias("_market"))

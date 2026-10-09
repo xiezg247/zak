@@ -51,7 +51,7 @@ class HardFiltersIndustryTests(unittest.TestCase):
             {"vt_symbol": "600519.SSE", "name": "贵州茅台", "industry": "白酒", "amount": 1},
         ]
         industry_map = {"600000.SH": "银行", "600519.SH": "白酒"}
-        with patch("vnpy_ashare.screener.hard_filters._industry_map_for_screening", return_value=industry_map):
+        with patch("vnpy_ashare.screener.hard_filters.industry_map_for_screening", return_value=industry_map):
             filtered = apply_recipe_filters(rows)
         self.assertEqual([row["vt_symbol"] for row in filtered], ["600000.SSE"])
 

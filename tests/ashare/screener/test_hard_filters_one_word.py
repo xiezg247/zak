@@ -70,7 +70,7 @@ class HardFilterOneWordTests(unittest.TestCase):
                                 return_value=True,
                             ):
                                 with patch(
-                                    "vnpy_ashare.screener.hard_filters._market_board_map_for_screening",
+                                    "vnpy_ashare.screener.hard_filters.market_board_map_for_screening",
                                     return_value={},
                                 ):
                                     with patch(

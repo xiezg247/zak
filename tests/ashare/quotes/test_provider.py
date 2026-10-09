@@ -95,7 +95,7 @@ class TestResolveQuoteSnapshot(unittest.TestCase):
         self.assertEqual(merged.volume, 123456.0)
         self.assertEqual(merged.trade_time, "2026-06-18 15:00:00")
 
-    @patch("vnpy_ashare.quotes.core.provider._fetch_live_quote")
+    @patch("vnpy_ashare.quotes.core.provider.fetch_live_quote")
     def test_resolve_enriches_sparse_row_hint(self, fetch_mock: MagicMock) -> None:
         item = StockItem(symbol="600000", exchange=Exchange.SSE, name="浦发银行")
         fetch_mock.return_value = QuoteSnapshot(
