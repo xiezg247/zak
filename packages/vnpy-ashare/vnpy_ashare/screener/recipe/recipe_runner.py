@@ -27,6 +27,7 @@ from vnpy_ashare.domain.screener.dimension_hit import DimensionHit
 from vnpy_ashare.screener.engine.dimensions.hits import merge_rows
 from vnpy_ashare.screener.engine.dimensions.registry import run_dimension, scoring_dimension_specs
 from vnpy_ashare.screener.engine.dimensions.volume_dedup import apply_volume_liquidity_dedup
+from vnpy_ashare.screener.engine.frame import row_to_dict
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters
 from vnpy_ashare.screener.recipe.recipe import RECIPE_EMOTION_GATE_ONLY, DimensionSpec, ScreenRecipe, resolve_recipe
 from vnpy_ashare.domain.screener.run_result import ScreenerRunResult, build_screener_run_result
@@ -114,7 +115,7 @@ def run_recipe_object(
         enriched_rows = enrich_recipe_rows(merged_payloads)
         from vnpy_ashare.screener.engine.recipe_sort import sort_recipe_payloads_polars
 
-        sorted_payloads = sort_recipe_payloads_polars([row.to_dict() for row in enriched_rows])
+        sorted_payloads = sort_recipe_payloads_polars([row_to_dict(row) for row in enriched_rows])
         filtered_payloads = apply_recipe_filters(sorted_payloads)
         merged_rows = [ScreenerResultRow.from_mapping(row) for row in filtered_payloads]
         use_sentiment = sentiment_gate_enabled() and (

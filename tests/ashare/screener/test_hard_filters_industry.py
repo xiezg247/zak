@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+import os
 import unittest
 from unittest.mock import patch
+
+import pytest
+
+from vnpy_ashare.config.constants.trading import ENV_TRADING_BOARDS
 
 from vnpy_ashare.screener.hard_filter_prefs import (
     HardFilterPrefs,
@@ -23,10 +28,22 @@ from vnpy_ashare.screener.hard_filters import (
 )
 
 
+_BOARD_ENV_KEYS = (ENV_TRADING_BOARDS, "RECIPE_ALLOWED_MARKET_BOARDS")
+
+
+def _clear_board_env() -> None:
+    for key in _BOARD_ENV_KEYS:
+        os.environ.pop(key, None)
+
+
 class HardFiltersIndustryTests(unittest.TestCase):
+    def setUp(self) -> None:
+        _clear_board_env()
+
     def tearDown(self) -> None:
         clear_suspend_screening_cache()
         save_hard_filter_prefs(default_hard_filter_prefs())
+        _clear_board_env()
 
     def test_normalize_and_parse_industries(self) -> None:
         self.assertEqual(normalize_allowed_industries_text(" 银行 ， 白酒 "), "银行,白酒")
@@ -52,6 +69,7 @@ class HardFiltersIndustryTests(unittest.TestCase):
         ]
         industry_map = {"600000.SH": "银行", "600519.SH": "白酒"}
         with patch("vnpy_ashare.screener.hard_filters.industry_map_for_screening", return_value=industry_map):
+            _clear_board_env()
             filtered = apply_recipe_filters(rows)
         self.assertEqual([row["vt_symbol"] for row in filtered], ["600000.SSE"])
 
@@ -69,6 +87,7 @@ class HardFiltersIndustryTests(unittest.TestCase):
         self.assertTrue(passes_market_board_filter(row_main, frozenset({"沪深主板"})))
         self.assertFalse(passes_market_board_filter(row_gem, frozenset({"沪深主板"})))
 
+    @pytest.mark.enable_market_board_filter
     def test_apply_recipe_filters_by_market_board(self) -> None:
         save_hard_filter_prefs(
             HardFilterPrefs(
@@ -87,6 +106,7 @@ class HardFiltersIndustryTests(unittest.TestCase):
             {"symbol": "600519", "vt_symbol": "600519.SSE", "amount": 1},
             {"symbol": "300750", "vt_symbol": "300750.SZSE", "amount": 1},
         ]
+        _clear_board_env()
         filtered = apply_recipe_filters(rows)
         self.assertEqual([row["symbol"] for row in filtered], ["300750"])
 

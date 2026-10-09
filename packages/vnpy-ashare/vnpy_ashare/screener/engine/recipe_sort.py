@@ -26,4 +26,5 @@ def sort_recipe_payloads_polars(rows: list[dict[str, Any]]) -> list[dict[str, An
         descending=[True, True],
         nulls_last=True,
     )
-    return sorted_df.drop("_hit_count", strict=False).to_dicts()
+    payloads = sorted_df.drop("_hit_count", strict=False).to_dicts()
+    return [{key: value for key, value in row.items() if value is not None} for row in payloads]

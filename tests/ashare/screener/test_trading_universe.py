@@ -5,6 +5,8 @@ from __future__ import annotations
 import os
 import unittest
 
+import pytest
+
 from vnpy_ashare.config.constants.trading import ENV_TRADING_BOARDS
 from vnpy_ashare.config.trading_universe import (
     default_market_board_label,
@@ -23,7 +25,12 @@ from vnpy_ashare.screener.hard_filter_prefs import (
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters, recipe_allowed_market_boards
 
 
+@pytest.mark.enable_market_board_filter
 class TradingUniverseTests(unittest.TestCase):
+    def setUp(self) -> None:
+        os.environ.pop(ENV_TRADING_BOARDS, None)
+        os.environ.pop("RECIPE_ALLOWED_MARKET_BOARDS", None)
+
     def tearDown(self) -> None:
         os.environ.pop(ENV_TRADING_BOARDS, None)
         os.environ.pop("RECIPE_ALLOWED_MARKET_BOARDS", None)
