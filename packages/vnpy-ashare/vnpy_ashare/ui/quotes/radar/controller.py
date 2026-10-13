@@ -21,6 +21,7 @@ from vnpy_ashare.quotes.radar.radar_full_refresh_prefs import load_radar_full_re
 from vnpy_ashare.quotes.radar.radar_catalog import (
     DEFAULT_LEADER_PICK_VARIANT,
     DEFAULT_SECTOR_VARIANT,
+    RADAR_CARD_BY_ID,
     RadarGroupKey,
     auto_refresh_card_ids,
     list_radar_cards,
