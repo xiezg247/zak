@@ -215,16 +215,6 @@ class SchedulerConfig(MutableModel):
         ),
         description="雷达统计/发现卡片磁盘快照预热",
     )
-    sync_bilibili_feed: JobConfig = Field(
-        default_factory=lambda: JobConfig(
-            enabled=True,
-            interval_seconds=300,
-            cron_hour=8,
-            cron_minute=0,
-            cron_day_of_week="mon-sun",
-        ),
-        description="B站订阅同步任务配置",
-    )
     purge_stale_cache: JobConfig = Field(
         default_factory=lambda: _job_config_from_cron(*_POST_CLOSE_CRON["purge_stale_cache"]),
         description="清理 cache schema 过期行（LLM hint、雷达快照、自选策略磁盘缓存）",
@@ -275,7 +265,6 @@ class SchedulerConfig(MutableModel):
             "screen_post_close": dump_auto(self.screen_post_close),
             "scan_horizon_outlook": dump_job(self.scan_horizon_outlook),
             "warm_radar_card_snapshots": dump_job(self.warm_radar_card_snapshots),
-            "sync_bilibili_feed": dump_job(self.sync_bilibili_feed),
             "purge_stale_cache": dump_job(self.purge_stale_cache),
         }
 
@@ -334,7 +323,6 @@ class SchedulerConfig(MutableModel):
                 "warm_radar_card_snapshots",
                 defaults.warm_radar_card_snapshots,
             ),
-            sync_bilibili_feed=load_job("sync_bilibili_feed", defaults.sync_bilibili_feed),
             purge_stale_cache=load_job("purge_stale_cache", defaults.purge_stale_cache),
         )
 

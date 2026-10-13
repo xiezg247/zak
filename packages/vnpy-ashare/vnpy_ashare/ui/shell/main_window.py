@@ -75,7 +75,6 @@ from vnpy_ashare.ui.shell.main_window_scheduler import (
     bind_scheduler_notifications,
     handle_scheduler_job,
     on_scheduler_job_event,
-    refresh_info_feed_badge,
     schedule_deferred_radar_prewarm,
     schedule_deferred_scheduler_start,
     schedule_deferred_shell_extras,
@@ -516,9 +515,6 @@ class AshareMainWindow(MainWindow):
 
     def _open_scheduler_page(self) -> None:
         open_scheduler_dialog(self)
-
-    def _refresh_info_feed_badge(self) -> None:
-        refresh_info_feed_badge(self)
 
     def _bind_scheduler_notifications(self) -> None:
         bind_scheduler_notifications(self)

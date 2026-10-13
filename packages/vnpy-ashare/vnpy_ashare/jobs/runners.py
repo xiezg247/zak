@@ -19,7 +19,6 @@ from vnpy_ashare.jobs.catalog import (
     JOB_CATALOG,
 )
 from vnpy_ashare.jobs.core.result import JobResult
-from vnpy_ashare.jobs.feed.sync_bilibili import is_bilibili_sync_window, sync_bilibili_feed_job
 from vnpy_ashare.jobs.financial.disclosure import sync_disclosure_calendar_job
 from vnpy_ashare.jobs.financial.sync import sync_watchlist_financials_job
 from vnpy_ashare.jobs.market.summary_warmup import warm_market_summary
@@ -58,7 +57,6 @@ _SIMPLE_JOB_RUNNERS: dict[str, Callable[[], JobResult]] = {
     "batch_fill_stale": batch_fill_downloaded_stale_job,
     "fill_focus_pool_minute": batch_fill_focus_pool_minute_job,
     "warm_market_summary": lambda: warm_market_summary(enrich_factors=True),
-    "sync_bilibili_feed": lambda: sync_bilibili_feed_job(force=True),
     "purge_stale_cache": purge_stale_cache_job,
 }
 
@@ -143,23 +141,6 @@ def run_prefetch_tushare_with_warm() -> JobResult:
     return result
 
 
-def run_sync_bilibili_feed(
-    *,
-    force: bool = False,
-    engine: AshareEngine | None = None,
-) -> JobResult:
-    """B 站订阅同步（调度器可走 FeedService）。"""
-    if not force and not is_bilibili_sync_window():
-        return JobResult(
-            success=True,
-            skipped=True,
-            message="非 08:00–20:00 时段，已跳过 B 站订阅同步",
-        )
-    if engine is not None:
-        return engine.feed_service.sync_all_enabled()
-    return sync_bilibili_feed_job(force=True)
-
-
 def run_job(
     job_id: str,
     *,
@@ -186,8 +167,6 @@ def run_job(
     if job_id == "batch_download_universe":
         start = download_start or load_scheduler_config().batch_download_universe.download_start
         return batch_download_universe_daily_bars(daily_start=start)
-    if job_id == "sync_bilibili_feed":
-        return run_sync_bilibili_feed(force=force, engine=engine)
 
     runner = _SIMPLE_JOB_RUNNERS.get(job_id)
     if runner is None:

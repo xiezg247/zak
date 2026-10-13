@@ -106,15 +106,12 @@ VeighNa K 线驱动（`DATABASE_NAME=postgresql` + `POSTGRES_*`）写入 **`publ
 | app | `screener_recipes` | 多因子配方 |
 | app | `screener_runs` | 选股运行历史 |
 | app | `backtest_runs` | 回测历史 |
-| app | `feed_subscriptions` | 信息流订阅 |
-| app | `feed_cursors` | 订阅同步游标 |
 | app | `notify_delivery_log` | 通知投递日志 |
 | chat | `sessions` | AI 会话 |
 | chat | `messages` | AI 消息 |
 | chat | `llm_turn_traces` | 对话 trace |
 | chat | `llm_tool_calls` | 工具调用审计 |
 | auth | `user_preferences` | 用户业务偏好（新建） |
-| app | `feed_item_reads` | 已读状态（新建，见 3.3） |
 
 ### 3.2 全局共享表（无 `user_id`）
 
@@ -132,7 +129,6 @@ VeighNa K 线驱动（`DATABASE_NAME=postgresql` + `POSTGRES_*`）写入 **`publ
 | app | `sector_flow_daily` | 板块日频资金 |
 | app | `sector_flow_intraday` | 板块 intraday |
 | app | `emotion_limit_ladder_daily` | 情绪连板梯队 |
-| app | `feed_items` | 信息流内容（按 external_id 去重） |
 | public | `dbbardata`、`dbbaroverview`、`dbtickdata`、`dbtickoverview` | VeighNa K 线（全局共享，由 vnpy_postgresql 管理） |
 | system | `meta` | 系统级 KV（job 游标、同步水位等） |
 | system | `scheduler_config` | 定时任务配置（新建，原 JSON 文件） |
@@ -143,7 +139,6 @@ VeighNa K 线驱动（`DATABASE_NAME=postgresql` + `POSTGRES_*`）写入 **`publ
 |----|------|
 | `trading_playbook_sections` | **全局共享**，无 `user_id`；正文来自代码模板（`playbook_templates/`），**用户不可编辑**；切换 Strategy Profile 时自动同步模板 |
 | `trading_playbook_discipline_daily` | 用户私有：每日纪律 checklist 勾选状态 |
-| `feed_items` | 内容全局共享；**移除 `read_at`**，改 `feed_item_reads(user_id, item_id, read_at)` |
 | `cache.*` | 默认可重建、全局共享；若缓存键含用户上下文再加 `user_id` |
 
 ### 3.4 Cache Schema 表
@@ -336,7 +331,6 @@ if not env_bool("ZAK_RUN_SCHEDULER", default=False):
 
 用户级 job 示例：
 
-- `sync_bilibili_feed`（按用户 subscriptions）
 - `screen_intraday` / `screen_post_close`（按用户 recipe 配置）
 - `warm_watchlist_strategy_cache`（按用户 watchlist）
 
@@ -479,7 +473,6 @@ Leader 机器设置 `ZAK_RUN_SCHEDULER=true` 并保证 PG/Redis 可达；其余�
 - [x] 私有表加 `user_id`（Alembic revision）
 - [x] `current_user_id` ContextVar + Repository 过滤
 - [x] LoginDialog + `cli.py user create`
-- [x] `feed_item_reads` 替代 `feed_items.read_at`
 
 **验收**：两账号自选/笔记/对话互不可见。
 

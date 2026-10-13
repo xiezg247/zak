@@ -26,7 +26,6 @@ from vnpy_ashare.jobs.runners import (
     run_collect_quotes,
     run_job,
     run_prefetch_tushare_with_warm,
-    run_sync_bilibili_feed,
 )
 from vnpy_ashare.jobs.watchlist.strategy_prewarm import warm_watchlist_strategy_cache_job
 from vnpy_ashare.quotes.core.collect_mode import scheduler_collect_quotes_enabled
@@ -119,7 +118,6 @@ class TaskSchedulerManager:
             SchedulerJobRunners(
                 run_universe_daily_download=self._run_universe_daily_download,
                 run_prefetch_tushare=self._run_prefetch_tushare,
-                run_sync_bilibili_feed=lambda: self._run_sync_bilibili_feed(),
                 run_warm_watchlist_strategy_cache=lambda: warm_watchlist_strategy_cache_job(
                     engine=self._engine,
                 ),
@@ -136,9 +134,6 @@ class TaskSchedulerManager:
 
     def _run_prefetch_tushare(self) -> JobResult:
         return run_prefetch_tushare_with_warm()
-
-    def _run_sync_bilibili_feed(self, *, force: bool = False) -> JobResult:
-        return run_sync_bilibili_feed(force=force, engine=self._engine)
 
     def _next_collect_quotes_run_at(self, *, prefer_immediate: bool = False) -> datetime:
         now = china_now()

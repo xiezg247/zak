@@ -31,7 +31,6 @@ K 线 → VeighNa → PostgreSQL public（dbbardata 等）
 | `stock_note_*` / `stock_analysis_reports` | [个股笔记](./stock-notes.md) |
 | `trading_plans` / `trading_plan_symbols` | [交易计划](./trading-plan-journal.md) |
 | `notify_delivery_log` | [通知](./notifications.md) |
-| `feed_*` | [信息流](./info-feed.md) |
 | `universe` / `trade_calendar` / `meta` / `symbol_suspend_days` | universe 同步、日历、硬过滤 |
 
 ---

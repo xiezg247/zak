@@ -17,7 +17,7 @@
 
 | 包 | 职责 |
 |----|------|
-| `vnpy-ashare` | 看盘、选股、回测、调度、通知、守则、信息流 |
+| `vnpy-ashare` | 看盘、选股、回测、调度、通知、守则 |
 | `vnpy-tickflow` | TickFlow 行情与 K 线 |
 | `vnpy-llm` | 对话、路由、AgentGateway |
 | `vnpy-skills` / `vnpy-mcp` | Skill 与远端工具 |
@@ -50,7 +50,6 @@ misc/     持仓异动
 | 板块资金 | `ui/sector_flow/` |
 | 选股 Hub | `ui/screener/pages/screener_hub_page.py` |
 | 回测 | `ui/backtest/`（菜单栏弹窗，见 `ui/backtest/dialog.py`） |
-| 信息流 | `ui/features/info_feed/` |
 
 自选页组合：主表 + 信号区 + 持仓区（见 [自选页说明](./watchlist.md)）。
 

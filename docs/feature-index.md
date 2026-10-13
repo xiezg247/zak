@@ -51,7 +51,6 @@
 | 投研团队 `/team` | [智能体投研团队](./team-agent.md) |
 | K 线依赖与补全建议 | [AI 功能与 K 线](./ai-kline-data.md) |
 | 双存储、表结构 | [数据设计](./data-design.md) |
-| B 站信息流 | [信息流](./info-feed.md) |
 
 ## 运维
 

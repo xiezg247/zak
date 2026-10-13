@@ -40,8 +40,7 @@ SIDEBAR_SHORTCUT_GROUP = ShortcutGroup(
         ShortcutEntry(action_key="sector_flow", label="板块资金", sequence="Ctrl+5"),
         ShortcutEntry(action_key="radar", label="雷达", sequence="Ctrl+6"),
         ShortcutEntry(action_key="screener", label="选股", sequence="Ctrl+7"),
-        ShortcutEntry(action_key="info_feed", label="信息流", sequence="Ctrl+8"),
-        ShortcutEntry(action_key="ai_assistant", label="AI 助手", sequence="Ctrl+9"),
+        ShortcutEntry(action_key="ai_assistant", label="AI 助手", sequence="Ctrl+8"),
     ),
 )
 

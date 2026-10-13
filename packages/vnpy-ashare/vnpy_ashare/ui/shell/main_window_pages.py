@@ -15,7 +15,6 @@ from vnpy_ashare.ai.ui.page import AiPageWidget
 from vnpy_ashare.app.deferred_apps import ensure_cta_backtester_app, ensure_data_manager_app
 from vnpy_ashare.ui.backtest.dialog import show_backtest_dialog, show_batch_backtest_dialog
 from vnpy_ashare.ui.backtest.pages.batch_backtest_page import BatchBacktestPageWidget
-from vnpy_ashare.ui.features.info_feed.page import InfoFeedPageWidget
 from vnpy_ashare.ui.features.notes_center.open import show_notes_center_dialog
 from vnpy_ashare.ui.home.page import HomePageWidget
 from vnpy_ashare.ui.scheduler.dialog import show_scheduler_dialog
@@ -25,7 +24,6 @@ from vnpy_ashare.ui.shell.deferred_idle import touch_user_activity
 from vnpy_ashare.ui.shell.local.dialog import show_local_data_dialog
 from vnpy_ashare.ui.shell.manager.dialog import show_data_manager_dialog
 from vnpy_ashare.ui.shell.page_shell import MarketPageWidget, RadarPageWidget, StrategyMonitorPageWidget, WatchlistPageWidget
-from vnpy_common.ui.theme.build_extra import build_info_feed_stylesheet
 from vnpy_common.ui.theme.manager import theme_manager
 
 if TYPE_CHECKING:
@@ -108,14 +106,11 @@ def get_or_create_page(win: AshareMainWindow, key: str) -> QtWidgets.QWidget | N
     elif key == "screener":
         widget = ScreenerHubPageWidget(win.main_engine, win.event_engine)
         widget.open_scheduler_requested.connect(lambda: open_scheduler_dialog(win))
-    elif key == "info_feed":
-        widget = InfoFeedPageWidget(win.main_engine, win.event_engine)
 
     if widget is not None:
         win._page_widgets[key] = widget
         win.widgets[key] = widget
-        page_extra = build_info_feed_stylesheet if key == "info_feed" else ""
-        win._theme_manager.bind_stylesheet(widget, extra=page_extra)
+        win._theme_manager.bind_stylesheet(widget)
 
     return widget
 

@@ -41,7 +41,6 @@ APP_NAV_GROUPS: tuple[NavGroup, ...] = (
     NavGroup(
         entries=(NavEntry(key="screener", label="选股"),),
     ),
-    NavGroup(entries=(NavEntry(key="info_feed", label="信息流"),)),
     NavGroup(entries=(NavEntry(key="ai_assistant", label="AI 助手"),)),
 )
 
@@ -162,14 +161,6 @@ def _draw_data(painter: QtGui.QPainter, size: int) -> None:
     painter.drawEllipse(m, m + 10, w, 6)
 
 
-def _draw_info_feed(painter: QtGui.QPainter, size: int) -> None:
-    m = 5
-    painter.drawRoundedRect(m, m + 1, size - m * 2 - 2, size - m * 2 - 2, 2, 2)
-    for y in (m + 8, m + 14, m + 20):
-        painter.drawLine(m + 6, y, size - m - 8, y)
-        painter.drawEllipse(QtCore.QPointF(m + 3, y), 1.4, 1.4)
-
-
 def _draw_ai_assistant(painter: QtGui.QPainter, size: int) -> None:
     m = 4
     rect = QtCore.QRectF(m + 1, m + 3, size - m * 2 - 2, size - m * 2 - 4)
@@ -238,7 +229,6 @@ _ICON_DRAWERS: dict[str, Callable[[QtGui.QPainter, int], None]] = {
     "watchlist": _draw_watchlist,
     "strategy_monitor": _draw_strategy_monitor,
     "screener": _draw_screener,
-    "info_feed": _draw_info_feed,
     "auto_screener": _draw_auto_screener,
     "local": _draw_local,
     "cta_backtest": _draw_backtest,

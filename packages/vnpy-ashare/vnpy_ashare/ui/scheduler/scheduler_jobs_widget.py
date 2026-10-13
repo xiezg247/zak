@@ -37,7 +37,7 @@ class _JobSettingsDialog(QtWidgets.QDialog):
 
         form = QtWidgets.QFormLayout(self)
 
-        if job_id in ("collect_quotes", "enrich_market_quotes", "sync_bilibili_feed"):
+        if job_id in ("collect_quotes", "enrich_market_quotes"):
             self.interval_spin = QtWidgets.QSpinBox()
             if job_id == "collect_quotes":
                 self.interval_spin.setRange(5, 3600)
@@ -48,13 +48,9 @@ class _JobSettingsDialog(QtWidgets.QDialog):
             self.interval_spin.setSuffix(" 秒")
             if job_id == "collect_quotes":
                 label = "采集间隔"
-            elif job_id == "enrich_market_quotes":
-                label = "enrich 间隔"
             else:
-                label = "同步间隔"
+                label = "enrich 间隔"
             form.addRow(label, self.interval_spin)
-            if job_id == "sync_bilibili_feed":
-                form.addRow("活跃时段", QtWidgets.QLabel("每天 08:00–20:00（中国时间）"))
         else:
             self.day_edit = QtWidgets.QLineEdit(config.cron_day_of_week)
             form.addRow("星期 (cron)", self.day_edit)
@@ -79,7 +75,7 @@ class _JobSettingsDialog(QtWidgets.QDialog):
         form.addRow(buttons)
 
     def values(self) -> dict[str, str | int]:
-        if self.job_id in ("collect_quotes", "enrich_market_quotes", "sync_bilibili_feed"):
+        if self.job_id in ("collect_quotes", "enrich_market_quotes"):
             return {"interval_seconds": self.interval_spin.value()}
         values: dict[str, str | int] = {
             "cron_day_of_week": self.day_edit.text().strip(),

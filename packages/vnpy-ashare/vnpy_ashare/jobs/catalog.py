@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from vnpy_ashare.jobs.feed.sync_bilibili import BILIBILI_SYNC_INTERVAL_SECONDS
-
 COLLECT_QUOTES_JOB_ID = "collect_quotes"
 COLLECT_QUOTES_INTERVAL_SECONDS = 5
 ENRICH_MARKET_QUOTES_JOB_ID = "enrich_market_quotes"
@@ -20,7 +18,6 @@ MANUAL_FORCE_JOB_IDS = frozenset(
         "scan_horizon_outlook",
         "warm_watchlist_strategy_cache",
         "warm_radar_card_snapshots",
-        "sync_bilibili_feed",
     },
 )
 
@@ -186,13 +183,6 @@ JOB_SPECS: tuple[JobSpec, ...] = (
         config_attr="warm_radar_card_snapshots",
     ),
     JobSpec(
-        job_id="sync_bilibili_feed",
-        name="B站订阅同步",
-        description="拉取已订阅 UP 主的最新视频与动态，写入信息流",
-        cli_description="拉取已订阅 UP 主视频与动态写入信息流",
-        config_attr="sync_bilibili_feed",
-    ),
-    JobSpec(
         job_id="purge_stale_cache",
         name="清理过期缓存",
         description="删除 cache schema 中过期 LLM/雷达 hint 与过旧自选策略磁盘缓存",
@@ -206,7 +196,6 @@ JOBS_BY_ID: dict[str, JobSpec] = {spec.job_id: spec for spec in JOB_SPECS}
 JOB_CATALOG: dict[str, tuple[str, str]] = {spec.job_id: (spec.name, spec.cli_text) for spec in JOB_SPECS}
 
 __all__ = [
-    "BILIBILI_SYNC_INTERVAL_SECONDS",
     "COLLECT_QUOTES_INTERVAL_SECONDS",
     "COLLECT_QUOTES_JOB_ID",
     "ENRICH_MARKET_QUOTES_INTERVAL_SECONDS",

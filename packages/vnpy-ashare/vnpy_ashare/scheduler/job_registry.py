@@ -13,7 +13,6 @@ from pydantic import ConfigDict, Field
 from vnpy_ashare.jobs.bars.batch_fill import batch_fill_downloaded_stale_job
 from vnpy_ashare.jobs.bars.focus_pool_minute import batch_fill_focus_pool_minute_job
 from vnpy_ashare.jobs.catalog import (
-    BILIBILI_SYNC_INTERVAL_SECONDS,
     COLLECT_QUOTES_INTERVAL_SECONDS,
     COLLECT_QUOTES_JOB_ID,
     ENRICH_MARKET_QUOTES_INTERVAL_SECONDS,
@@ -71,7 +70,6 @@ class SchedulerJobRunners:
 
     run_universe_daily_download: Callable[[], JobResult]
     run_prefetch_tushare: Callable[[], JobResult]
-    run_sync_bilibili_feed: Callable[[], JobResult]
     run_warm_watchlist_strategy_cache: Callable[[], JobResult]
 
 
@@ -290,17 +288,6 @@ def build_scheduler_jobs(runners: SchedulerJobRunners) -> dict[str, SchedulerJob
             config_attr=specs["scan_horizon_outlook"].config_attr,
             schedule_builder=_weekly_cron_trigger,
             schedule_text_builder=lambda cfg: _workday_schedule_text(cfg, suffix="（建议在盘后自动选股之后）"),
-        ),
-        "sync_bilibili_feed": SchedulerJobMeta(
-            job_id="sync_bilibili_feed",
-            name=specs["sync_bilibili_feed"].name,
-            description=specs["sync_bilibili_feed"].description,
-            runner=runners.run_sync_bilibili_feed,
-            config_attr=specs["sync_bilibili_feed"].config_attr,
-            schedule_builder=lambda cfg: IntervalTrigger(
-                seconds=max(cfg.interval_seconds, BILIBILI_SYNC_INTERVAL_SECONDS),
-            ),
-            schedule_text_builder=lambda cfg: f"每天 08:00–20:00 每 {max(cfg.interval_seconds, BILIBILI_SYNC_INTERVAL_SECONDS) // 60} 分钟",
         ),
         "purge_stale_cache": SchedulerJobMeta(
             job_id="purge_stale_cache",

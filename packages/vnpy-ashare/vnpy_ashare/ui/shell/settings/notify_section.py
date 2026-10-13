@@ -11,7 +11,6 @@ from vnpy_ashare.config.schema import ENV_NOTIFY_SPECS, ConfigFieldSpec
 from vnpy_ashare.notifications.core.events import (
     DEFAULT_EVENT_SUBSCRIPTIONS,
     NOTIFY_EVENT_EMOTION_STAGE_CHANGE,
-    NOTIFY_EVENT_FEED_ITEM_NEW,
     NOTIFY_EVENT_POSITION_ALERT,
     NOTIFY_EVENT_RADAR_LEADER_READY,
     NOTIFY_EVENT_SCHEDULER_JOB_FAILED,
@@ -32,7 +31,6 @@ _EVENT_LABELS: dict[str, str] = {
     NOTIFY_EVENT_EMOTION_STAGE_CHANGE: "情绪阶段变更",
     NOTIFY_EVENT_POSITION_ALERT: "持仓异动提醒",
     NOTIFY_EVENT_RADAR_LEADER_READY: "龙头池更新",
-    NOTIFY_EVENT_FEED_ITEM_NEW: "B站 UP 更新",
 }
 
 _CONNECTION_KEYS = frozenset(

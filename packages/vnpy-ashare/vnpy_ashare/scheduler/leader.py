@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 USER_SCOPED_JOB_IDS: frozenset[str] = frozenset(
     {
-        "sync_bilibili_feed",
         "screen_intraday",
         "screen_post_close",
         "warm_watchlist_strategy_cache",

@@ -20,7 +20,7 @@ _CHAT_USER_TABLES: tuple[str, ...] = (
     "sessions",
 )
 
-_APP_USER_TABLES: tuple[str, ...] = (*PRIVATE_TABLES, "feed_item_reads")
+_APP_USER_TABLES: tuple[str, ...] = PRIVATE_TABLES
 
 _users_repo = UsersRepository()
 _prefs_repo = UserPreferencesRepository()

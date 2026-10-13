@@ -177,62 +177,6 @@ backtest_runs = Table(
     Column("created_at", Text, nullable=False),
 )
 
-feed_subscriptions = Table(
-    "feed_subscriptions",
-    metadata,
-    Column("user_id", UUID(as_uuid=False), nullable=False),
-    Column("id", Text, primary_key=True),
-    Column("source_type", Text, nullable=False, server_default="bilibili_up"),
-    Column("source_id", Text, nullable=False),
-    Column("display_name", Text, nullable=False, server_default=""),
-    Column("avatar_url", Text, nullable=False, server_default=""),
-    Column("config_json", Text, nullable=False, server_default="{}"),
-    Column("enabled", Integer, nullable=False, server_default="1"),
-    Column("sort_order", Integer, nullable=False, server_default="0"),
-    Column("created_at", Text, nullable=False),
-    Column("updated_at", Text, nullable=False),
-    UniqueConstraint("source_type", "source_id"),
-)
-
-feed_items = Table(
-    "feed_items",
-    metadata,
-    Column("id", Text, primary_key=True),
-    Column("subscription_id", Text, nullable=False),
-    Column("source_type", Text, nullable=False),
-    Column("external_id", Text, nullable=False),
-    Column("item_type", Text, nullable=False),
-    Column("title", Text, nullable=False, server_default=""),
-    Column("summary", Text, nullable=False, server_default=""),
-    Column("url", Text, nullable=False),
-    Column("author_name", Text, nullable=False, server_default=""),
-    Column("published_at", Text, nullable=False),
-    Column("payload_json", Text, nullable=False, server_default="{}"),
-    Column("read_at", Text),
-    Column("created_at", Text, nullable=False),
-    UniqueConstraint("source_type", "external_id"),
-)
-
-feed_cursors = Table(
-    "feed_cursors",
-    metadata,
-    Column("subscription_id", Text, primary_key=True),
-    Column("user_id", UUID(as_uuid=False), nullable=False),
-    Column("last_video_ts", Integer, nullable=False, server_default="0"),
-    Column("last_dynamic_id", Text, nullable=False, server_default=""),
-    Column("last_ok_at", Text),
-    Column("last_error", Text, nullable=False, server_default=""),
-)
-
-feed_item_reads = Table(
-    "feed_item_reads",
-    metadata,
-    Column("user_id", UUID(as_uuid=False), nullable=False),
-    Column("item_id", Text, nullable=False),
-    Column("read_at", Text, nullable=False),
-    PrimaryKeyConstraint("user_id", "item_id"),
-)
-
 universe = Table(
     "universe",
     metadata,

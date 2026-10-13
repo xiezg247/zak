@@ -18,7 +18,7 @@
 | [自选页](./watchlist.md) · [风控](./risk-gate.md) · [交易计划](./trading-plan-journal.md) | 仓位与纪律 |
 | [策略回测](./backtest-ux.md) · [个股笔记](./stock-notes.md) | 回测与复盘 |
 | [AI 数据路由](./ai-data-routing.md) · [AI 与 K 线](./ai-kline-data.md) · [团队分析](./team-agent.md) | AI 与 Skill |
-| [消息通知](./notifications.md) · [信息流](./info-feed.md) | 飞书与 B 站订阅 |
+| [消息通知](./notifications.md) | 飞书 Webhook 与事件订阅 |
 | [配置热加载](./config-hot-reload.md) | instant / soft / restart |
 | [性能优化](./performance-optimization.md) | 极致短线 SLI、PG/Redis/UI 分层方案 |
 | [编码规范](./coding-standards.md) · [mypy](./mypy.md) | 开发约定 |

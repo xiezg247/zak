@@ -13,7 +13,6 @@ from vnpy_ashare.scheduler.manager import TaskSchedulerManager
 from vnpy_ashare.services.analysis import AnalysisService
 from vnpy_ashare.services.backtest import BacktestService
 from vnpy_ashare.services.bar import BarService
-from vnpy_ashare.services.feed import FeedService
 from vnpy_ashare.services.financial import FinancialService
 from vnpy_ashare.services.note import NoteService
 from vnpy_ashare.services.position import PositionService
@@ -41,7 +40,6 @@ class AshareEngine(BaseEngine):
         self.watchlist_service = WatchlistService(self)
         self.position_service = PositionService(self)
         self.note_service = NoteService(self)
-        self.feed_service = FeedService(self)
         self.analysis_service = AnalysisService(self)
         self.financial_service = FinancialService(self)
         self.sentiment_service = SentimentService(self)

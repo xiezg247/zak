@@ -37,8 +37,8 @@ class TestSchedulerLeader(unittest.TestCase):
             self.assertFalse(manager._scheduler.running)
 
     def test_user_scoped_jobs(self) -> None:
-        self.assertTrue(is_user_scoped_job("sync_bilibili_feed"))
         self.assertTrue(is_user_scoped_job("screen_intraday"))
+        self.assertTrue(is_user_scoped_job("warm_watchlist_strategy_cache"))
         self.assertFalse(is_user_scoped_job("sync_universe"))
 
     def test_user_scoped_job_runs_per_active_user(self) -> None:
@@ -59,7 +59,7 @@ class TestSchedulerLeader(unittest.TestCase):
                     type("U", (), {"id": "u2", "username": "bob"})(),
                 ],
             ):
-                manager._wrap_job("sync_bilibili_feed", force=True)
+                manager._wrap_job("screen_intraday", force=True)
 
         self.assertEqual(calls, ["u1", "u2"])
 

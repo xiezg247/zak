@@ -90,10 +90,6 @@ def _load_deferred_shell_extras(win: AshareMainWindow) -> None:
         if shell is not None and win._init_floating_ai(shell):
             assert win._floating_controller is not None
             win._floating_controller.bind_content_anchor(win.stack)
-    with profiler.phase("main_window.info_feed_badge"):
-        refresh_info_feed_badge(win)
-
-
 def schedule_deferred_scheduler_start(win: AshareMainWindow) -> None:
     """冷启动：首屏渲染完成且用户空闲后再启动 APScheduler。"""
     if win._scheduler_deferred_scheduled:
@@ -126,10 +122,6 @@ def bootstrap_stock_industry_if_needed(scheduler) -> None:
     scheduler.run_now("sync_stock_industry")
 
 
-def refresh_info_feed_badge(win: AshareMainWindow) -> None:
-    win.sidebar.set_badge_count("info_feed", 0)
-
-
 def bind_scheduler_notifications(win: AshareMainWindow) -> None:
     if win._scheduler_listener_connected:
         return
@@ -145,12 +137,6 @@ def on_scheduler_job_event(win: AshareMainWindow, job_id: str) -> None:
 
 
 def handle_scheduler_job(win: AshareMainWindow, job_id: str) -> None:
-    if job_id == "sync_bilibili_feed":
-        refresh_info_feed_badge(win)
-        widget = win._page_widgets.get("info_feed")
-        if widget is not None and hasattr(widget, "activate"):
-            widget.activate()
-        return
     if job_id not in ("screen_intraday", "screen_post_close"):
         return
     engine = win.main_engine.get_engine(APP_NAME)

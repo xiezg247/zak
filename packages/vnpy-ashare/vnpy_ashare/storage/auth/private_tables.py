@@ -17,7 +17,5 @@ PRIVATE_TABLES: tuple[str, ...] = (
     "screener_recipes",
     "screener_runs",
     "backtest_runs",
-    "feed_subscriptions",
-    "feed_cursors",
     "notify_delivery_log",
 )

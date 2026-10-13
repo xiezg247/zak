@@ -30,7 +30,6 @@ Webhook 勿写入日志或 AI 对话。详见 [配置热加载](./config-hot-rel
 | `position_alert` | 持仓异动 |
 | `radar_leader_ready` | 龙头池更新（易刷屏） |
 | `scheduler_job_failed` | 定时任务失败 |
-| `feed_item_new` | B 站 UP 更新 |
 | `manual_test` | 设置页测试 |
 
 限频：同事件 + dedupe_key **5 分钟** 1 条；最小间隔默认 **30 秒**。可选交易时段、午休/夜间静默。记录落库 `notify_delivery_log`。
