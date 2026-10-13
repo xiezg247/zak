@@ -98,8 +98,12 @@ def replace_context_snapshot(ctx: ScreeningContext, *, rows: list, total: int | 
         total=len(rows) if total is None else total,
         source=snapshot.source,
     )
-    # 快照行变更后 Polars frame 必须失效，避免沿用旧全表
-    ctx._snapshot_frame = None
+    # 快照行变更后索引 / Polars frame 必须失效
+    invalidate = getattr(ctx, "invalidate_row_indexes", None)
+    if callable(invalidate):
+        invalidate()
+    else:
+        ctx._snapshot_frame = None
 
 
 def apply_coarse_quote_filters_polars(rows: list) -> list:
@@ -152,12 +156,17 @@ def apply_coarse_quote_filters_polars(rows: list) -> list:
     return restore_rows(rows, filtered_df.to_dicts())
 
 
+def _snapshot_rows_as_list(snapshot) -> list:
+    rows = getattr(snapshot, "rows", None) or []
+    return rows if isinstance(rows, list) else list(rows)
+
+
 def coarse_prefilter_snapshot(ctx: ScreeningContext) -> None:
     """粗筛：仅用行情快照字段（零 API 调用）先过滤无效/涨跌停/低流动性/北交所标的。"""
     snapshot = getattr(ctx, "_snapshot", None)
     if snapshot is None or not getattr(snapshot, "rows", None):
         return
-    rows = list(snapshot.rows)
+    rows = _snapshot_rows_as_list(snapshot)
     original = len(rows)
     filtered = apply_coarse_quote_filters_polars(rows)
     if len(filtered) == original:
@@ -172,10 +181,13 @@ def apply_recipe_prefilter_to_context(ctx: ScreeningContext) -> None:
     snapshot = getattr(ctx, "_snapshot", None)
     if snapshot is None or not getattr(snapshot, "rows", None):
         return
-    filtered = apply_recipe_filters(list(snapshot.rows))
-    if len(filtered) == len(snapshot.rows):
-        return
-    replace_context_snapshot(ctx, rows=filtered)
+    rows = _snapshot_rows_as_list(snapshot)
+    filtered = apply_recipe_filters(rows)
+    if len(filtered) != len(rows):
+        replace_context_snapshot(ctx, rows=filtered)
+    mark = getattr(ctx, "mark_recipe_prefiltered", None)
+    if callable(mark):
+        mark()
 
 
 def apply_sentiment_prefilter_to_context(ctx: ScreeningContext) -> None:
@@ -185,8 +197,9 @@ def apply_sentiment_prefilter_to_context(ctx: ScreeningContext) -> None:
     snapshot = getattr(ctx, "_snapshot", None)
     if snapshot is None or not getattr(snapshot, "rows", None):
         return
-    filtered = apply_sentiment_snapshot_prefilter(list(snapshot.rows))
-    if len(filtered) == len(snapshot.rows):
+    rows = _snapshot_rows_as_list(snapshot)
+    filtered = apply_sentiment_snapshot_prefilter(rows)
+    if len(filtered) == len(rows):
         return
     replace_context_snapshot(ctx, rows=filtered)
 

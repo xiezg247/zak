@@ -68,7 +68,14 @@ class QuoteTableModel(QtCore.QAbstractTableModel):
         self.endResetModel()
 
     def set_rows(self, rows: list[list[QuoteCell]]) -> None:
-        """批量替换全部行（单次 model reset，避免逐格 dataChanged）。"""
+        """批量替换全部行。
+
+        行数不变时逐行 ``apply_row``（dataChanged），避免无谓 beginResetModel 全刷。
+        """
+        if len(rows) == len(self._rows) and self._rows:
+            for index, cells in enumerate(rows):
+                self.apply_row(index, list(cells))
+            return
         self.beginResetModel()
         self._rows = [list(row) for row in rows]
         self._ensure_row_widths()

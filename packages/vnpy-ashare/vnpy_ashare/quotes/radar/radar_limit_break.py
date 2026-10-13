@@ -10,8 +10,7 @@ from vnpy_ashare.quotes.radar.radar_limit_ladder import board_display_text, reso
 from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow
 from vnpy_ashare.quotes.radar.radar_quotes import merge_row_quotes
 from vnpy_ashare.quotes.radar.radar_pool import name_map_for_symbols
-from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
-from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
+from vnpy_ashare.screener.data.screening_context import get_screening_compute_rows
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters, is_at_limit_board, limit_board_threshold_pct
 from vnpy_ashare.trading.signals.seal_reopen import classify_seal_reopen, format_seal_reopen_label
 
@@ -34,10 +33,15 @@ def _severity_key(kind: str, *, boards: int, change: float) -> tuple[int, float]
     return 9, 0.0
 
 
-def _collect_limit_break_candidates(snapshot_rows: list) -> list[tuple[dict, str, str, str]]:
+def _collect_limit_break_candidates(
+    snapshot_rows: list,
+    *,
+    already_recipe_filtered: bool = False,
+) -> list[tuple[dict, str, str, str]]:
     """返回 (row, kind, metric_label, metric_value)。"""
     by_vt: dict[str, dict] = {}
-    for row in apply_recipe_filters(snapshot_rows):
+    source_rows = snapshot_rows if already_recipe_filtered else apply_recipe_filters(snapshot_rows)
+    for row in source_rows:
         vt = str(row.get("vt_symbol") or "").strip()
         if vt:
             by_vt[vt] = merge_row_quotes(row)
@@ -102,9 +106,8 @@ def _collect_limit_break_candidates(snapshot_rows: list) -> list[tuple[dict, str
 
 
 def load_discovery_limit_break(spec: RadarCardSpec) -> RadarCardData:
-    try:
-        snapshot = load_screening_quote_snapshot()
-    except MarketQuotesLoadError:
+    loaded = get_screening_compute_rows(ensure_recipe_filtered=True)
+    if loaded is None:
         return RadarCardData(
             card_id=spec.id,
             title=spec.title,
@@ -114,16 +117,17 @@ def load_discovery_limit_break(spec: RadarCardSpec) -> RadarCardData:
             updated_at="",
         )
 
-    candidates = _collect_limit_break_candidates(list(snapshot.rows))
+    snapshot_rows, total = loaded
+    candidates = _collect_limit_break_candidates(snapshot_rows, already_recipe_filtered=True)
     if not candidates:
         return RadarCardData(
             card_id=spec.id,
             title=spec.title,
-            subtitle=f"扫描 {snapshot.total} 只",
+            subtitle=f"扫描 {total} 只",
             rows=(),
             empty_message="当前无明显跌停 / 断板 / 炸板风险标的。",
             updated_at="",
-            total_count=int(snapshot.total or 0),
+            total_count=int(total or 0),
         )
 
     vt_symbols = [str(item[0].get("vt_symbol") or "") for item in candidates[: spec.top_n]]
@@ -171,7 +175,7 @@ def load_discovery_limit_break(spec: RadarCardSpec) -> RadarCardData:
     if seal:
         parts.append(f"炸板 {seal}")
     subtitle = " · ".join(parts) if parts else "风险异动"
-    subtitle += f" · 扫描 {snapshot.total} 只"
+    subtitle += f" · 扫描 {total} 只"
 
     return RadarCardData(
         card_id=spec.id,

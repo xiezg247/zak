@@ -22,9 +22,8 @@ from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
 from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow
 from vnpy_ashare.quotes.radar.radar_quotes import merge_row_quotes
 from vnpy_ashare.quotes.radar.radar_pool import name_map_for_symbols
-from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
-from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.domain.screener.dimension_hit import DimensionHit, dimension_hit_row
+from vnpy_ashare.screener.data.screening_context import get_screening_compute_rows
 from vnpy_ashare.screener.engine.dimensions.moneyflow_resolve import (
     build_moneyflow_source_subtitle,
     resolve_moneyflow_hits,
@@ -119,12 +118,12 @@ def volume_surge_needs_ratio_fallback(hits) -> bool:
 
 def volume_liquidity_proxy(pool_size: int, total: int):
     """成交量/量比均不可用时的成交额/换手代理排行。"""
-    try:
-        snapshot = load_screening_quote_snapshot()
-    except MarketQuotesLoadError:
+    loaded = get_screening_compute_rows(ensure_recipe_filtered=True)
+    if loaded is None:
         return [], total
 
-    ranked = sorted(apply_recipe_filters(snapshot.rows), key=quote_liquidity_key, reverse=True)
+    rows, scanned_total = loaded
+    ranked = sorted(rows, key=quote_liquidity_key, reverse=True)
     hits: list[DimensionHit] = []
     for index, row in enumerate(ranked[:pool_size], start=1):
         vt_symbol = str(row.get("vt_symbol") or "")
@@ -141,7 +140,7 @@ def volume_liquidity_proxy(pool_size: int, total: int):
                 row=dimension_hit_row(row),
             )
         )
-    return hits, snapshot.total
+    return hits, scanned_total
 
 
 def _volume_discovery_metric(row: dict[str, Any], hit) -> tuple[str, str, str, str]:

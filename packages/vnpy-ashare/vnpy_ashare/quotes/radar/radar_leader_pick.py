@@ -16,8 +16,7 @@ from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow
 from vnpy_ashare.quotes.radar.radar_quotes import merge_row_quotes
 from vnpy_ashare.quotes.radar.radar_enrich import enrich_radar_rows
 from vnpy_ashare.quotes.radar.radar_leader_row import row_from_leader_scored
-from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
-from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
+from vnpy_ashare.screener.data.screening_context import get_screening_compute_rows
 from vnpy_ashare.screener.engine.dimensions.sector_strength import run_sector_strength
 from vnpy_ashare.screener.hard_filters import is_at_limit_board
 from vnpy_ashare.screener.sector.sector_summary import attach_sector_fields, compute_sector_distribution
@@ -56,14 +55,14 @@ def build_leader_candidate_pool(
         cands, total = peeked
         return cands, total, _LeaderPoolMeta()
 
-    try:
-        snapshot = load_screening_quote_snapshot()
-    except MarketQuotesLoadError:
+    loaded = get_screening_compute_rows(ensure_recipe_filtered=True)
+    if loaded is None:
         return [], 0, _LeaderPoolMeta()
 
-    enriched, hot_concepts = attach_sector_fields(snapshot.rows)
+    snapshot_rows, total = loaded
+    enriched, hot_concepts = attach_sector_fields(snapshot_rows)
     if not enriched:
-        return [], snapshot.total, _LeaderPoolMeta(hot_concepts=hot_concepts)
+        return [], total, _LeaderPoolMeta(hot_concepts=hot_concepts)
 
     if variant == "mainline":
         hits, _total = run_sector_strength(max(pool_size, 40), weight=1.0)
@@ -77,8 +76,8 @@ def build_leader_candidate_pool(
             else:
                 pool_rows.append(row)
         attach_first_time_fields(pool_rows)
-        store_leader_candidate_pool(variant=variant, pool_size=pool_size, candidates=pool_rows, total=snapshot.total)
-        return pool_rows, snapshot.total, _LeaderPoolMeta(hot_concepts=hot_concepts)
+        store_leader_candidate_pool(variant=variant, pool_size=pool_size, candidates=pool_rows, total=total)
+        return pool_rows, total, _LeaderPoolMeta(hot_concepts=hot_concepts)
 
     # all_market: 同时计算 sector 分布，供 load_leader_pick 复用
     distribution = compute_sector_distribution(enriched, top_n=10, min_stocks=3)
@@ -113,8 +112,8 @@ def build_leader_candidate_pool(
     )
     trimmed = candidates[:pool_size]
     attach_first_time_fields(trimmed)
-    store_leader_candidate_pool(variant=variant, pool_size=pool_size, candidates=trimmed, total=snapshot.total)
-    return trimmed, snapshot.total, _LeaderPoolMeta(
+    store_leader_candidate_pool(variant=variant, pool_size=pool_size, candidates=trimmed, total=total)
+    return trimmed, total, _LeaderPoolMeta(
         strong_industries=strong,
         strong_concepts=strong_concepts,
         hot_concepts=hot_concepts,

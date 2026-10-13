@@ -141,6 +141,9 @@ def test_write_quotes_preserves_change_speed_rank_when_empty(monkeypatch) -> Non
             self._client = client
             self._ops: list[tuple] = []
 
+        def incr(self, key: str) -> None:
+            self._ops.append(("incr", key))
+
         def hset(self, key: str, mapping: dict[str, str]) -> None:
             self._ops.append(("hset", key, mapping))
 
@@ -150,27 +153,60 @@ def test_write_quotes_preserves_change_speed_rank_when_empty(monkeypatch) -> Non
         def zadd(self, key: str, mapping: dict[str, float]) -> None:
             self._ops.append(("zadd", key, mapping))
 
+        def zrem(self, key: str, *members: str) -> None:
+            self._ops.append(("zrem", key, members))
+
         def set(self, key: str, value: str) -> None:
             self._ops.append(("set", key, value))
 
-        def execute(self) -> None:
+        def execute(self) -> list:
+            results: list = []
             for op in self._ops:
-                if op[0] == "hset":
-                    self._client._hashes[op[1]] = dict(op[2])
+                if op[0] == "incr":
+                    cur = int(self._client._strings.get(op[1], "0") or "0") + 1
+                    self._client._strings[op[1]] = str(cur)
+                    results.append(cur)
+                elif op[0] == "hset":
+                    bucket = self._client._hashes.setdefault(op[1], {})
+                    bucket.update(op[2])
+                    results.append(len(op[2]))
                 elif op[0] == "delete":
                     self._client._zsets.pop(op[1], None)
+                    self._client._hashes.pop(op[1], None)
+                    results.append(1)
                 elif op[0] == "zadd":
                     self._client._zsets[op[1]] = dict(op[2])
+                    results.append(len(op[2]))
+                elif op[0] == "zrem":
+                    zset = self._client._zsets.get(op[1], {})
+                    for member in op[2]:
+                        zset.pop(member, None)
+                    results.append(len(op[2]))
                 elif op[0] == "set":
                     self._client._strings[op[1]] = op[2]
+                    results.append(True)
+                else:
+                    results.append(None)
             self._ops.clear()
+            return results
 
     client = _FakeRedis()
     client._hashes[SPEED_BASELINE_HASH_KEY] = {"600000.SH": "10.0"}
     client._strings[SPEED_BASELINE_AT_KEY] = "1000"
 
+    monkeypatch.setattr("vnpy_ashare.quotes.core.redis_store.publish_quote_updated", lambda **_kwargs: None)
+    monkeypatch.setattr("vnpy_ashare.quotes.core.redis_store.quote_l1_enabled", lambda: False)
+    monkeypatch.setattr("vnpy_ashare.quotes.core.redis_store.quote_blob_enabled", lambda: False)
+    monkeypatch.setattr("vnpy_ashare.quotes.core.redis_store.quote_compact_enabled", lambda: False)
+    monkeypatch.setattr("vnpy_ashare.quotes.core.quote_redis_codec.quote_blob_enabled", lambda: False)
+    monkeypatch.setattr("vnpy_ashare.quotes.core.quote_redis_codec.quote_compact_enabled", lambda: False)
+    monkeypatch.setattr("vnpy_ashare.quotes.core.redis_store.rank_precompute_enabled", lambda: False)
+    monkeypatch.setattr("vnpy_ashare.quotes.core.redis_store.rank_ordered_list_enabled", lambda: False)
+    monkeypatch.setattr("vnpy_ashare.quotes.core.redis_store.rank_incremental_enabled", lambda: True)
+
     store = RedisQuoteStore(client=client)
     quote = _quote("600000.SH", 10.0)
     store.write_quotes({"600000.SH": quote})
     assert client.zcard(rank_key("change_speed_5m")) == 1
-    assert client.hgetall(quote_key("600000.SH")).get("change_speed_5m") == "0.0"
+    stored = client.hgetall(quote_key("600000.SH"))
+    assert stored.get("change_speed_5m") == "0.0" or stored.get("cs5") == "0.0"

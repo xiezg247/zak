@@ -26,9 +26,8 @@ _MIN_INDUSTRY_POOL = 20
 
 @dataclass(frozen=True)
 class RelativeStrengthContext:
-    """批量 enrich 时预计算的相对强度上下文。"""
+    """批量 enrich 时预计算的相对强度上下文（不持有全市场 pool）。"""
 
-    pool: QuoteRowsLike
     industry_map: dict[str, str]
     market_benchmark: float
     industry_avg: dict[str, float]
@@ -37,18 +36,20 @@ class RelativeStrengthContext:
 def build_relative_strength_context(
     snapshot_rows: QuoteRowsLike | None = None,
 ) -> RelativeStrengthContext | None:
+    """从快照计算行业/大盘基准后丢弃行列表，避免 enrich 路径长驻 ~5k 行。"""
     pool = _market_rows_for_relative_strength(snapshot_rows)
     if not pool:
         return None
     industry_map = get_stock_industry_map()
     enriched = attach_industry(pool, industry_map=industry_map)
     effective = enriched or pool
-    return RelativeStrengthContext(
-        pool=effective,
+    context = RelativeStrengthContext(
         industry_map=industry_map,
         market_benchmark=market_benchmark_change_pct(effective),
         industry_avg=industry_avg_change_map(enriched),
     )
+    # pool / enriched 仅用于聚合，不挂到 context 上
+    return context
 
 
 def _market_rows_for_relative_strength(snapshot_rows: QuoteRowsLike | None) -> QuoteRowsLike:
@@ -77,7 +78,6 @@ def build_relative_strength_subline(
         return None
 
     if rs_context is not None:
-        pool = rs_context.pool
         industry_map = rs_context.industry_map
         market_benchmark = rs_context.market_benchmark
         industry_avg = rs_context.industry_avg

@@ -9,10 +9,8 @@ from vnpy_ashare.data.bar_access import iter_bar_overviews
 from vnpy_ashare.domain.radar.horizon import HorizonScanStats
 from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.quotes.radar.outlook_strategy_prefs import load_outlook_signal_config
-from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
-from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
+from vnpy_ashare.screener.data.screening_context import get_screening_compute_rows
 from vnpy_ashare.screener.engine.frame import row_to_dict
-from vnpy_ashare.screener.hard_filters import apply_recipe_filters
 
 __all__ = [
     "HORIZON_PREFILTER_TOP",
@@ -86,9 +84,8 @@ def prefilter_horizon_universe(
     config: WatchlistSignalConfig | None = None,
 ) -> tuple[list[str], HorizonScanStats]:
     """行情粗筛：硬过滤 + 排除自选/信号区/持仓 + 仅保留本地日 K 达标 + 流动性 Top N。"""
-    try:
-        snapshot = load_screening_quote_snapshot()
-    except MarketQuotesLoadError:
+    loaded = get_screening_compute_rows(ensure_recipe_filtered=True)
+    if loaded is None:
         return [], HorizonScanStats(
             scanned_total=0,
             excluded_count=len(exclusion),
@@ -97,8 +94,7 @@ def prefilter_horizon_universe(
             kline_missing=0,
         )
 
-    scanned_total = int(snapshot.total or len(snapshot.rows))
-    filtered = apply_recipe_filters(list(snapshot.rows))
+    filtered, scanned_total = loaded
     min_bars = horizon_min_signal_bars(config)
     k_ready = collect_daily_k_ready_vt_symbols(min_bars, config=config)
 

@@ -73,15 +73,14 @@ class LimitLadderTest(unittest.TestCase):
 
     @patch("vnpy_ashare.quotes.radar.radar_limit_ladder.get_cached_limit_times_map", return_value={})
     @patch("vnpy_ashare.quotes.radar.radar_limit_ladder.attach_industry", side_effect=lambda rows: rows)
-    @patch("vnpy_ashare.quotes.radar.radar_limit_ladder.load_screening_quote_snapshot")
-    def test_load_limit_ladder_empty_when_no_limit_up(self, mock_snapshot, _industry, _limit_map) -> None:
-        from types import SimpleNamespace
-
+    @patch("vnpy_ashare.quotes.radar.radar_limit_ladder.get_screening_compute_rows")
+    def test_load_limit_ladder_empty_when_no_limit_up(self, mock_rows, _industry, _limit_map) -> None:
         from vnpy_ashare.quotes.radar.radar_catalog import RADAR_CARD_BY_ID
         from vnpy_ashare.quotes.radar.radar_limit_ladder import load_limit_ladder
 
-        mock_snapshot.return_value = SimpleNamespace(rows=[_row("A", boards=0)], total=100)
-        mock_snapshot.return_value.rows[0]["change_pct"] = 1.0
+        row = _row("A", boards=0)
+        row["change_pct"] = 1.0
+        mock_rows.return_value = ([row], 100)
         spec = RADAR_CARD_BY_ID["discovery_limit_ladder"]
         with patch(
             "vnpy_ashare.quotes.radar.radar_limit_ladder.build_limit_ladder_candidates",

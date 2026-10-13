@@ -11,15 +11,13 @@ from vnpy_ashare.integrations.tushare.concept_board import build_hot_concept_vt_
 from vnpy_ashare.quotes.format import format_pct
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
 from vnpy_ashare.domain.radar.leader import LeaderScoredRow
-from vnpy_ashare.quotes.radar.radar_leader import rank_unified_sector_leaders
+from vnpy_ashare.quotes.radar.radar_leader import leader_tier_label, rank_unified_sector_leaders
 from vnpy_ashare.quotes.radar.radar_leader_row import row_from_leader_scored
 from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow
 from vnpy_ashare.quotes.radar.radar_quotes import merge_row_quotes
 from vnpy_ashare.quotes.radar.radar_enrich import apply_board_quality, enrich_radar_rows
-from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
-from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
+from vnpy_ashare.screener.data.screening_context import get_screening_compute_rows
 from vnpy_ashare.screener.engine.dimensions.sector_strength import run_sector_strength
-from vnpy_ashare.screener.hard_filters import apply_recipe_filters
 from vnpy_ashare.screener.sector.sector_summary import (
     attach_industry,
     attach_sector_fields,
@@ -132,18 +130,18 @@ def _build_leaders_tiered_rows(pool_size: int) -> tuple[list[RadarRow], str, int
 
 
 def _build_breadth_rows(pool_size: int) -> tuple[list[RadarRow], str, int, tuple[str, ...]]:
-    try:
-        snapshot = load_screening_quote_snapshot()
-    except MarketQuotesLoadError:
+    loaded = get_screening_compute_rows(ensure_recipe_filtered=True)
+    if loaded is None:
         return [], "", 0, ()
 
-    enriched = attach_industry(snapshot.rows)
+    snapshot_rows, total = loaded
+    enriched = attach_industry(snapshot_rows)
     if not enriched:
-        return [], "", snapshot.total, ()
+        return [], "", total, ()
 
     candidates = breadth_leader_candidates(enriched, pool_size=pool_size)
     if not candidates:
-        return [], "", snapshot.total, ()
+        return [], "", total, ()
 
     rows: list[RadarRow] = []
     for row in candidates:
@@ -169,8 +167,8 @@ def _build_breadth_rows(pool_size: int) -> tuple[list[RadarRow], str, int, tuple
     subtitle = ""
     if leaders:
         subtitle = "扩散：" + "、".join(str(item.get("industry") or "") for item in leaders[:3])
-    subtitle = (subtitle + " · " if subtitle else "") + f"扫描 {snapshot.total} 只"
-    return rows, subtitle, snapshot.total, tuple(str(item.get("industry") or "") for item in leaders[:6])
+    subtitle = (subtitle + " · " if subtitle else "") + f"扫描 {total} 只"
+    return rows, subtitle, total, tuple(str(item.get("industry") or "") for item in leaders[:6])
 
 
 def _build_concept_leaders_rows(pool_size: int) -> tuple[list[RadarRow], str, int, tuple[str, ...]]:
@@ -178,14 +176,14 @@ def _build_concept_leaders_rows(pool_size: int) -> tuple[list[RadarRow], str, in
     if not hot_names:
         return [], "概念数据未就绪", 0, ()
 
-    try:
-        snapshot = load_screening_quote_snapshot()
-    except MarketQuotesLoadError:
+    loaded = get_screening_compute_rows(ensure_recipe_filtered=True)
+    if loaded is None:
         return [], "行情不可用", 0, ()
 
+    snapshot_rows, total = loaded
     hot_set = set(hot_names)
     candidates: list[dict] = []
-    for row in apply_recipe_filters(list(snapshot.rows)):
+    for row in snapshot_rows:
         vt_symbol = str(row.get("vt_symbol") or "").strip()
         concept = vt_to_concept.get(vt_symbol)
         if not concept or concept not in hot_set:
@@ -196,7 +194,7 @@ def _build_concept_leaders_rows(pool_size: int) -> tuple[list[RadarRow], str, in
 
     concepts_text = " / ".join(hot_names[:3])
     if not candidates:
-        return [], f"强势概念 {concepts_text}", int(snapshot.total or 0), ()
+        return [], f"强势概念 {concepts_text}", int(total or 0), ()
 
     scored: list[LeaderScoredRow] = rank_unified_sector_leaders(
         candidates,

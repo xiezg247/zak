@@ -12,8 +12,6 @@ from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
 from vnpy_ashare.quotes.radar.radar_board_store import get_radar_board_snapshot
 from vnpy_ashare.quotes.radar.radar_leader_pick import build_leader_candidate_pool, rank_leader_pool
 from vnpy_ashare.quotes.radar.radar_resonance_store import get_radar_resonance_entries
-from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
-from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.engine.dimensions.radar_resonance import build_radar_resonance_rows_polars
 from vnpy_ashare.screener.engine.sector_stats import compute_sector_distribution_polars
 from vnpy_ashare.screener.engine.snapshot_frame import snapshot_rows_to_dataframe
@@ -87,10 +85,12 @@ def build_radar_resonance_dimension_rows(pool_size: int) -> tuple[list[dict[str,
     if not entries:
         return [], 0
 
-    try:
-        snapshot = load_screening_quote_snapshot()
-    except MarketQuotesLoadError:
+    from vnpy_ashare.screener.data.screening_context import get_screening_compute_rows
+
+    loaded = get_screening_compute_rows(ensure_recipe_filtered=False)
+    if loaded is None:
         return [], 0
 
-    rows = build_radar_resonance_rows_polars(entries, list(snapshot.rows), pool_size=pool_size)
-    return rows, snapshot.total
+    snapshot_rows, total = loaded
+    rows = build_radar_resonance_rows_polars(entries, snapshot_rows, pool_size=pool_size)
+    return rows, total

@@ -134,21 +134,16 @@ def test_prefilter_skips_symbols_without_local_daily_k() -> None:
         {"vt_symbol": "600000.SSE", "amount": 1e9, "turnover_rate": 2.0},
         {"vt_symbol": "000001.SZSE", "amount": 2e9, "turnover_rate": 3.0},
     ]
-    snapshot = type("Snap", (), {"rows": quote_rows, "total": len(quote_rows)})()
 
     with patch(
-        "vnpy_ashare.quotes.radar.radar_horizon_prefilter.load_screening_quote_snapshot",
-        return_value=snapshot,
+        "vnpy_ashare.quotes.radar.radar_horizon_prefilter.get_screening_compute_rows",
+        return_value=(quote_rows, len(quote_rows)),
     ):
         with patch(
-            "vnpy_ashare.quotes.radar.radar_horizon_prefilter.apply_recipe_filters",
-            side_effect=lambda rows: rows,
+            "vnpy_ashare.quotes.radar.radar_horizon_prefilter.collect_daily_k_ready_vt_symbols",
+            return_value={"600000.SSE"},
         ):
-            with patch(
-                "vnpy_ashare.quotes.radar.radar_horizon_prefilter.collect_daily_k_ready_vt_symbols",
-                return_value={"600000.SSE"},
-            ):
-                prefilter, stats = prefilter_horizon_universe(set(), max_items=10)
+            prefilter, stats = prefilter_horizon_universe(set(), max_items=10)
 
     assert prefilter == ["600000.SSE"]
     assert stats.prefilter_total == 1

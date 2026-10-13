@@ -12,8 +12,7 @@ from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_map
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
 from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow
 from vnpy_ashare.quotes.radar.radar_quotes import merge_row_quotes
-from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
-from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
+from vnpy_ashare.screener.data.screening_context import get_screening_compute_rows
 from vnpy_ashare.screener.sector.sector_summary import attach_industry, attach_sector_fields
 from vnpy_ashare.services.sector_flow import aggregate_sector_rows, format_sector_net_flow_yi, proxy_flow_yi
 
@@ -94,9 +93,8 @@ def _aggregate_concept_sectors(rows: list) -> list[tuple[SectorFlowRow, list[dic
 
 
 def load_sector_flow_hot(spec: RadarCardSpec, *, variant: SectorFlowHotVariant = "industry") -> RadarCardData:
-    try:
-        snapshot = load_screening_quote_snapshot()
-    except MarketQuotesLoadError:
+    loaded = get_screening_compute_rows(ensure_recipe_filtered=False)
+    if loaded is None:
         return RadarCardData(
             card_id=spec.id,
             title=spec.title,
@@ -106,12 +104,13 @@ def load_sector_flow_hot(spec: RadarCardSpec, *, variant: SectorFlowHotVariant =
             updated_at=format_china_datetime_minute(),
         )
 
+    snapshot_rows, _total = loaded
     axis_label = "概念" if variant == "concept" else "行业"
     sector_names: list[str] = []
     rows: list[RadarRow] = []
 
     if variant == "concept":
-        aggregated = _aggregate_concept_sectors(list(snapshot.rows))
+        aggregated = _aggregate_concept_sectors(snapshot_rows)
         hot_sectors = [item for item in aggregated if item[0].net_flow_yi > 0][: spec.top_n]
         for sector, items in hot_sectors:
             row = _leader_row_for_sector(sector.name, items, axis_label=axis_label, net_flow_yi=sector.net_flow_yi)
@@ -121,8 +120,8 @@ def load_sector_flow_hot(spec: RadarCardSpec, *, variant: SectorFlowHotVariant =
             sector_names.append(sector.name)
     else:
         industry_map = fetch_stock_industry_map()
-        enriched = attach_industry(list(snapshot.rows), industry_map=industry_map)
-        sector_rows = aggregate_sector_rows(enriched or list(snapshot.rows), industry_map=industry_map)
+        enriched = attach_industry(snapshot_rows, industry_map=industry_map)
+        sector_rows = aggregate_sector_rows(enriched or snapshot_rows, industry_map=industry_map)
         inflow = [sector for sector in sector_rows if sector.net_flow_yi > 0][: spec.top_n]
 
         by_industry: dict[str, list[dict]] = defaultdict(list)

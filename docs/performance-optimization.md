@@ -335,6 +335,18 @@ TickFlow → collect_quotes → Redis (~5k HASH + 10× ZSET 全量重建)
 
 **预期**：切 Tab 后后台任务快速退出；全市场行读取少一次 ~5k 列表拷贝。
 
+### Phase 1c — 按需行情 / 雷达少驻留（衔接）
+
+- [x] `quotes_for_vt_symbols` / `quotes_for_candidates` 按需 O(K) 查找（禁止为少量标的全表 ingest）  
+- [x] 雷达 batch cache-hit 合并一次行情刷新；`deactivate` 裁剪 `_last_payload`  
+- [x] ScreeningContext：去重 recipe prefilter、盘中 lazy `avg_turnover`、history map 上限、frame/索引失效  
+- [x] `RelativeStrengthContext` 不持有全市场 pool；`get_screening_compute_rows` 复用已过滤快照  
+- [x] 粗筛 Polars 化；硬过滤去掉 `map_elements(vt→ts)`  
+- [x] 全市场 collect 稀疏榜 `delete+zadd`（避免数千条 `zrem`）；enrich patch 批量 `zrem`  
+- [x] `QuoteTableModel.set_rows` 同行数走 `apply_row`；文档建议 `ZAK_QUOTE_L1_CACHE=1`、`RADAR_BOARD_MAX_WORKERS=4`  
+
+**预期**：雷达 30s tick 与 enrich 主路径 CPU/内存显著下降；collect 稀疏榜 pipeline 命令数从 O(N×稀疏字段) 降为 O(字段数)。
+
 ### Phase 2 — 列存选股引擎（约 3–5 周）
 
 - [x] Polars 引入（边界：`screener/`、`quotes/rank/`）  
@@ -342,7 +354,7 @@ TickFlow → collect_quotes → Redis (~5k HASH + 10× ZSET 全量重建)
 - [x] 硬过滤 + 主要维度向量化（含 `first_board` / `leader_score` 板块统计 / `radar_resonance`）  
 - [x] Redis 预计算榜 Top-200（`ZAK_RANK_PRECOMPUTE=1` → `zak:rank:precomputed:{field}`）  
 - [x] Polars 为核心依赖（选股 / 排行无 Python 引擎回退）  
-- [x] ZSET 增量更新（`ZAK_RANK_INCREMENTAL=1`：全量榜 zadd、稀疏榜 zadd+zrem）  
+- [x] ZSET 增量更新（`ZAK_RANK_INCREMENTAL=1`：全量榜 zadd；稀疏榜 collect 用 delete+zadd，patch 用批量 zrem+zadd）  
 - [x] `moneyflow` 盘后 streak 批量读取 + Polars tier 排序  
 
 **预期**：Recipe 选股 5–10×。

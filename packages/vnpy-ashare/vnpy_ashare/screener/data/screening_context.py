@@ -38,6 +38,7 @@ from vnpy_common.domain.base import MutableModel
 __all__ = [
     "ScreeningContext",
     "get_cached_quote_snapshot",
+    "get_screening_compute_rows",
     "preload_screening_context",
     "preload_screening_context_quotes",
     "screening_context_scope",
@@ -85,6 +86,49 @@ class ScreeningContext(MutableModel):
     _history_bars_map: dict[tuple[str, Exchange], list[BarData]] = PrivateAttr(default_factory=dict)
     _history_bars_order: list[tuple[str, Exchange]] = PrivateAttr(default_factory=list)
     _snapshot_frame: Any | None = PrivateAttr(default=None)
+    _recipe_prefiltered: bool = PrivateAttr(default=False)
+    _rows_by_vt: dict[str, Any] | None = PrivateAttr(default=None)
+    _rows_by_symbol: dict[str, Any] | None = PrivateAttr(default=None)
+
+    def invalidate_row_indexes(self) -> None:
+        """快照行变更后失效 vt/symbol 索引与 Polars frame。"""
+        self._rows_by_vt = None
+        self._rows_by_symbol = None
+        self._snapshot_frame = None
+
+    def mark_recipe_prefiltered(self) -> None:
+        self._recipe_prefiltered = True
+
+    def _ensure_row_indexes(self) -> None:
+        if self._rows_by_vt is not None:
+            return
+        snapshot = self.get_quote_snapshot()
+        by_vt: dict[str, Any] = {}
+        by_symbol: dict[str, Any] = {}
+        for row in snapshot.rows:
+            vt = str(row.get("vt_symbol") or "").strip()
+            symbol = str(row.get("symbol") or "").strip()
+            if vt:
+                by_vt[vt] = row
+            if symbol:
+                by_symbol[symbol] = row
+        self._rows_by_vt = by_vt
+        self._rows_by_symbol = by_symbol
+
+    def get_quote_row_by_vt(self, vt_symbol: str) -> Any | None:
+        """按需索引取单行（O(1) 查，索引惰性构建一次）。"""
+        vt_symbol = str(vt_symbol or "").strip()
+        if not vt_symbol:
+            return None
+        self._ensure_row_indexes()
+        assert self._rows_by_vt is not None
+        row = self._rows_by_vt.get(vt_symbol)
+        if row is not None:
+            return row
+        item = parse_stock_symbol(vt_symbol)
+        if item is None or self._rows_by_symbol is None:
+            return None
+        return self._rows_by_symbol.get(item.symbol)
 
     def load_history_bars_for_symbols(
         self,
@@ -232,6 +276,37 @@ def get_cached_quote_snapshot() -> MarketQuotesSnapshot | None:
     if ctx._snapshot_error is not None or ctx._snapshot is None:
         return None
     return ctx._snapshot
+
+
+def get_screening_compute_rows(
+    *,
+    ensure_recipe_filtered: bool = False,
+) -> tuple[list[Any], int] | None:
+    """雷达 / 维度读取快照行：活跃 ScreeningContext 内复用，避免 ``list()`` + 重复硬过滤。"""
+    from vnpy_ashare.quotes.core.screening_snapshot_router import load_screening_quote_snapshot
+    from vnpy_ashare.screener.data.screening_prefilter import replace_context_snapshot
+    from vnpy_ashare.screener.hard_filters import apply_recipe_filters
+
+    ctx = get_screening_context()
+    if ctx is not None and ctx._snapshot_loaded and ctx._snapshot is not None:
+        snap = ctx._snapshot
+        rows: list[Any] = snap.rows if isinstance(snap.rows, list) else list(snap.rows)
+        if ensure_recipe_filtered and not ctx._recipe_prefiltered:
+            filtered = apply_recipe_filters(rows)
+            if len(filtered) != len(rows):
+                replace_context_snapshot(ctx, rows=filtered)
+                rows = list(ctx._snapshot.rows) if ctx._snapshot is not None else filtered
+            ctx.mark_recipe_prefiltered()
+        return rows, int(snap.total or len(rows))
+
+    try:
+        snap = load_screening_quote_snapshot()
+    except MarketQuotesLoadError:
+        return None
+    rows = snap.rows if isinstance(snap.rows, list) else list(snap.rows)
+    if ensure_recipe_filtered:
+        rows = apply_recipe_filters(rows)
+    return rows, int(snap.total or len(rows))
 
 
 @contextmanager

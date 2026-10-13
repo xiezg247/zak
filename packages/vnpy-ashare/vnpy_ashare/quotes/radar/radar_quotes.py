@@ -47,19 +47,20 @@ def merge_row_quotes(
     """合并行情缓存，补全 volume / amount / 现价等字段。
 
     ``prefer_row=True`` 时盘中保留行内已有现价/涨幅（用于已走 Redis 的 enrich 路径）。
+    已是 dict 时就地浅拷贝后补字段，避免多余 ``coerce_quote_row().to_dict()``。
     """
     if isinstance(row, ScreenerResultRow):
-        payload = row.to_dict()
+        merged = row.to_dict()
     elif isinstance(row, QuoteRow):
-        payload = row.to_dict()
+        merged = row.to_dict()
+    elif isinstance(row, Mapping):
+        merged = dict(row)
     else:
-        payload = dict(row)
-    vt_symbol = str(payload.get("vt_symbol") or "").strip()
-    merged = coerce_quote_row(payload).to_dict()
+        merged = coerce_quote_row(row).to_dict()
+    vt_symbol = str(merged.get("vt_symbol") or "").strip()
     quote = quote_map().get(vt_symbol)
     if quote is None:
         return merged
-    quote_dict = quote.to_dict()
     live_session = is_ashare_trading_session()
     for key in (
         "volume",
@@ -72,7 +73,7 @@ def merge_row_quotes(
         "net_mf_amount",
         "name",
     ):
-        cached = quote_dict.get(key)
+        cached = quote.get(key)
         if cached in (None, "", 0, 0.0):
             continue
         if live_session and key in _LIVE_QUOTE_FIELDS:
@@ -168,10 +169,26 @@ def _fill_from_snapshot(
     by_vt: dict[str, dict[str, Any]],
     by_symbol: dict[str, dict[str, Any]],
 ) -> None:
-    """快照中仅 ingest 仍缺失的请求标的。"""
+    """快照中仅 ingest 仍缺失的请求标的。
+
+    有活跃 ScreeningContext 时走 vt 索引 O(K)；否则单次扫描只 ingest 命中行。
+    """
     missing = _missing_vt_symbols(vt_symbols, by_vt)
     if not missing:
         return
+
+    from vnpy_ashare.screener.data.screening_context_registry import get_screening_context
+
+    ctx = get_screening_context()
+    if ctx is not None and getattr(ctx, "_snapshot_loaded", False) and getattr(ctx, "_snapshot", None) is not None:
+        for vt_symbol in missing:
+            if vt_symbol in by_vt:
+                continue
+            row = ctx.get_quote_row_by_vt(vt_symbol)
+            if row is not None:
+                _ingest_quote_row(row, by_vt=by_vt, by_symbol=by_symbol)
+        return
+
     wanted_vt = set(missing)
     wanted_symbols: set[str] = set()
     for vt_symbol in missing:

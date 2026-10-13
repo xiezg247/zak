@@ -12,8 +12,7 @@ from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
 from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow
 from vnpy_ashare.quotes.radar.radar_quotes import merge_row_quotes
 from vnpy_ashare.quotes.radar.radar_enrich import enrich_radar_rows
-from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
-from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
+from vnpy_ashare.screener.data.screening_context import get_screening_compute_rows
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters, is_at_limit_board
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
 
@@ -79,11 +78,13 @@ def build_limit_ladder_candidates(
     rows: QuoteRowsLike,
     *,
     limit_times_map: dict[str, float] | None = None,
+    already_recipe_filtered: bool = False,
 ) -> list[QuoteRow]:
     """涨停池：limit_times ≥ 1 或近似涨停，经硬过滤。"""
     enriched = [enrich_limit_times(row, limit_times_map=limit_times_map) for row in rows]
     limit_up = [row for row in enriched if resolve_limit_times(row, limit_times_map=limit_times_map) >= 1]
-    return [coerce_quote_row(row) for row in apply_recipe_filters(limit_up)]
+    filtered = limit_up if already_recipe_filtered else apply_recipe_filters(limit_up)
+    return [coerce_quote_row(row) for row in filtered]
 
 
 def count_ladder_buckets(candidates: QuoteRowsLike) -> dict[str, int]:
@@ -161,9 +162,8 @@ def _row_to_radar(row: QuoteRowLike) -> RadarRow | None:
 
 
 def load_limit_ladder(spec: RadarCardSpec, *, variant: LimitLadderVariant = "by_height") -> RadarCardData:
-    try:
-        snapshot = load_screening_quote_snapshot()
-    except MarketQuotesLoadError:
+    loaded = get_screening_compute_rows(ensure_recipe_filtered=True)
+    if loaded is None:
         return RadarCardData(
             card_id=spec.id,
             title=spec.title,
@@ -173,14 +173,19 @@ def load_limit_ladder(spec: RadarCardSpec, *, variant: LimitLadderVariant = "by_
             updated_at="",
         )
 
-    enriched = attach_industry(snapshot.rows)
+    snapshot_rows, total = loaded
+    enriched = attach_industry(snapshot_rows)
     limit_map = get_cached_limit_times_map()
-    candidates = build_limit_ladder_candidates(enriched, limit_times_map=limit_map)
+    candidates = build_limit_ladder_candidates(
+        enriched,
+        limit_times_map=limit_map,
+        already_recipe_filtered=True,
+    )
     counts = count_ladder_buckets(candidates)
     variant_label = "按高度" if variant == "by_height" else "按板块"
 
     if not candidates:
-        subtitle = build_ladder_subtitle(counts=counts, total_scanned=snapshot.total, variant_label=variant_label)
+        subtitle = build_ladder_subtitle(counts=counts, total_scanned=total, variant_label=variant_label)
         return RadarCardData(
             card_id=spec.id,
             title=spec.title,
@@ -188,7 +193,7 @@ def load_limit_ladder(spec: RadarCardSpec, *, variant: LimitLadderVariant = "by_
             rows=(),
             empty_message="暂无涨停梯队，请同步行情或等待盘中涨停数据。",
             updated_at="",
-            total_count=snapshot.total,
+            total_count=total,
         )
 
     if variant == "by_sector":
@@ -202,7 +207,7 @@ def load_limit_ladder(spec: RadarCardSpec, *, variant: LimitLadderVariant = "by_
         if parsed is not None:
             rows.append(parsed)
 
-    subtitle = build_ladder_subtitle(counts=counts, total_scanned=snapshot.total, variant_label=variant_label)
+    subtitle = build_ladder_subtitle(counts=counts, total_scanned=total, variant_label=variant_label)
     if rows:
         subtitle += f" · 展示 {len(rows)}"
 

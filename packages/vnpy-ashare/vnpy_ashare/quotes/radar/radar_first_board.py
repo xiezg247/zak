@@ -14,8 +14,7 @@ from vnpy_ashare.quotes.radar.radar_limit_ladder import (
 from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow
 from vnpy_ashare.quotes.radar.radar_quotes import merge_row_quotes
 from vnpy_ashare.quotes.radar.radar_enrich import apply_board_quality, enrich_radar_rows
-from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
-from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
+from vnpy_ashare.screener.data.screening_context import get_screening_compute_rows
 from vnpy_ashare.screener.engine.dimensions.sector_strength import run_sector_strength
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
 from vnpy_ashare.trading.signals.intraday_seal_time import attach_first_time_fields
@@ -127,9 +126,8 @@ def _row_to_radar(row: QuoteRowLike, *, popularity: float, seal_label: str) -> R
 
 
 def load_first_board(spec: RadarCardSpec) -> RadarCardData:
-    try:
-        snapshot = load_screening_quote_snapshot()
-    except MarketQuotesLoadError:
+    loaded = get_screening_compute_rows(ensure_recipe_filtered=True)
+    if loaded is None:
         return RadarCardData(
             card_id=spec.id,
             title=spec.title,
@@ -139,7 +137,8 @@ def load_first_board(spec: RadarCardSpec) -> RadarCardData:
             updated_at="",
         )
 
-    enriched = attach_industry(snapshot.rows)
+    snapshot_rows, total = loaded
+    enriched = attach_industry(snapshot_rows)
     limit_map = get_cached_limit_times_map()
     candidates = build_first_board_candidates(enriched, limit_times_map=limit_map)
     attach_first_time_fields(candidates)
@@ -148,11 +147,11 @@ def load_first_board(spec: RadarCardSpec) -> RadarCardData:
         return RadarCardData(
             card_id=spec.id,
             title=spec.title,
-            subtitle=f"扫描 {snapshot.total} 只 · 首板 0",
+            subtitle=f"扫描 {total} 只 · 首板 0",
             rows=(),
             empty_message="暂无首板标的，请同步行情或等待盘中涨停数据。",
             updated_at="",
-            total_count=snapshot.total,
+            total_count=total,
         )
 
     ranked = rank_first_board_pool(
@@ -169,7 +168,7 @@ def load_first_board(spec: RadarCardSpec) -> RadarCardData:
     subtitle = f"首板 {len(candidates)} · 展示 {len(rows)}"
     if has_seal:
         subtitle += f" · 封板时间 {has_seal}"
-    subtitle += f" · 扫描 {snapshot.total} 只"
+    subtitle += f" · 扫描 {total} 只"
 
     return RadarCardData(
         card_id=spec.id,

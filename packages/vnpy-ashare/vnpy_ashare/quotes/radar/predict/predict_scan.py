@@ -31,6 +31,17 @@ __all__ = [
 def quote_rows_for_prefilter(prefilter: list[str]) -> list[QuoteRow]:
     if not prefilter:
         return []
+    from vnpy_ashare.screener.data.screening_context_registry import get_screening_context
+
+    ctx = get_screening_context()
+    if ctx is not None and getattr(ctx, "_snapshot_loaded", False):
+        rows: list[QuoteRow] = []
+        for vt in prefilter:
+            row = ctx.get_quote_row_by_vt(vt)
+            if row is not None:
+                rows.append(row)
+        return rows
+
     try:
         snapshot = load_screening_quote_snapshot()
     except MarketQuotesLoadError:

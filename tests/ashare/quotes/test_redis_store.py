@@ -29,7 +29,11 @@ class RedisQuoteStoreBatchReadTests(unittest.TestCase):
         symbols = [f"{index:06d}.SZ" for index in range(total)]
         pipe.execute.side_effect = [[{}] * len(batch) for batch in _iter_symbol_batches(symbols, batch_size)]
 
-        with patch("vnpy_ashare.quotes.core.redis_store.QUOTE_READ_BATCH_SIZE", batch_size):
+        with (
+            patch("vnpy_ashare.quotes.core.redis_store.QUOTE_READ_BATCH_SIZE", batch_size),
+            patch("vnpy_ashare.quotes.core.redis_store.quote_blob_enabled", return_value=False),
+            patch("vnpy_ashare.quotes.core.redis_store.quote_l1_enabled", return_value=False),
+        ):
             result = store.get_quotes(symbols, enrich_factors=False)
 
         self.assertEqual(len(result), 0)
@@ -183,8 +187,11 @@ class RedisRankIncrementalTests(unittest.TestCase):
         self.assertEqual(change_pct_deletes, [])
         zadd_ops = [op for op in pipe.ops if op[0] == "zadd" and op[1] == rs.rank_key("change_pct")]
         self.assertEqual(len(zadd_ops), 1)
+        # 全市场 write：稀疏榜 delete+zadd（或空榜仅 delete），不再对未达标标的逐条 zrem
+        volume_ratio_deletes = [op for op in deletes if op[1] == rs.rank_key("volume_ratio")]
+        self.assertGreaterEqual(len(volume_ratio_deletes), 1)
         zrem_volume = [op for op in pipe.ops if op[0] == "zrem" and op[1] == rs.rank_key("volume_ratio")]
-        self.assertGreaterEqual(len(zrem_volume), 1)
+        self.assertEqual(zrem_volume, [])
 
     def test_list_all_rank_symbols_uses_ordered_list(self) -> None:
         from vnpy_ashare.quotes.core import redis_store as rs

@@ -129,7 +129,10 @@ def enrich_radar_rows(
     *,
     preserve_sub: bool = False,
 ) -> tuple[RadarRow, ...]:
-    """批量补全雷达行行情字段。"""
+    """批量补全雷达行行情字段。
+
+    相对强度只保留行业/大盘聚合结果，不在循环中持有全市场 snapshot.rows。
+    """
     if not rows:
         return rows
     quotes = quotes_for_vt_symbols([row.vt_symbol for row in rows])
@@ -139,11 +142,12 @@ def enrich_radar_rows(
     except MarketQuotesLoadError:
         snapshot_rows = None
     rs_context = build_relative_strength_context(snapshot_rows)
+    # 聚合完成后释放对全表的引用，避免与 rs_context 同时驻留
+    snapshot_rows = None
     return tuple(
         enrich_radar_row(
             row,
             quotes.get(row.vt_symbol, {"vt_symbol": row.vt_symbol}),
-            snapshot_rows=snapshot_rows,
             rs_context=rs_context,
             preserve_sub=preserve_sub,
         )

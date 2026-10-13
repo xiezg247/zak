@@ -137,30 +137,42 @@ def _write_rank_field(
     field: str,
     members: list[tuple[float, str]],
     quotes: dict[str, QuoteSnapshot],
+    universe_complete: bool = False,
 ) -> None:
+    """写入单个排行 ZSET。
+
+    ``universe_complete=True``（全市场 collect）：稀疏榜用 delete+zadd，避免对数千未达标
+    标的逐条 zrem。``False``（enrich patch 子集）：仅对本次 quotes 批量 zrem 未达标成员。
+    """
     if not members and field in _RANK_PRESERVE_WHEN_EMPTY and is_ashare_trading_session():
         return
 
     key = rank_key(field)
+    member_scores = {member: score for score, member in members} if members else {}
     if rank_incremental_enabled():
         if field in _FULL_RANK_FIELDS:
-            if members:
-                pipe.zadd(key, {member: score for score, member in members})
-        elif field in _SPARSE_RANK_FIELDS:
-            member_scores = {member: score for score, member in members}
-            for tf_symbol in quotes:
-                if tf_symbol not in member_scores:
-                    pipe.zrem(key, tf_symbol)
             if member_scores:
                 pipe.zadd(key, member_scores)
+        elif field in _SPARSE_RANK_FIELDS:
+            if universe_complete:
+                pipe.delete(key)
+                if member_scores:
+                    pipe.zadd(key, member_scores)
+            else:
+                to_remove = [tf for tf in quotes if tf not in member_scores]
+                for batch in _iter_symbol_batches(to_remove, QUOTE_READ_BATCH_SIZE):
+                    if batch:
+                        pipe.zrem(key, *batch)
+                if member_scores:
+                    pipe.zadd(key, member_scores)
         else:
             pipe.delete(key)
-            if members:
-                pipe.zadd(key, {member: score for score, member in members})
+            if member_scores:
+                pipe.zadd(key, member_scores)
     else:
         pipe.delete(key)
-        if members:
-            pipe.zadd(key, {member: score for score, member in members})
+        if member_scores:
+            pipe.zadd(key, member_scores)
 
     _write_precomputed_rank(pipe, field, members)
     if field == "change_pct":
@@ -226,7 +238,13 @@ class RedisQuoteStore:
                 rank_members["limit_times"].append((quote.limit_times, tf_symbol))
 
         for field in RANK_REDIS_FIELDS:
-            _write_rank_field(pipe, field=field, members=rank_members[field], quotes=quotes)
+            _write_rank_field(
+                pipe,
+                field=field,
+                members=rank_members[field],
+                quotes=quotes,
+                universe_complete=True,
+            )
         pipe.set(META_UPDATED_AT_KEY, datetime.now().isoformat(timespec="seconds"))
         pipe.set(META_QUOTE_COUNT_KEY, str(len(quotes)))
         results = pipe.execute()
@@ -270,6 +288,7 @@ class RedisQuoteStore:
                 field=field,
                 members=sparse_members.get(field, []),
                 quotes=quotes,
+                universe_complete=False,
             )
         pipe.execute()
         merge_quotes(quotes)
