@@ -9,11 +9,31 @@ from typing import Any
 import polars as pl
 
 from vnpy_ashare.domain.market.board import BOARD_PREFIXES
-from vnpy_ashare.domain.symbols.stock import vt_symbol_to_ts_code
 from vnpy_ashare.screener import hard_filters as hf
 from vnpy_ashare.screener.engine.frame import restore_rows, rows_with_index
 from vnpy_ashare.screener.engine.snapshot_frame import change_pct_expr
 from vnpy_ashare.screener.hard_filters import ONE_WORD_AMPLITUDE_MAX_PCT
+
+
+def vt_symbol_to_ts_code_expr(vt_col: pl.Expr) -> pl.Expr:
+    """向量化 vt_symbol → ts_code（避免 map_elements）。"""
+    parts = vt_col.cast(pl.Utf8, strict=False).fill_null("").str.split(".")
+    code = parts.list.get(0, null_on_oob=True).fill_null("")
+    exchange = parts.list.get(1, null_on_oob=True).fill_null("")
+    suffix = (
+        pl.when(exchange == "SSE")
+        .then(pl.lit("SH"))
+        .when(exchange == "SZSE")
+        .then(pl.lit("SZ"))
+        .when(exchange == "BSE")
+        .then(pl.lit("BJ"))
+        .otherwise(pl.lit(""))
+    )
+    return (
+        pl.when((code.str.len_chars() > 0) & (suffix.str.len_chars() > 0))
+        .then(code + pl.lit(".") + suffix)
+        .otherwise(pl.lit(""))
+    )
 
 
 def symbol_expr() -> pl.Expr:
@@ -124,7 +144,7 @@ def apply_recipe_filters_polars(rows: Sequence[Any]) -> list[Any]:
     allowed_industries = hf.recipe_allowed_industries()
     if allowed_industries:
         industry_map = hf.industry_map_for_screening()
-        df = df.with_columns(pl.col("_vt_symbol").map_elements(lambda vt: vt_symbol_to_ts_code(str(vt or "")) or "", return_dtype=pl.Utf8).alias("_ts_code"))
+        df = df.with_columns(vt_symbol_to_ts_code_expr(pl.col("_vt_symbol")).alias("_ts_code"))
         df = _join_map(df, "_ts_code", industry_map, "_mapped_industry")
         industry_col = pl.coalesce(pl.col("industry").cast(pl.Utf8, strict=False), pl.col("_mapped_industry"))
         mask = mask & industry_col.is_in(list(allowed_industries))

@@ -266,6 +266,23 @@ class RadarController(QtCore.QObject):
         self._apply_queue.clear()
         self._cache_apply_queue.clear()
         self._resonance_sync.stop()
+        self._trim_payload_on_deactivate()
+
+    def _trim_payload_on_deactivate(self) -> None:
+        """离开雷达页时只保留当前 mode/组卡片，降低长驻内存。"""
+        if not self._last_payload:
+            return
+        from vnpy_ashare.quotes.radar.radar_catalog import list_radar_cards_for_group
+
+        mode = self._board.current_mode()
+        group_key = self._board.current_group(mode)
+        keep = {spec.id for spec in list_radar_cards_for_group(mode, group_key)}
+        if not keep:
+            self._last_payload.clear()
+            return
+        self._last_payload = {
+            card_id: data for card_id, data in self._last_payload.items() if card_id in keep
+        }
 
     def _setup_auto_refresh_timers(self) -> None:
         for card_id in auto_refresh_card_ids():

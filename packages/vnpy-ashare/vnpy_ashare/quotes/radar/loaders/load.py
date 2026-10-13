@@ -175,16 +175,19 @@ def _load_radar_card_item(
     item: tuple[str, dict[str, object]],
     *,
     variants: dict[str, str],
-) -> tuple[str, RadarCardData | None, str | None]:
+) -> tuple[str, RadarCardData | None, str | None, bool]:
+    """返回 (card_id, data, error, needs_live_quote_refresh)。
+
+    缓存命中时不在此单卡刷新行情，由 batch 汇总后一次拉取。
+    """
     card_id, kwargs = item
     force_recompute = bool(kwargs.get("force_recompute", False))
     variant_key = radar_card_variant_key(card_id, variants)
     if not force_recompute and card_id in RADAR_SNAPSHOT_CARD_IDS:
         cached = peek_radar_card_snapshot(card_id, variant_key=variant_key)
         if cached is not None:
-            if is_ashare_trading_session() and cached.rows:
-                cached = incremental_refresh_radar_card_quotes(cached)
-            return card_id, cached, None
+            needs_refresh = bool(is_ashare_trading_session() and cached.rows)
+            return card_id, cached, None, needs_refresh
     try:
         data = load_radar_card_uncached(
             card_id,
@@ -192,14 +195,35 @@ def _load_radar_card_item(
             **variants,
         )
     except Exception as ex:
-        return card_id, None, str(ex)
+        return card_id, None, str(ex), False
     if card_id in RADAR_SNAPSHOT_CARD_IDS:
         put_radar_card_snapshot(card_id, data, variant_key=variant_key)
-    return card_id, data, None
+    return card_id, data, None, False
 
 
 def _batch_max_workers(count: int) -> int:
     return radar_board_max_workers(item_count=count)
+
+
+def _apply_batch_live_quote_refresh(
+    pending: list[tuple[str, RadarCardData]],
+) -> dict[str, RadarCardData]:
+    """对 cache-hit 卡汇总 vt_symbol，一次 quotes_for_vt_symbols 后回填。"""
+    if not pending:
+        return {}
+    from vnpy_ashare.quotes.radar.radar_enrich import (
+        collect_radar_quote_vt_symbols,
+        refresh_radar_card_quotes_from_map,
+    )
+    from vnpy_ashare.quotes.radar.radar_quotes import quotes_for_vt_symbols
+
+    cards = [data for _, data in pending]
+    vt_symbols = collect_radar_quote_vt_symbols(cards)
+    quotes = quotes_for_vt_symbols(vt_symbols) if vt_symbols else {}
+    return {
+        card_id: refresh_radar_card_quotes_from_map(data, quotes)
+        for card_id, data in pending
+    }
 
 
 def _load_radar_cards_in_context(
@@ -222,16 +246,22 @@ def _load_radar_cards_in_context(
             lambda item: _load_radar_card_item(item, variants=variants),
             max_workers=_batch_max_workers(len(items)),
         )
-        for card_id, data, error in pairs:
+        pending_refresh: list[tuple[str, RadarCardData]] = []
+        for card_id, data, error, needs_refresh in pairs:
             if error is not None:
                 errors[card_id] = error
             elif data is not None:
-                loaded[card_id] = data
+                if needs_refresh:
+                    pending_refresh.append((card_id, data))
+                else:
+                    loaded[card_id] = data
+        if pending_refresh:
+            loaded.update(_apply_batch_live_quote_refresh(pending_refresh))
 
     if context_mode == "full":
         with screening_context_scope() as ctx:
+            # preload_screening_context 已含 recipe prefilter，避免重复 apply
             preload_screening_context(ctx)
-            apply_recipe_prefilter_to_context(ctx)
             apply_sentiment_prefilter_to_context(ctx)
             _run_batch()
     elif context_mode == "quote":

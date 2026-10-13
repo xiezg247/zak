@@ -98,6 +98,58 @@ def replace_context_snapshot(ctx: ScreeningContext, *, rows: list, total: int | 
         total=len(rows) if total is None else total,
         source=snapshot.source,
     )
+    # 快照行变更后 Polars frame 必须失效，避免沿用旧全表
+    ctx._snapshot_frame = None
+
+
+def apply_coarse_quote_filters_polars(rows: list) -> list:
+    """粗筛的 Polars 向量化实现（与 ``apply_coarse_quote_filters`` 语义对齐）。"""
+    if not rows:
+        return []
+    try:
+        import polars as pl
+    except ImportError:
+        return apply_coarse_quote_filters(rows)
+
+    from vnpy_ashare.domain.market.board import BOARD_PREFIXES
+    from vnpy_ashare.screener.engine.frame import restore_rows, rows_with_index
+    from vnpy_ashare.screener.hard_filters import recipe_min_amount_yuan
+
+    payloads, _ = rows_with_index(rows)
+    df = pl.DataFrame(payloads, infer_schema_length=max(len(payloads), 1))
+    for col in ("symbol", "vt_symbol", "last_price", "change_pct", "amount"):
+        if col not in df.columns:
+            df = df.with_columns(pl.lit(None).alias(col))
+
+    symbol = pl.coalesce(
+        pl.col("symbol").cast(pl.Utf8, strict=False),
+        pl.col("vt_symbol").cast(pl.Utf8, strict=False).str.split(".").list.first(),
+    ).fill_null("")
+    last_price = pl.col("last_price").cast(pl.Float64, strict=False).fill_null(0.0)
+    change_pct = pl.col("change_pct").cast(pl.Float64, strict=False).fill_null(0.0)
+    amount = pl.col("amount").cast(pl.Float64, strict=False).fill_null(0.0)
+
+    is_growth = symbol.str.starts_with("300") | symbol.str.starts_with("688")
+    limit_thr = pl.when(is_growth).then(pl.lit(19.5)).otherwise(pl.lit(9.8))
+    min_amount = recipe_min_amount_yuan()
+    mask = (last_price > 0) & (change_pct.abs() < limit_thr) & ~symbol.str.slice(0, 1).is_in(["4", "8"])
+    if min_amount > 0:
+        mask = mask & (amount >= min_amount)
+
+    boards = get_board_prefilter_boards()
+    if boards:
+        board_exprs = []
+        for board in boards:
+            prefixes = BOARD_PREFIXES.get(board) or ()
+            if prefixes:
+                board_exprs.append(pl.any_horizontal([symbol.str.starts_with(p) for p in prefixes]))
+        if board_exprs:
+            mask = mask & pl.any_horizontal(board_exprs)
+
+    filtered_df = df.filter(mask)
+    if filtered_df.height == len(rows):
+        return rows
+    return restore_rows(rows, filtered_df.to_dicts())
 
 
 def coarse_prefilter_snapshot(ctx: ScreeningContext) -> None:
@@ -107,7 +159,7 @@ def coarse_prefilter_snapshot(ctx: ScreeningContext) -> None:
         return
     rows = list(snapshot.rows)
     original = len(rows)
-    filtered = apply_coarse_quote_filters(rows)
+    filtered = apply_coarse_quote_filters_polars(rows)
     if len(filtered) == original:
         return
     replace_context_snapshot(ctx, rows=filtered)

@@ -365,12 +365,13 @@ TickFlow → collect_quotes → Redis (~5k HASH + 10× ZSET 全量重建)
 DATABASE_NAME=postgresql
 DATABASE_URL=postgresql://zak:***@host:5432/zak
 
-# 并行 I/O（已有，可按核数微调）
+# 并行 I/O（已有，可按核数微调；雷达整板建议 ≤4，避免尖峰）
 DOWNLOAD_MAX_WORKERS=4
 CONTINUATION_BATCH_MAX_WORKERS=6
-RADAR_BOARD_MAX_WORKERS=6
+RADAR_BOARD_MAX_WORKERS=4
 
-# 性能（Phase 0/1）
+# 性能（Phase 0/1）— Leader / 单机推荐开启 L1
+ZAK_QUOTE_L1_CACHE=1
 ZAK_STARTUP_PROFILE=0
 ZAK_PERF_TRACE=0
 # ZAK_PERF_PROFILE=off|client|leader

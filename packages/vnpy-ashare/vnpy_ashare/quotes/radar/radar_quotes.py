@@ -106,61 +106,96 @@ def _ingest_quote_row(
         by_symbol[symbol] = dict(payload)
 
 
-def quotes_for_vt_symbols(vt_symbols: list[str]) -> dict[str, dict[str, Any]]:
-    """批量补全行情：盘中优先 Redis 实时 → 内存缓存 → 全市场快照。"""
-    by_vt: dict[str, dict[str, Any]] = {}
-    by_symbol: dict[str, dict[str, Any]] = {}
-    live_session = is_ashare_trading_session()
+def _ingest_redis_quotes(
+    tf_symbols: list[str],
+    *,
+    by_vt: dict[str, dict[str, Any]],
+    by_symbol: dict[str, dict[str, Any]],
+) -> None:
+    if not tf_symbols:
+        return
+    try:
+        quotes = get_redis_quote_store().get_quotes(tf_symbols)
+    except Exception:
+        return
+    for tf_symbol, quote in quotes.items():
+        item = parse_tickflow_symbol(tf_symbol, quote.name)
+        if item is None:
+            continue
+        _ingest_quote_row(
+            {
+                "vt_symbol": item.vt_symbol,
+                "symbol": item.symbol,
+                "name": quote.name or item.name,
+                "last_price": quote.last_price,
+                "close": quote.last_price,
+                "change_pct": quote.change_pct,
+                "turnover_rate": quote.turnover_rate,
+                "volume": quote.volume,
+                "amount": quote.amount,
+            },
+            by_vt=by_vt,
+            by_symbol=by_symbol,
+        )
 
-    if live_session and vt_symbols:
-        tf_symbols: list[str] = []
-        for vt_symbol in vt_symbols:
-            item = parse_stock_symbol(vt_symbol)
-            if item is not None:
-                tf_symbols.append(item.tickflow_symbol)
-        if tf_symbols:
-            try:
-                quotes = get_redis_quote_store().get_quotes(tf_symbols)
-                for tf_symbol, quote in quotes.items():
-                    item = parse_tickflow_symbol(tf_symbol, quote.name)
-                    if item is None:
-                        continue
-                    _ingest_quote_row(
-                        {
-                            "vt_symbol": item.vt_symbol,
-                            "symbol": item.symbol,
-                            "name": quote.name or item.name,
-                            "last_price": quote.last_price,
-                            "close": quote.last_price,
-                            "change_pct": quote.change_pct,
-                            "turnover_rate": quote.turnover_rate,
-                            "volume": quote.volume,
-                            "amount": quote.amount,
-                        },
-                        by_vt=by_vt,
-                        by_symbol=by_symbol,
-                    )
-            except Exception:
-                pass
 
-    for row in quote_map().values():
-        if live_session:
-            vt = str(row.get("vt_symbol") or "").strip()
-            if vt and vt in by_vt:
-                continue
-        _ingest_quote_row(row, by_vt=by_vt, by_symbol=by_symbol)
+def _missing_vt_symbols(
+    vt_symbols: list[str],
+    by_vt: dict[str, dict[str, Any]],
+) -> list[str]:
+    return [vt for vt in vt_symbols if vt not in by_vt]
 
+
+def _fill_from_quote_map(
+    vt_symbols: list[str],
+    *,
+    by_vt: dict[str, dict[str, Any]],
+    by_symbol: dict[str, dict[str, Any]],
+) -> None:
+    """按需从进程内行情缓存取请求标的（O(K)，禁止全表 ingest）。"""
+    cache = quote_map()
+    for vt_symbol in vt_symbols:
+        if vt_symbol in by_vt:
+            continue
+        row = cache.get(vt_symbol)
+        if row is not None:
+            _ingest_quote_row(row, by_vt=by_vt, by_symbol=by_symbol)
+
+
+def _fill_from_snapshot(
+    vt_symbols: list[str],
+    *,
+    by_vt: dict[str, dict[str, Any]],
+    by_symbol: dict[str, dict[str, Any]],
+) -> None:
+    """快照中仅 ingest 仍缺失的请求标的。"""
+    missing = _missing_vt_symbols(vt_symbols, by_vt)
+    if not missing:
+        return
+    wanted_vt = set(missing)
+    wanted_symbols: set[str] = set()
+    for vt_symbol in missing:
+        item = parse_stock_symbol(vt_symbol)
+        if item is not None:
+            wanted_symbols.add(item.symbol)
     try:
         snapshot = load_screening_quote_snapshot()
-        for row in snapshot.rows:
-            if live_session:
-                vt = str(row.get("vt_symbol") or "").strip()
-                if vt and vt in by_vt:
-                    continue
-            _ingest_quote_row(row, by_vt=by_vt, by_symbol=by_symbol)
     except MarketQuotesLoadError:
-        pass
+        return
+    for row in snapshot.rows:
+        vt = str(row.get("vt_symbol") or "").strip()
+        symbol = str(row.get("symbol") or "").strip()
+        if vt in wanted_vt or (symbol and symbol in wanted_symbols):
+            _ingest_quote_row(row, by_vt=by_vt, by_symbol=by_symbol)
 
+
+def _apply_symbol_fallback(
+    vt_symbols: list[str],
+    *,
+    by_vt: dict[str, dict[str, Any]],
+    by_symbol: dict[str, dict[str, Any]],
+) -> list[str]:
+    """用同代码不同交易所映射补洞；返回仍缺失的 tickflow 代码。"""
     missing_tf: list[str] = []
     for vt_symbol in vt_symbols:
         if vt_symbol in by_vt:
@@ -174,31 +209,33 @@ def quotes_for_vt_symbols(vt_symbols: list[str]) -> dict[str, dict[str, Any]]:
             by_vt[vt_symbol] = merged
             continue
         missing_tf.append(item.tickflow_symbol)
+    return missing_tf
 
-    if missing_tf and not live_session:
-        try:
-            quotes = get_redis_quote_store().get_quotes(missing_tf)
-            for tf_symbol, quote in quotes.items():
-                item = parse_tickflow_symbol(tf_symbol, quote.name)
-                if item is None:
-                    continue
-                _ingest_quote_row(
-                    {
-                        "vt_symbol": item.vt_symbol,
-                        "symbol": item.symbol,
-                        "name": quote.name or item.name,
-                        "last_price": quote.last_price,
-                        "close": quote.last_price,
-                        "change_pct": quote.change_pct,
-                        "turnover_rate": quote.turnover_rate,
-                        "volume": quote.volume,
-                        "amount": quote.amount,
-                    },
-                    by_vt=by_vt,
-                    by_symbol=by_symbol,
-                )
-        except Exception:
-            pass
+
+def quotes_for_vt_symbols(vt_symbols: list[str]) -> dict[str, dict[str, Any]]:
+    """批量补全行情：盘中优先 Redis → 按需内存缓存 → 按需快照 → Redis 补洞。
+
+    仅对请求的 K 个 vt_symbol 取数，避免为少量标的扫描全市场 ~5000 行。
+    """
+    by_vt: dict[str, dict[str, Any]] = {}
+    by_symbol: dict[str, dict[str, Any]] = {}
+    live_session = is_ashare_trading_session()
+
+    if live_session and vt_symbols:
+        tf_symbols: list[str] = []
+        for vt_symbol in vt_symbols:
+            item = parse_stock_symbol(vt_symbol)
+            if item is not None:
+                tf_symbols.append(item.tickflow_symbol)
+        _ingest_redis_quotes(tf_symbols, by_vt=by_vt, by_symbol=by_symbol)
+
+    _fill_from_quote_map(vt_symbols, by_vt=by_vt, by_symbol=by_symbol)
+    _fill_from_snapshot(vt_symbols, by_vt=by_vt, by_symbol=by_symbol)
+    missing_tf = _apply_symbol_fallback(vt_symbols, by_vt=by_vt, by_symbol=by_symbol)
+
+    if missing_tf:
+        _ingest_redis_quotes(missing_tf, by_vt=by_vt, by_symbol=by_symbol)
+        _apply_symbol_fallback(vt_symbols, by_vt=by_vt, by_symbol=by_symbol)
 
     result: dict[str, dict[str, Any]] = {}
     for vt_symbol in vt_symbols:

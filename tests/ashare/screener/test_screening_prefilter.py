@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from vnpy_ashare.screener.data.screening_prefilter import (
     apply_coarse_quote_filters,
+    apply_coarse_quote_filters_polars,
     at_any_limit_board,
     is_beijing_board,
 )
@@ -41,3 +42,5 @@ def test_apply_coarse_quote_filters(monkeypatch) -> None:
     ]
     kept = apply_coarse_quote_filters(rows)
     assert [r["symbol"] for r in kept] == ["600000"]
+    kept_pl = apply_coarse_quote_filters_polars(rows)
+    assert [r["symbol"] for r in kept_pl] == ["600000"]

@@ -52,6 +52,15 @@ def _history_lookback_bars() -> int:
         return 25
 
 
+def _history_map_max_symbols() -> int:
+    """同一次上下文内 history bars 标的上限，防止无界膨胀。"""
+    raw = os.getenv("SCREENING_HISTORY_MAP_MAX", "400").strip()
+    try:
+        return max(50, min(int(raw), 2000))
+    except ValueError:
+        return 400
+
+
 class ScreeningContext(MutableModel):
     """同一次配方 / 雷达刷新内共享的数据快照。"""
 
@@ -74,6 +83,7 @@ class ScreeningContext(MutableModel):
     _industry_l1_map: dict[str, str] | None = PrivateAttr(default=None)
     _industry_l1_map_loaded: bool = PrivateAttr(default=False)
     _history_bars_map: dict[tuple[str, Exchange], list[BarData]] = PrivateAttr(default_factory=dict)
+    _history_bars_order: list[tuple[str, Exchange]] = PrivateAttr(default_factory=list)
     _snapshot_frame: Any | None = PrivateAttr(default=None)
 
     def load_history_bars_for_symbols(
@@ -93,7 +103,17 @@ class ScreeningContext(MutableModel):
             loaded = load_daily_bars_batch(items, lookback_bars=_history_lookback_bars())
             with self._lock:
                 self._history_bars_map.update(loaded)
+                for key in loaded:
+                    if key not in self._history_bars_order:
+                        self._history_bars_order.append(key)
+                self._evict_history_bars_if_needed()
         return dict(self._history_bars_map)
+
+    def _evict_history_bars_if_needed(self) -> None:
+        max_symbols = _history_map_max_symbols()
+        while len(self._history_bars_order) > max_symbols:
+            oldest = self._history_bars_order.pop(0)
+            self._history_bars_map.pop(oldest, None)
 
     def preload_quote_snapshot(self) -> MarketQuotesSnapshot | None:
         """预加载行情；失败时记录错误供后续维度降级。"""
@@ -227,18 +247,19 @@ def screening_context_scope():
 
 def preload_screening_context(ctx: ScreeningContext) -> None:
     """预加载常用字段，避免并行维度重复拉 Redis / Tushare。"""
+    from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
+
     ctx.preload_quote_snapshot()
     coarse_prefilter_snapshot(ctx)
     prefilter_snapshot(ctx)
     ctx.load_volume_ratio_from_snapshot(
         getattr(ctx, "_snapshot", None)
     )
-    ctx.preload_avg_turnover_map()
+    # 盘中 avg_turnover 走懒加载，避免预热路径额外 Tushare 阻塞
+    if not is_ashare_trading_session():
+        ctx.preload_avg_turnover_map()
     ctx.preload_industry_map()
-    try:
-        ctx.get_quote_snapshot_frame()
-    except Exception:
-        pass
+    # 不在此预构建 _snapshot_frame：prefilter 后按需构建，避免全表 frame 常驻
 
 
 def preload_screening_context_quotes(ctx: ScreeningContext) -> None:

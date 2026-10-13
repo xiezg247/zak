@@ -22,7 +22,10 @@ __all__ = [
 
 
 def load_quote_snapshot_for_dimension() -> tuple[list[Any], int] | None:
-    """加载行情快照供维度入口使用；失败时返回 None。"""
+    """加载行情快照供维度入口使用；失败时返回 None。
+
+    已是 list 时直接复用，避免无谓 ``list(snapshot.rows)`` 拷贝。
+    """
     from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
     from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 
@@ -30,7 +33,10 @@ def load_quote_snapshot_for_dimension() -> tuple[list[Any], int] | None:
         snapshot = load_screening_quote_snapshot()
     except MarketQuotesLoadError:
         return None
-    return list(snapshot.rows), snapshot.total
+    rows = snapshot.rows
+    if not isinstance(rows, list):
+        rows = list(rows)
+    return rows, snapshot.total
 
 
 def run_with_quote_snapshot(

@@ -72,11 +72,14 @@ def test_load_radar_card_item_reads_disk_cache(monkeypatch: pytest.MonkeyPatch) 
         lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("不应重算")),
     )
     variants = load_mod._radar_load_variants(leader_pick_variant="mainline")
-    card_id, data, error = load_mod._load_radar_card_item(("leader_pick", {}), variants=variants)
+    card_id, data, error, needs_refresh = load_mod._load_radar_card_item(
+        ("leader_pick", {}), variants=variants
+    )
     assert error is None
     assert data is not None
     assert card_id == "leader_pick"
     assert data.subtitle == "启动"
+    assert isinstance(needs_refresh, bool)
 
 
 def test_warm_radar_card_snapshots_skips_off_session(monkeypatch: pytest.MonkeyPatch) -> None:
