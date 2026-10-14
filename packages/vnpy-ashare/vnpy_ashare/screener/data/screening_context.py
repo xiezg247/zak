@@ -135,11 +135,16 @@ class ScreeningContext(MutableModel):
         vt_symbols: list[str],
     ) -> dict[tuple[str, Exchange], list[BarData]]:
         items: list[StockItem] = []
+        requested: list[tuple[str, Exchange]] = []
+        seen_request: set[tuple[str, Exchange]] = set()
         for vt_symbol in vt_symbols:
             item = parse_stock_symbol(vt_symbol)
             if item is None:
                 continue
             key = (item.symbol, item.exchange)
+            if key not in seen_request:
+                seen_request.add(key)
+                requested.append(key)
             if key in self._history_bars_map:
                 continue
             items.append(item)
@@ -151,7 +156,12 @@ class ScreeningContext(MutableModel):
                     if key not in self._history_bars_order:
                         self._history_bars_order.append(key)
                 self._evict_history_bars_if_needed()
-        return dict(self._history_bars_map)
+        # 只返回本次请求的子集，避免把最多 SCREENING_HISTORY_MAP_MAX 份 K 线整表拷出
+        return {
+            key: self._history_bars_map[key]
+            for key in requested
+            if key in self._history_bars_map
+        }
 
     def _evict_history_bars_if_needed(self) -> None:
         max_symbols = _history_map_max_symbols()

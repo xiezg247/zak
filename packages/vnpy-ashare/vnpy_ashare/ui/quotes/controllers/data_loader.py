@@ -24,10 +24,22 @@ if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
 
 _WORKER_CANCELLED_MESSAGE = "已取消"
+_MARKET_PAGE_CACHE_MAX = 12
 
 
 def _worker_cancelled(msg: str) -> bool:
     return msg == _WORKER_CANCELLED_MESSAGE
+
+
+def _put_market_page_cache(cache: dict, key: object, value: object, *, max_entries: int = _MARKET_PAGE_CACHE_MAX) -> None:
+    """市场分页结果缓存；超限按插入序淘汰，避免筛榜翻页无限涨。"""
+    cache[key] = value
+    overflow = len(cache) - max_entries
+    if overflow <= 0:
+        return
+    for old_key in list(cache.keys())[:overflow]:
+        if old_key != key:
+            del cache[old_key]
 
 
 class DataLoaderController:
@@ -304,7 +316,7 @@ class DataLoaderController:
                 if not isinstance(result, MarketPageResult):
                     return
 
-                page._market_page_cache[cache_key] = result
+                _put_market_page_cache(page._market_page_cache, cache_key, result)
                 page._market_count_cache[result.board] = result.total
                 self._apply_market_page_result(result, quiet=quiet, append=append)
                 if not append:
@@ -463,7 +475,7 @@ class DataLoaderController:
                     return
                 if not isinstance(result, MarketPageResult):
                     return
-                page._market_page_cache[cache_key] = result
+                _put_market_page_cache(page._market_page_cache, cache_key, result)
                 page._market_count_cache[result.board] = result.total
             finally:
                 page._release_worker(worker)

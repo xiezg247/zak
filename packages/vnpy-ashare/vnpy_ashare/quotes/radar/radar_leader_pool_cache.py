@@ -11,6 +11,13 @@ _POOL_TTL_SEC = 90.0
 _pool_cache: dict[tuple[str, int], tuple[float, list[QuoteRow | dict[str, Any]], int]] = {}
 
 
+def _prune_expired_pools(*, max_age_sec: float = _POOL_TTL_SEC) -> None:
+    now = time.monotonic()
+    expired = [key for key, (cached_at, _candidates, _total) in _pool_cache.items() if now - cached_at > max_age_sec]
+    for key in expired:
+        _pool_cache.pop(key, None)
+
+
 def peek_leader_candidate_pool(
     *,
     variant: str,
@@ -35,6 +42,7 @@ def store_leader_candidate_pool(
     candidates: list[QuoteRow | dict[str, Any]],
     total: int,
 ) -> None:
+    _prune_expired_pools()
     _pool_cache[(variant, pool_size)] = (time.monotonic(), list(candidates), total)
 
 
