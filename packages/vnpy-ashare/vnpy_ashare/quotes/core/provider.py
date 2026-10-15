@@ -13,11 +13,15 @@ from vnpy_ashare.quotes.core.quote_rows import peek_market_quotes_cache
 from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore, get_redis_quote_store
 from vnpy_ashare.quotes.core.screening_snapshot_router import load_screening_quote_snapshot
 from vnpy_ashare.quotes.rank.rank_catalog import get_rank_definition
+from vnpy_ashare.quotes.rank.rank_engine import finalize_rank_catalog
 from vnpy_ashare.quotes.rank.rank_scope import (
     build_stock_items_from_rank_symbols,
     load_market_rank_catalog,
+    load_market_rank_catalog_from_eod,
     load_watchlist_rank_catalog,
+    load_watchlist_tickflow_symbols,
     paginate_symbols,
+    quotes_from_eod_snapshot,
 )
 from vnpy_ashare.storage.repositories.universe import load_universe_rows
 
@@ -51,10 +55,22 @@ class TickflowQuoteProvider(QuoteProvider):
 class RedisQuoteProvider(QuoteProvider):
     def __init__(self, store: RedisQuoteStore | None = None) -> None:
         self._store = store or RedisQuoteStore()
+        self._eod_updated_at: str | None = None
+        self._using_eod: bool = False
 
     def get_quotes(self, items: list[StockItem]) -> dict[str, QuoteSnapshot]:
         tf_symbols = [item.tickflow_symbol for item in items]
-        return self._store.get_quotes(tf_symbols)
+        quotes = self._store.get_quotes(tf_symbols)
+        live_hits = sum(1 for quote in quotes.values() if quote.last_price > 0)
+        if live_hits > 0:
+            self._using_eod = False
+            return quotes
+        eod_quotes, eod_updated_at = quotes_from_eod_snapshot()
+        if not eod_quotes:
+            return quotes
+        self._using_eod = True
+        self._eod_updated_at = eod_updated_at
+        return {tf: eod_quotes[tf] for tf in tf_symbols if tf in eod_quotes}
 
     def get_rank_page(
         self,
@@ -65,28 +81,47 @@ class RedisQuoteProvider(QuoteProvider):
     ) -> tuple[list[StockItem], dict[str, QuoteSnapshot], int]:
         name_map = {(symbol, exchange): name for symbol, exchange, name in load_universe_rows()}
         spec = get_rank_definition(rank_id)
+        eod_updated_at: str | None = None
         if spec.scope == "watchlist":
             tf_symbols, quotes = load_watchlist_rank_catalog(self._store, spec)
-            total = len(tf_symbols)
-            page_symbols = paginate_symbols(tf_symbols, offset, limit)
-            page_quotes = {symbol: quotes[symbol] for symbol in page_symbols if symbol in quotes}
-            items = build_stock_items_from_rank_symbols(page_symbols, page_quotes, name_map=name_map)
-            return items, page_quotes, total
+            if not any(quote.last_price > 0 for quote in quotes.values()):
+                eod_quotes, eod_updated_at = quotes_from_eod_snapshot()
+                if eod_quotes:
+                    wl = load_watchlist_tickflow_symbols()
+                    quotes = {tf: eod_quotes[tf] for tf in wl if tf in eod_quotes}
+                    tf_symbols = finalize_rank_catalog(list(quotes.keys()), quotes, spec)
+        else:
+            # 榜单路径只用 Redis HASH，避免 get_quotes 的 EOD 回退掩盖「无实时榜」
+            tf_symbols, quotes = load_market_rank_catalog(
+                self._store,
+                spec,
+                universe_quotes_loader=lambda items: self._store.get_quotes(
+                    [item.tickflow_symbol for item in items]
+                ),
+            )
+            if not tf_symbols or not any(quote.last_price > 0 for quote in quotes.values()):
+                tf_symbols, quotes, eod_updated_at = load_market_rank_catalog_from_eod(spec)
 
-        tf_symbols, quotes = load_market_rank_catalog(
-            self._store,
-            spec,
-            universe_quotes_loader=self.get_quotes,
-        )
+        if eod_updated_at:
+            self._using_eod = True
+            self._eod_updated_at = eod_updated_at
+        elif tf_symbols:
+            self._using_eod = False
+
         total = len(tf_symbols)
         page_symbols = paginate_symbols(tf_symbols, offset, limit)
         page_quotes = {symbol: quotes[symbol] for symbol in page_symbols if symbol in quotes}
-
         items = build_stock_items_from_rank_symbols(page_symbols, page_quotes, name_map=name_map)
         return items, page_quotes, total
 
     def updated_at(self) -> str | None:
+        if self._using_eod and self._eod_updated_at:
+            return self._eod_updated_at
         return self._store.get_updated_at()
+
+    @property
+    def using_eod_fallback(self) -> bool:
+        return self._using_eod
 
 
 _tickflow_provider: TickflowQuoteProvider | None = None

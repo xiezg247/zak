@@ -134,6 +134,7 @@ class DataLoaderController:
                 updated_at=page._market_updated_at,
                 mode=page._market_load_mode,
                 loading_more=True,
+                source=getattr(page, "_market_quote_source", "quote"),
             )
         )
         self.load_market_page(quiet=True, append=True)
@@ -198,6 +199,7 @@ class DataLoaderController:
                 page._market_board_map_cache = None
                 page._market_catalog_loaded = True
                 page._market_updated_at = result.updated_at
+                page._market_quote_source = getattr(result, "source", None) or "quote"
                 page.quote_map = dict(result.quotes)
                 self.sync_market_quotes_to_cache_from_catalog()
                 self._sync_market_overview_breadth(page)
@@ -350,6 +352,7 @@ class DataLoaderController:
                         loaded=len(page.display_stocks),
                         updated_at=page._market_updated_at,
                         mode=page._market_load_mode,
+                        source=getattr(page, "_market_quote_source", "quote"),
                     )
                     page.status_label.setText(f"{status}（加载失败: {msg}）")
                     return
@@ -382,6 +385,7 @@ class DataLoaderController:
         page = self._p
         page._market_total = result.total
         page._market_updated_at = result.updated_at
+        page._market_quote_source = getattr(result, "source", None) or "quote"
         page._market_load_mode = result.mode
 
         if append:
@@ -417,6 +421,7 @@ class DataLoaderController:
                     updated_at=result.updated_at,
                     mode=result.mode,
                     loading_more=page._market_loading_more,
+                    source=getattr(result, "source", None) or getattr(page, "_market_quote_source", "quote"),
                 )
             )
         else:

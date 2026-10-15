@@ -71,12 +71,31 @@ def _load_market_rank_from_universe(
 ) -> tuple[list[str], dict[str, QuoteSnapshot]]:
     items = [StockItem(symbol=symbol, exchange=exchange, name=name) for symbol, exchange, name in load_universe_rows()]
     quotes = universe_quotes_loader(items)
+    return _rank_symbols_from_quote_map(spec, items=items, quotes=quotes)
+
+
+def _rank_symbols_from_quote_map(
+    spec: RankDefinition,
+    *,
+    items: list[StockItem],
+    quotes: dict[str, QuoteSnapshot],
+) -> tuple[list[str], dict[str, QuoteSnapshot]]:
+    if not quotes:
+        return [], {}
     if rank_needs_post_process(spec):
-        items = [item for item in items if (quote := quotes.get(item.tickflow_symbol)) is not None and quote_matches_rank(quote, spec)]
+        ranked_items = [
+            item
+            for item in items
+            if (quote := quotes.get(item.tickflow_symbol)) is not None and quote_matches_rank(quote, spec)
+        ]
     else:
-        items = [item for item in items if (quote := quotes.get(item.tickflow_symbol)) is not None and quote.last_price > 0]
+        ranked_items = [
+            item
+            for item in items
+            if (quote := quotes.get(item.tickflow_symbol)) is not None and quote.last_price > 0
+        ]
     sort_column = spec.sort_column or spec.redis_field
-    items.sort(
+    ranked_items.sort(
         key=lambda item: (
             quote_rank_value(quotes[item.tickflow_symbol], sort_column)
             if quotes.get(item.tickflow_symbol) is not None
@@ -84,7 +103,41 @@ def _load_market_rank_from_universe(
         ),
         reverse=not spec.ascending,
     )
-    return [item.tickflow_symbol for item in items], quotes
+    return [item.tickflow_symbol for item in ranked_items], quotes
+
+
+def quotes_from_eod_snapshot() -> tuple[dict[str, QuoteSnapshot], str | None]:
+    """Tushare 收盘快照 → TickFlow symbol 行情 map（供 Redis 空时榜单回退）。"""
+    from vnpy_ashare.quotes.core.provider import quote_snapshot_from_row
+    from vnpy_ashare.screener.data.data_source import load_tushare_eod_snapshot
+
+    snapshot = load_tushare_eod_snapshot()
+    if snapshot is None or not snapshot.rows:
+        return {}, None
+    quotes: dict[str, QuoteSnapshot] = {}
+    for row in snapshot.rows:
+        payload = row.to_dict() if hasattr(row, "to_dict") else dict(row)
+        quote = quote_snapshot_from_row(payload)
+        if quote is None or not quote.symbol:
+            continue
+        quotes[quote.symbol] = quote
+    updated_at = str(snapshot.updated_at or "").strip()
+    if len(updated_at) == 8 and updated_at.isdigit():
+        updated_at = f"{updated_at[:4]}-{updated_at[4:6]}-{updated_at[6:8]}"
+    return quotes, updated_at or None
+
+
+def load_market_rank_catalog_from_eod(
+    spec: RankDefinition,
+) -> tuple[list[str], dict[str, QuoteSnapshot], str | None]:
+    """Redis 无榜时用 Tushare 收盘快照本地排序。"""
+    quotes, updated_at = quotes_from_eod_snapshot()
+    if not quotes:
+        return [], {}, None
+    name_map = {(symbol, exchange): name for symbol, exchange, name in load_universe_rows()}
+    items = build_stock_items_from_rank_symbols(list(quotes.keys()), quotes, name_map=name_map)
+    tf_symbols, quotes = _rank_symbols_from_quote_map(spec, items=items, quotes=quotes)
+    return tf_symbols, quotes, updated_at
 
 
 def load_market_rank_catalog(

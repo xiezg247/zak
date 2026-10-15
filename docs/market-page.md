@@ -15,7 +15,7 @@
 | 恐贪 + 北向 | sentiment、AI 择时 |
 | 顶栏情绪芯片 | 阶段 + 建议仓位 |
 
-数据：Redis + Tushare → `market_breadth` / `market_environment` → `emotion_cycle`。详见 [情绪周期](./emotion-cycle.md)。
+数据：Redis 实时为主；TickFlow/采集不可用时回退 **Tushare 上一交易日收盘**（状态栏标注「实时不可用 · 展示 … 收盘」）。广度/环境：`market_breadth` / `market_environment` → `emotion_cycle`。详见 [情绪周期](./emotion-cycle.md)。
 
 单击排行行 → 看盘选中。AI：「今日短线环境」→ `build_market_ai_prompt`。
 

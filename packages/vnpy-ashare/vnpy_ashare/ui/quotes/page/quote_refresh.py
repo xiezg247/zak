@@ -120,5 +120,11 @@ def update_quote_source_label(page: QuotesPage) -> None:
         stream_active=page._stream.use_stream(),
         gateway_active=is_gateway_quote_active(),
     )
+    if (
+        text
+        and page.config.quote_source == "market"
+        and str(getattr(page, "_market_quote_source", "") or "").lower() == "tushare"
+    ):
+        text = "行情源：Tushare 收盘（实时不可用）"
     label.setText(text)
     label.setVisible(bool(text))

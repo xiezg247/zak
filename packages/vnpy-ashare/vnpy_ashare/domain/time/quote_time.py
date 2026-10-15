@@ -39,6 +39,26 @@ def format_batch_updated_at(value: str | None) -> str:
     return text
 
 
+def format_market_data_freshness(
+    updated_at: str | None,
+    *,
+    source: str = "quote",
+    empty: bool = False,
+) -> str:
+    """市场页状态栏后缀：实时批次时间，或收盘回退醒目标注。"""
+    if str(source or "").strip().lower() == "tushare":
+        label = format_relative_updated_at(updated_at, prefix="展示", off_session=True)
+        if label:
+            return f"（实时不可用 · {label}）"
+        return "（实时不可用 · 展示上一交易日收盘）"
+    batch_time = format_batch_updated_at(updated_at)
+    if batch_time:
+        return f"，行情更新于 {batch_time}"
+    if empty:
+        return "（Redis 暂无行情，已尝试收盘回退）"
+    return ""
+
+
 def format_relative_updated_at(
     raw: str | None,
     *,

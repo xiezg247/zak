@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from vnpy_ashare.domain.time.quote_time import format_batch_updated_at
+from vnpy_ashare.domain.time.quote_time import format_market_data_freshness
 from vnpy_ashare.ui.quotes.workers.quotes_workers import MarketPageResult
 
 if TYPE_CHECKING:
@@ -159,11 +159,11 @@ class MarketPaginationController:
             status = f"{self._page.active_rank_title()} {result.total} 只，第 {current}/{page_count} 页"
         else:
             status = f"共 {result.total} 只，第 {current}/{page_count} 页"
-        batch_time = format_batch_updated_at(result.updated_at)
-        if batch_time:
-            status += f"，行情更新于 {batch_time}"
-        elif result.total == 0:
-            status += "（Redis 暂无行情，请运行 quote_collector）"
+        status += format_market_data_freshness(
+            result.updated_at,
+            source=getattr(result, "source", None) or getattr(self._page, "_market_quote_source", "quote"),
+            empty=result.total == 0,
+        )
         return status
 
     def format_scroll_status(
@@ -174,6 +174,7 @@ class MarketPaginationController:
         updated_at: str | None,
         mode: str,
         loading_more: bool = False,
+        source: str | None = None,
     ) -> str:
         if mode == "search":
             status = f"搜索匹配 {total} 只，已加载 {loaded}"
@@ -185,9 +186,9 @@ class MarketPaginationController:
             status += "，加载更多…"
         elif loaded < total:
             status += "，下拉加载更多"
-        batch_time = format_batch_updated_at(updated_at)
-        if batch_time:
-            status += f"，行情更新于 {batch_time}"
-        elif total == 0:
-            status += "（Redis 暂无行情，请运行 quote_collector）"
+        status += format_market_data_freshness(
+            updated_at,
+            source=source or getattr(self._page, "_market_quote_source", "quote"),
+            empty=total == 0,
+        )
         return status

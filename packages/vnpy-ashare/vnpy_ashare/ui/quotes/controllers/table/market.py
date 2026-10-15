@@ -8,7 +8,7 @@ from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.domain.market.board import matches_board
 from vnpy_ashare.domain.symbols.stock import StockItem
-from vnpy_ashare.domain.time.quote_time import format_batch_updated_at
+from vnpy_ashare.domain.time.quote_time import format_market_data_freshness
 from vnpy_ashare.services.industry_sector import fetch_stock_industry_map, fetch_stock_market_board_map
 from vnpy_ashare.ui.quotes.controllers.table.base import TableControllerBase
 from vnpy_ashare.ui.quotes.table.display import slice_market_display, sort_market_items
@@ -160,7 +160,6 @@ class TableMarketMixin(TableControllerBase):
         industry = page._market_industry_filter
         drilldown = page._market_drilldown_label
         catalog_count = len(page._market_catalog)
-        batch_time = format_batch_updated_at(page._market_updated_at)
         rank_title = page.active_rank_title() if page.config.show_rank_sidebar else None
 
         page_size = max(page.config.market_page_size, 1)
@@ -175,8 +174,9 @@ class TableMarketMixin(TableControllerBase):
         else:
             status = f"全市场 {matched_count} 只，排序后第 {current}/{page_count} 页"
 
-        if batch_time:
-            status += f"，行情更新于 {batch_time}"
-        elif catalog_count == 0:
-            status += "（Redis 暂无行情，请运行 quote_collector）"
+        status += format_market_data_freshness(
+            page._market_updated_at,
+            source=getattr(page, "_market_quote_source", "quote"),
+            empty=catalog_count == 0,
+        )
         return status

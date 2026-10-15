@@ -68,6 +68,7 @@ class QuotesPageStateAttrs:
     _market_catalog: list[Any]
     _market_catalog_quotes: dict[Any, Any]
     _market_updated_at: str | None
+    _market_quote_source: str
     _market_page_cache: dict[Any, Any]
     _market_count_cache: dict[Any, Any]
     _market_matched: list[StockItem]

@@ -135,6 +135,7 @@ class DataSourceRoutingTests(unittest.TestCase):
         _session: MagicMock,
         mock_redis: MagicMock,
     ) -> None:
+        from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot_uncached
         from vnpy_ashare.screener.data.quotes_loader import MarketQuotesSnapshot
 
         mock_redis.return_value = MarketQuotesSnapshot(
@@ -143,9 +144,32 @@ class DataSourceRoutingTests(unittest.TestCase):
             total=1,
             source="quote",
         )
-        snap = load_screening_quote_snapshot()
+        snap = load_screening_quote_snapshot_uncached()
         self.assertEqual(snap.source, "quote")
         mock_redis.assert_called_once()
+
+    @patch("vnpy_ashare.screener.data.data_source.load_tushare_eod_snapshot")
+    @patch("vnpy_ashare.screener.data.data_source._load_intraday_quote_snapshot")
+    @patch("vnpy_ashare.screener.data.data_source.is_ashare_trading_session", return_value=True)
+    def test_trading_session_falls_back_to_tushare_when_redis_missing(
+        self,
+        _session: MagicMock,
+        mock_redis: MagicMock,
+        mock_eod: MagicMock,
+    ) -> None:
+        from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot_uncached
+        from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, MarketQuotesSnapshot
+
+        mock_redis.side_effect = MarketQuotesLoadError("暂无全市场行情")
+        mock_eod.return_value = MarketQuotesSnapshot(
+            rows=[{"symbol": "600519"}],
+            updated_at="20261014",
+            total=1,
+            source="tushare",
+        )
+        snap = load_screening_quote_snapshot_uncached()
+        self.assertEqual(snap.source, "tushare")
+        self.assertEqual(snap.updated_at, "20261014")
 
     @patch("vnpy_ashare.screener.data.data_source.fetch_daily_pct_map", return_value={})
     @patch("vnpy_ashare.screener.data.data_source.fetch_daily_basic_with_fallback")

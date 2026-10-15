@@ -1,4 +1,4 @@
-"""全市场行情行统一获取（盘中 Redis / 盘外 Tushare）。"""
+"""全市场行情行统一获取（盘中 Redis / 失败或盘外 Tushare 收盘）。"""
 
 from __future__ import annotations
 
@@ -20,13 +20,23 @@ __all__ = [
 ]
 
 
+def _format_eod_updated_at(updated_at: str | None) -> str | None:
+    """YYYYMMDD → YYYY-MM-DD，便于状态栏识别收盘日。"""
+    text = str(updated_at or "").strip()
+    if len(text) == 8 and text.isdigit():
+        return f"{text[:4]}-{text[4:6]}-{text[6:8]}"
+    return text or None
+
+
 def quote_rows_from_tushare_fallback() -> tuple[QuoteRowsLike, str | None]:
-    """盘外用 Tushare daily_basic + daily 涨跌幅构造广度样本。"""
-    from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot_uncached
+    """用 Tushare daily_basic + daily 涨跌幅构造广度/榜单样本（上一可用交易日）。"""
+    from vnpy_ashare.screener.data.data_source import load_tushare_eod_snapshot
 
     try:
-        snapshot = load_screening_quote_snapshot_uncached()
+        snapshot = load_tushare_eod_snapshot()
     except Exception:
+        return [], None
+    if snapshot is None or not snapshot.rows:
         return [], None
     rows: list[dict[str, Any]] = []
     for row in snapshot.rows:
@@ -35,12 +45,16 @@ def quote_rows_from_tushare_fallback() -> tuple[QuoteRowsLike, str | None]:
                 "change_pct": row.get("change_pct"),
                 "amount": row.get("amount", 0),
                 "vt_symbol": row.get("vt_symbol", ""),
+                "symbol": row.get("symbol", ""),
+                "name": row.get("name", ""),
+                "last_price": row.get("last_price") or row.get("close"),
+                "turnover_rate": row.get("turnover_rate", 0),
+                "volume_ratio": row.get("volume_ratio", 0),
+                "net_mf_amount": row.get("net_mf_amount", 0),
+                "source": "tushare",
             }
         )
-    updated_at = snapshot.updated_at
-    if updated_at and len(updated_at) == 8 and updated_at.isdigit():
-        updated_at = f"{updated_at[:4]}-{updated_at[4:6]}-{updated_at[6:8]}"
-    return rows, updated_at
+    return rows, _format_eod_updated_at(snapshot.updated_at)
 
 
 def _intraday_snapshot(*, enrich_factors: bool = True) -> MarketQuotesSnapshot:
@@ -63,7 +77,10 @@ def load_quote_rows_for_market(*, allow_network: bool = True, force: bool = Fals
     try:
         snapshot = _intraday_snapshot()
     except (MarketQuotesLoadError, RuntimeError):
-        return [], None
+        return quote_rows_from_tushare_fallback()
+    # 盘中筛选快照可能已是 Tushare 回退（source=tushare）
+    if str(getattr(snapshot, "source", "") or "") == "tushare":
+        return snapshot.rows, _format_eod_updated_at(snapshot.updated_at)
     return snapshot.rows, snapshot.updated_at
 
 
@@ -90,12 +107,18 @@ def resolve_intraday_quote_rows(
     min_cached_rows: int = 0,
     enrich_factors: bool = True,
 ) -> tuple[QuoteRowsLike, str | None, int, str | None]:
-    """盘中优先缓存，否则拉全市场快照（不做盘外 Tushare 回退）。"""
+    """盘中优先缓存，否则拉全市场快照；Redis 失败时回退 Tushare 收盘。"""
     cached = peek_market_quote_rows(min_rows=min_cached_rows)
     if cached is not None:
         return cached, None, len(cached), None
     try:
         market = _intraday_snapshot(enrich_factors=enrich_factors)
     except MarketQuotesLoadError as ex:
+        rows, updated_at = quote_rows_from_tushare_fallback()
+        if rows:
+            return rows, updated_at, len(rows), None
         return [], None, 0, str(ex)
-    return market.rows, market.updated_at, market.total, None
+    updated_at = market.updated_at
+    if str(getattr(market, "source", "") or "") == "tushare":
+        updated_at = _format_eod_updated_at(updated_at)
+    return market.rows, updated_at, market.total, None

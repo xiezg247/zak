@@ -13,7 +13,7 @@ from vnpy_common.domain.base import FrozenModel, MutableModel
 
 
 class MarketPageResult(MutableModel):
-    """市场页分页加载结果（标的 + Redis 行情）。"""
+    """市场页分页加载结果（标的 + Redis / 收盘回退行情）。"""
 
     items: list[StockItem] = Field(description="标的列表")
     quotes: dict[str, QuoteSnapshot] = Field(description="行情快照字典（TickFlow 代码 → 快照）")
@@ -23,14 +23,16 @@ class MarketPageResult(MutableModel):
     mode: str = Field(description="加载模式")
     updated_at: str | None = Field(default=None, description="更新时间")
     board: str | None = Field(default=None, description="板块筛选条件")
+    source: str = Field(default="quote", description="数据来源：quote=实时 Redis；tushare=收盘回退")
 
 
 class MarketFullResult(MutableModel):
-    """市场页全量加载结果（涨幅榜序 + Redis 行情）。"""
+    """市场页全量加载结果（涨幅榜序 + Redis / 收盘回退行情）。"""
 
     items: list[StockItem] = Field(description="标的列表")
     quotes: dict[str, QuoteSnapshot] = Field(description="行情快照字典")
     updated_at: str | None = Field(default=None, description="更新时间")
+    source: str = Field(default="quote", description="数据来源：quote=实时 Redis；tushare=收盘回退")
 
 
 class LoadedBars(MutableModel):

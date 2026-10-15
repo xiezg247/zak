@@ -86,6 +86,7 @@ def init_page_state(page: QuotesPage) -> None:
     page._market_catalog_loaded = False
     page._market_full_load_quiet = True
     page._market_updated_at = None
+    page._market_quote_source = "quote"
     page._market_page_cache = {}
     page._market_count_cache = {}
     page._market_loading_more = False

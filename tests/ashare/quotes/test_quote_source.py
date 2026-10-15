@@ -25,6 +25,28 @@ class QuoteSourceTests(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(updated_at, "2025-06-23")
 
+    def test_intraday_redis_failure_falls_back_to_tushare(self) -> None:
+        from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
+
+        with (
+            patch(
+                "vnpy_ashare.quotes.market.quote_source.is_ashare_trading_session",
+                return_value=True,
+            ),
+            patch(
+                "vnpy_ashare.quotes.market.quote_source.load_screening_quote_snapshot",
+                side_effect=MarketQuotesLoadError("no redis"),
+            ),
+            patch(
+                "vnpy_ashare.quotes.market.quote_source.quote_rows_from_tushare_fallback",
+                return_value=([{"change_pct": 1.2}], "2026-10-14"),
+            ) as fallback,
+        ):
+            rows, updated_at = load_quote_rows_for_market()
+        fallback.assert_called_once()
+        self.assertEqual(updated_at, "2026-10-14")
+        self.assertEqual(len(rows), 1)
+
     def test_intraday_uses_redis_cache_when_available(self) -> None:
         with (
             patch(

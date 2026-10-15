@@ -40,6 +40,7 @@ __all__ = [
     "iter_trade_date_strs",
     "load_screening_quote_snapshot",
     "load_screening_quote_snapshot_uncached",
+    "load_tushare_eod_snapshot",
     "merge_quotes_into_fundamentals",
     "resolve_result_source_tag",
 ]
@@ -153,32 +154,46 @@ def _load_intraday_quote_snapshot(*, enrich_factors: bool = True) -> MarketQuote
     return load_market_quote_rows(enrich_factors=enrich_factors)
 
 
+def load_tushare_eod_snapshot() -> MarketQuotesSnapshot | None:
+    """Tushare daily_basic + daily 涨跌幅构造上一可用交易日收盘快照。"""
+    rows, trade_date = fetch_daily_basic_with_fallback()
+    if not rows:
+        return None
+    pct_map = fetch_daily_pct_map(trade_date)
+    quote_rows = daily_basic_to_quote_rows(rows, trade_date=trade_date, pct_map=pct_map)
+    try:
+        mf_rows, _mf_date = fetch_moneyflow_with_fallback()
+        if mf_rows:
+            _merge_moneyflow_into_quote_rows(quote_rows, mf_rows)
+    except Exception:
+        pass
+    return MarketQuotesSnapshot(
+        rows=coerce_quote_rows(quote_rows),
+        updated_at=trade_date,
+        total=len(quote_rows),
+        source="tushare",
+    )
+
+
 def load_screening_quote_snapshot_uncached() -> MarketQuotesSnapshot:
     """
     行情类选股数据源（无 ScreeningContext 缓存）：
-    - 交易时段：Redis 实时快照
+    - 交易时段：Redis 实时；失败则回退 Tushare 上一交易日收盘
     - 非交易时段：Tushare daily_basic（回退交易日）+ daily 涨跌幅
     - 仍无数据时：尝试 Redis 陈旧快照
     """
     if is_ashare_trading_session():
-        return _load_intraday_quote_snapshot(enrich_factors=True)
-
-    rows, trade_date = fetch_daily_basic_with_fallback()
-    if rows:
-        pct_map = fetch_daily_pct_map(trade_date)
-        quote_rows = daily_basic_to_quote_rows(rows, trade_date=trade_date, pct_map=pct_map)
         try:
-            mf_rows, _mf_date = fetch_moneyflow_with_fallback()
-            if mf_rows:
-                _merge_moneyflow_into_quote_rows(quote_rows, mf_rows)
-        except Exception:
-            pass
-        return MarketQuotesSnapshot(
-            rows=coerce_quote_rows(quote_rows),
-            updated_at=trade_date,
-            total=len(quote_rows),
-            source="tushare",
-        )
+            return _load_intraday_quote_snapshot(enrich_factors=True)
+        except MarketQuotesLoadError:
+            eod = load_tushare_eod_snapshot()
+            if eod is not None:
+                return eod
+            raise
+
+    eod = load_tushare_eod_snapshot()
+    if eod is not None:
+        return eod
 
     return _load_intraday_quote_snapshot(enrich_factors=True)
 
