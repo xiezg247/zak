@@ -16,6 +16,7 @@ from vnpy_ashare.domain.time.trade_dates import iter_trade_date_strs
 from vnpy_ashare.integrations.tushare.cache import (
     DATASET_DAILY_AMOUNT_SUM,
     DATASET_DAILY_BASIC,
+    DATASET_DAILY_TRADE,
     DATASET_INDEX_DAILY,
     DATASET_LIMIT_LIST,
     DATASET_MONEYFLOW,
@@ -38,21 +39,74 @@ from vnpy_ashare.storage.repositories.universe import load_universe_rows
 
 def fetch_daily_pct_map(trade_date: str) -> dict[str, float]:
     """拉取指定交易日全市场涨跌幅（供非交易时段涨幅榜）。"""
+    trade_map = fetch_daily_trade_map(trade_date)
+    if trade_map:
+        return {ts_code: float(row.get("pct_chg") or 0) for ts_code, row in trade_map.items()}
     cached = get_cached_pct_map(trade_date)
+    return cached or {}
+
+
+def fetch_daily_trade_map(trade_date: str) -> dict[str, dict[str, float]]:
+    """全市场日线：涨跌幅 + 量额 OHLC（volume=股，amount=元）。
+
+    Tushare ``daily.vol`` 为手、``amount`` 为千元，此处统一换算为与 TickFlow 行情一致的股/元。
+    """
+    cached = get_cached_rows(DATASET_DAILY_TRADE, trade_date)
     if cached is not None:
-        return cached
+        result: dict[str, dict[str, float]] = {}
+        for row in cached:
+            ts_code = str(row.get("ts_code") or "").strip()
+            if not ts_code:
+                continue
+            result[ts_code] = {
+                "pct_chg": safe_float(row.get("pct_chg")),
+                "volume": safe_float(row.get("volume")),
+                "amount": safe_float(row.get("amount")),
+                "change": safe_float(row.get("change")),
+                "pre_close": safe_float(row.get("pre_close")),
+                "open": safe_float(row.get("open")),
+                "high": safe_float(row.get("high")),
+                "low": safe_float(row.get("low")),
+                "close": safe_float(row.get("close")),
+            }
+        return result
 
     pro = get_tushare_pro()
     try:
-        frame = pro.daily(trade_date=trade_date, fields="ts_code,pct_chg")
+        frame = pro.daily(
+            trade_date=trade_date,
+            fields="ts_code,pct_chg,vol,amount,change,pre_close,open,high,low,close",
+        )
     except Exception:
         return {}
     if frame is None or frame.empty:
         return {}
-    pct_map = {str(record.get("ts_code", "")): safe_float(record.get("pct_chg")) for record in frame.to_dict(orient="records") if record.get("ts_code")}
-    if pct_map:
-        set_cached_pct_map(trade_date, pct_map)
-    return pct_map
+
+    result = {}
+    cache_rows: list[dict[str, Any]] = []
+    for record in frame.to_dict(orient="records"):
+        ts_code = str(record.get("ts_code") or "").strip()
+        if not ts_code:
+            continue
+        volume_shares = safe_float(record.get("vol")) * 100.0
+        amount_yuan = safe_float(record.get("amount")) * 1000.0
+        payload = {
+            "pct_chg": safe_float(record.get("pct_chg")),
+            "volume": volume_shares,
+            "amount": amount_yuan,
+            "change": safe_float(record.get("change")),
+            "pre_close": safe_float(record.get("pre_close")),
+            "open": safe_float(record.get("open")),
+            "high": safe_float(record.get("high")),
+            "low": safe_float(record.get("low")),
+            "close": safe_float(record.get("close")),
+        }
+        result[ts_code] = payload
+        cache_rows.append({"ts_code": ts_code, **payload})
+    if cache_rows:
+        set_cached_rows(DATASET_DAILY_TRADE, trade_date, cache_rows)
+        set_cached_pct_map(trade_date, {ts: row["pct_chg"] for ts, row in result.items()})
+    return result
 
 
 def fetch_daily_turnover_total_yuan(trade_date: str, *, force: bool = False) -> float:

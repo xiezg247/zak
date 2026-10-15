@@ -43,6 +43,7 @@ def quote_rows_from_tushare_fallback() -> tuple[QuoteRowsLike, str | None]:
         rows.append(
             {
                 "change_pct": row.get("change_pct"),
+                "volume": row.get("volume", 0),
                 "amount": row.get("amount", 0),
                 "vt_symbol": row.get("vt_symbol", ""),
                 "symbol": row.get("symbol", ""),
@@ -51,6 +52,7 @@ def quote_rows_from_tushare_fallback() -> tuple[QuoteRowsLike, str | None]:
                 "turnover_rate": row.get("turnover_rate", 0),
                 "volume_ratio": row.get("volume_ratio", 0),
                 "net_mf_amount": row.get("net_mf_amount", 0),
+                "limit_times": row.get("limit_times", 0),
                 "source": "tushare",
             }
         )

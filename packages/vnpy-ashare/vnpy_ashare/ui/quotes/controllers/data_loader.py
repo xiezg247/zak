@@ -201,6 +201,7 @@ class DataLoaderController:
                 page._market_updated_at = result.updated_at
                 page._market_quote_source = getattr(result, "source", None) or "quote"
                 page.quote_map = dict(result.quotes)
+                page._table.sync_eod_column_visibility()
                 self.sync_market_quotes_to_cache_from_catalog()
                 self._sync_market_overview_breadth(page)
                 if not quiet:
@@ -387,6 +388,7 @@ class DataLoaderController:
         page._market_updated_at = result.updated_at
         page._market_quote_source = getattr(result, "source", None) or "quote"
         page._market_load_mode = result.mode
+        page._table.sync_eod_column_visibility()
 
         if append:
             page._market_loading_more = False

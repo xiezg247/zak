@@ -7,6 +7,7 @@ from typing import Any
 
 from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowsLike, coerce_quote_rows
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow, screener_rows_from_mappings
+from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.domain.time.calendar import last_trading_day
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.domain.time.trade_dates import DEFAULT_LOOKBACK_DAYS, iter_trade_date_strs
@@ -16,8 +17,10 @@ from vnpy_ashare.integrations.tushare.factor_fallback import (
 from vnpy_ashare.integrations.tushare.factor_fallback import (
     fetch_moneyflow_with_fallback as _fetch_moneyflow_with_fallback,
 )
-from vnpy_ashare.integrations.tushare.factors import fetch_daily_pct_map
+from vnpy_ashare.domain.market.breadth import LIMIT_UP_PCT
+from vnpy_ashare.integrations.tushare.factors import fetch_daily_pct_map, fetch_daily_trade_map, fetch_limit_list_d
 from vnpy_ashare.integrations.tushare.limit_list_fallback import fetch_limit_list_with_fallback
+from vnpy_ashare.quotes.core.limit_times_cache import limit_times_map_from_rows, load_limit_times_map_by_tickflow
 from vnpy_ashare.quotes.core.quote_rows import quote_rows_by_vt_symbol
 from vnpy_ashare.quotes.core.screening_snapshot_router import (
     load_screening_quote_snapshot,
@@ -112,26 +115,51 @@ def daily_basic_to_quote_rows(
     *,
     trade_date: str,
     pct_map: dict[str, float] | None = None,
+    trade_map: dict[str, dict[str, float]] | None = None,
+    limit_times_map: dict[str, float] | None = None,
 ) -> list[dict[str, Any]]:
-    """将 daily_basic 行转为行情选股可用格式（保留市值字段供硬过滤）。"""
+    """将 daily_basic 行转为行情选股可用格式（保留市值字段供硬过滤）。
+
+    ``trade_map`` 来自 ``daily``（含量额 OHLC）；``limit_times_map`` 键为 TickFlow symbol。
+    不含 5 分涨速（盘中字段，Tushare 日线无对应数据）。
+    """
     pct_map = pct_map or {}
+    trade_map = trade_map or {}
+    limit_times_map = limit_times_map or {}
     quote_rows: list[dict[str, Any]] = []
     for row in rows:
         ts_code = str(row.get("ts_code", ""))
         total_mv = float(row.get("total_mv") or 0)
         circ_mv = float(row.get("circ_mv") or 0)
-        close = float(row.get("close") or 0)
+        trade = trade_map.get(ts_code) or {}
+        close = float(trade.get("close") or row.get("close") or 0)
+        change_pct = float(trade.get("pct_chg") if trade.get("pct_chg") is not None else pct_map.get(ts_code, 0.0))
+        vt_symbol = str(row.get("vt_symbol") or "")
+        item = parse_stock_symbol(vt_symbol) if vt_symbol else None
+        tf_symbol = item.tickflow_symbol if item is not None else ""
+        limit_times = float(limit_times_map.get(tf_symbol) or 0)
+        # limit_list 缺失时：涨幅达涨停阈值仍记首板，避免市场页连板全空
+        if limit_times < 1 and change_pct >= LIMIT_UP_PCT:
+            limit_times = 1.0
         quote_rows.append(
             {
                 "symbol": row.get("symbol", ""),
                 "name": row.get("name", ""),
-                "vt_symbol": row.get("vt_symbol", ""),
+                "vt_symbol": vt_symbol,
                 "last_price": close,
                 "close": close,
-                "change_pct": pct_map.get(ts_code, 0.0),
+                "prev_close": float(trade.get("pre_close") or 0),
+                "open_price": float(trade.get("open") or 0),
+                "high_price": float(trade.get("high") or 0),
+                "low_price": float(trade.get("low") or 0),
+                "change_amount": float(trade.get("change") or 0),
+                "change_pct": change_pct,
+                "volume": float(trade.get("volume") or 0),
+                "amount": float(trade.get("amount") or 0),
                 "turnover_rate": row.get("turnover_rate", 0),
                 # volume_ratio 不是成交量，勿写入 volume（否则硬过滤成交额估算失真）
                 "volume_ratio": row.get("volume_ratio", 0),
+                "limit_times": limit_times,
                 "pe_ttm": row.get("pe_ttm"),
                 "pb": row.get("pb"),
                 "total_mv": total_mv,
@@ -155,12 +183,31 @@ def _load_intraday_quote_snapshot(*, enrich_factors: bool = True) -> MarketQuote
 
 
 def load_tushare_eod_snapshot() -> MarketQuotesSnapshot | None:
-    """Tushare daily_basic + daily 涨跌幅构造上一可用交易日收盘快照。"""
+    """Tushare daily_basic + daily 量价 + 涨停连板，构造上一可用交易日收盘快照。"""
     rows, trade_date = fetch_daily_basic_with_fallback()
     if not rows:
         return None
-    pct_map = fetch_daily_pct_map(trade_date)
-    quote_rows = daily_basic_to_quote_rows(rows, trade_date=trade_date, pct_map=pct_map)
+    trade_map = fetch_daily_trade_map(trade_date)
+    pct_map = {ts: float(row.get("pct_chg") or 0) for ts, row in trade_map.items()} if trade_map else fetch_daily_pct_map(trade_date)
+    limit_times_map: dict[str, float] = {}
+    try:
+        # 与 daily_basic 同一交易日对齐；勿传 trade_date 给 fallback（其签名无此参数）
+        limit_rows, _ = fetch_limit_list_d(trade_date=trade_date, limit_type="U")
+        limit_times_map = limit_times_map_from_rows(limit_rows)
+        if not limit_times_map:
+            limit_times_map = load_limit_times_map_by_tickflow()
+    except Exception:
+        try:
+            limit_times_map = load_limit_times_map_by_tickflow()
+        except Exception:
+            limit_times_map = {}
+    quote_rows = daily_basic_to_quote_rows(
+        rows,
+        trade_date=trade_date,
+        pct_map=pct_map,
+        trade_map=trade_map,
+        limit_times_map=limit_times_map,
+    )
     try:
         mf_rows, _mf_date = fetch_moneyflow_with_fallback()
         if mf_rows:

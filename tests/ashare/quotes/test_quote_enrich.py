@@ -49,9 +49,24 @@ def test_load_limit_times_map_by_tickflow() -> None:
         {"ts_code": "000001.SZ", "limit": "U", "limit_times": 1},
         {"ts_code": "300001.SZ", "limit": "D", "limit_times": 2},
     ]
-    with patch("vnpy_ashare.quotes.core.enrich.fetch_limit_list_with_fallback", return_value=(rows, "20260613")):
+    with patch(
+        "vnpy_ashare.quotes.core.limit_times_cache.fetch_limit_list_with_fallback",
+        return_value=(rows, "20260613"),
+    ):
         result = load_limit_times_map_by_tickflow()
     assert result == {"600000.SH": 3.0, "000001.SZ": 1.0}
+
+
+def test_limit_times_map_treats_missing_boards_as_first() -> None:
+    from vnpy_ashare.quotes.core.limit_times_cache import limit_times_map_from_rows
+
+    result = limit_times_map_from_rows(
+        [
+            {"ts_code": "600252.SH", "limit": "U", "limit_times": 0},
+            {"ts_code": "000001.SZ", "limit": "U", "limit_times": 2},
+        ]
+    )
+    assert result == {"600252.SH": 1.0, "000001.SZ": 2.0}
 
 
 def test_enrich_quotes_with_tushare_factors() -> None:

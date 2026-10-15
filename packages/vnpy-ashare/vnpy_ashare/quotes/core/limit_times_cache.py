@@ -33,16 +33,16 @@ def store_limit_times_map_cache(limit_times_map: dict[str, float]) -> None:
     _LIMIT_TIMES_MAP_CACHE = (dict(limit_times_map), time.monotonic())
 
 
-def load_limit_times_map_by_tickflow() -> dict[str, float]:
-    """按 TickFlow symbol 索引 Tushare 涨停连板数。"""
-    rows, _ = fetch_limit_list_with_fallback(limit_type="U")
+def limit_times_map_from_rows(rows: list[dict]) -> dict[str, float]:
+    """从 limit_list_d 行构建 TickFlow symbol → 连板数（涨停至少记 1 板）。"""
     result: dict[str, float] = {}
     for row in rows:
-        if str(row.get("limit") or "") != "U":
+        limit = str(row.get("limit") or "").strip().upper()
+        if limit and limit != "U":
             continue
         boards = float(row.get("limit_times") or 0)
         if boards < 1:
-            continue
+            boards = 1.0
         ts_code = str(row.get("ts_code") or "").strip()
         item = parse_tickflow_symbol(ts_code) if ts_code else None
         if item is None:
@@ -52,3 +52,9 @@ def load_limit_times_map_by_tickflow() -> dict[str, float]:
             continue
         result[item.tickflow_symbol] = boards
     return result
+
+
+def load_limit_times_map_by_tickflow() -> dict[str, float]:
+    """按 TickFlow symbol 索引 Tushare 涨停连板数。"""
+    rows, _ = fetch_limit_list_with_fallback(limit_type="U")
+    return limit_times_map_from_rows(rows)

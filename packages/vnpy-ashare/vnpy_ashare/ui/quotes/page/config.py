@@ -279,6 +279,9 @@ MARKET_VISIBLE_COLUMNS: list[str] = [
     "trade_time",
 ]
 
+# 收盘回退（Tushare）无法提供的盘中字段：市场表临时隐藏，不写入列偏好
+MARKET_EOD_HIDDEN_COLUMNS: frozenset[str] = frozenset({"change_speed_5m"})
+
 ALL_TAIL_COLUMNS: dict[str, str] = {
     "local": "本地",
     "start": "起始",

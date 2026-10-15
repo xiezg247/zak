@@ -85,7 +85,8 @@ class DataSourceRoutingTests(unittest.TestCase):
         self.assertEqual(rows[0]["change_pct"], 2.3)
         self.assertEqual(rows[0]["last_price"], 1688.0)
         self.assertEqual(rows[0]["total_mv"], 500_000.0)
-        self.assertNotIn("volume", rows[0])
+        self.assertEqual(rows[0]["volume"], 0.0)
+        self.assertEqual(rows[0]["amount"], 0.0)
 
     def test_daily_basic_to_quote_rows_includes_valuation(self) -> None:
         rows = daily_basic_to_quote_rows(
@@ -127,6 +128,99 @@ class DataSourceRoutingTests(unittest.TestCase):
         )
         self.assertEqual(rows[0]["total_mv"], 2_000_000.0)
         self.assertEqual(rows[0]["circ_mv"], 1_800_000.0)
+
+    def test_daily_basic_to_quote_rows_merges_trade_and_limit(self) -> None:
+        rows = daily_basic_to_quote_rows(
+            [
+                {
+                    "ts_code": "600519.SH",
+                    "symbol": "600519",
+                    "name": "贵州茅台",
+                    "vt_symbol": "600519.SSE",
+                    "close": 1688.0,
+                    "turnover_rate": 0.5,
+                    "volume_ratio": 1.2,
+                }
+            ],
+            trade_date="20260608",
+            trade_map={
+                "600519.SH": {
+                    "pct_chg": 2.5,
+                    "volume": 1_200_000.0,
+                    "amount": 2.0e9,
+                    "change": 40.0,
+                    "pre_close": 1648.0,
+                    "open": 1650.0,
+                    "high": 1690.0,
+                    "low": 1640.0,
+                    "close": 1688.0,
+                }
+            },
+            limit_times_map={"600519.SH": 2.0},
+        )
+        self.assertEqual(rows[0]["volume"], 1_200_000.0)
+        self.assertEqual(rows[0]["amount"], 2.0e9)
+        self.assertEqual(rows[0]["limit_times"], 2.0)
+        self.assertEqual(rows[0]["change_pct"], 2.5)
+        self.assertNotIn("change_speed_5m", rows[0])
+
+    def test_daily_basic_to_quote_rows_infers_first_board_from_pct(self) -> None:
+        rows = daily_basic_to_quote_rows(
+            [
+                {
+                    "ts_code": "600252.SH",
+                    "symbol": "600252",
+                    "name": "中恒集团",
+                    "vt_symbol": "600252.SSE",
+                    "close": 2.48,
+                    "turnover_rate": 6.0,
+                    "volume_ratio": 2.0,
+                }
+            ],
+            trade_date="20261014",
+            pct_map={"600252.SH": 10.22},
+            limit_times_map={},
+        )
+        self.assertEqual(rows[0]["limit_times"], 1.0)
+
+    @patch("vnpy_ashare.screener.data.data_source.fetch_moneyflow_with_fallback", return_value=([], ""))
+    @patch("vnpy_ashare.screener.data.data_source.fetch_limit_list_d")
+    @patch("vnpy_ashare.screener.data.data_source.fetch_daily_trade_map", return_value={})
+    @patch("vnpy_ashare.screener.data.data_source.fetch_daily_pct_map", return_value={})
+    @patch("vnpy_ashare.screener.data.data_source.fetch_daily_basic_with_fallback")
+    def test_load_tushare_eod_snapshot_merges_limit_times(
+        self,
+        mock_basic: MagicMock,
+        _pct: MagicMock,
+        _trade: MagicMock,
+        mock_limit: MagicMock,
+        _mf: MagicMock,
+    ) -> None:
+        from vnpy_ashare.screener.data.data_source import load_tushare_eod_snapshot
+
+        mock_basic.return_value = (
+            [
+                {
+                    "ts_code": "600252.SH",
+                    "symbol": "600252",
+                    "name": "中恒集团",
+                    "vt_symbol": "600252.SSE",
+                    "close": 2.48,
+                    "turnover_rate": 6.0,
+                    "volume_ratio": 2.0,
+                }
+            ],
+            "20261014",
+        )
+        mock_limit.return_value = (
+            [{"ts_code": "600252.SH", "limit": "U", "limit_times": 3, "vt_symbol": "600252.SSE"}],
+            "20261014",
+        )
+        snap = load_tushare_eod_snapshot()
+        self.assertIsNotNone(snap)
+        assert snap is not None
+        self.assertEqual(snap.rows[0]["limit_times"], 3.0)
+        mock_limit.assert_called_once_with(trade_date="20261014", limit_type="U")
 
     @patch("vnpy_ashare.screener.data.data_source._load_intraday_quote_snapshot")
     @patch("vnpy_ashare.screener.data.data_source.is_ashare_trading_session", return_value=True)

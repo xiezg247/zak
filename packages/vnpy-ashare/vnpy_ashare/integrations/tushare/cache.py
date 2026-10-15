@@ -15,6 +15,7 @@ from vnpy_common.storage.tables import tushare_factor_cache as tfc
 DATASET_DAILY_BASIC = "daily_basic"
 DATASET_MONEYFLOW = "moneyflow"
 DATASET_DAILY_PCT = "daily_pct"
+DATASET_DAILY_TRADE = "daily_trade"
 DATASET_STOCK_INDUSTRY = "stock_industry"
 DATASET_STOCK_BASIC = "stock_basic"
 DATASET_LIMIT_LIST = "limit_list_d"

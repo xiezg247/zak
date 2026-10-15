@@ -9,6 +9,7 @@ from vnpy_ashare.ui.quotes.controllers.table.base import TableControllerBase
 from vnpy_ashare.ui.quotes.page.config import (
     ALL_TAIL_COLUMNS,
     DEFAULT_WATCHLIST_COLUMNS,
+    MARKET_EOD_HIDDEN_COLUMNS,
     MARKET_VISIBLE_COLUMNS,
     ensure_columns_from_template,
     ensure_industry_board_columns,
@@ -34,6 +35,7 @@ class TableColumnsMixin(TableControllerBase):
         return default_main
 
     def init_columns(self) -> None:
+        self._columns_before_eod: list[str] | None = None
         self.visible_columns = self._default_main_columns()
         self.visible_tail_columns = self._default_tail_columns()
         self.restore_column_config()
@@ -216,3 +218,22 @@ class TableColumnsMixin(TableControllerBase):
         self._model().set_headers(headers)
         self.apply_header_layout(column_count=len(headers))
         self.render_table()
+
+    def sync_eod_column_visibility(self) -> None:
+        """收盘回退时隐藏 5 分涨速等盘中字段；恢复实时后还原列（不改 QSettings）。"""
+        page = self._p
+        if page.page_name != "市场":
+            return
+        eod = str(getattr(page, "_market_quote_source", "") or "").lower() == "tushare"
+        if eod:
+            if self._columns_before_eod is None:
+                self._columns_before_eod = list(self.visible_columns)
+            filtered = [key for key in self.visible_columns if key not in MARKET_EOD_HIDDEN_COLUMNS]
+            if filtered != self.visible_columns:
+                self.visible_columns = filtered
+                self.rebuild_table()
+            return
+        if self._columns_before_eod is not None:
+            self.visible_columns = list(self._columns_before_eod)
+            self._columns_before_eod = None
+            self.rebuild_table()
