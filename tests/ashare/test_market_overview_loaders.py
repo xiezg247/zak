@@ -117,6 +117,60 @@ class MarketOverviewLoaderTests(unittest.TestCase):
         ):
             self.assertTrue(is_market_overview_stale(data))
 
+    def test_load_market_overview_intraday_survives_tickflow_index_failure(self) -> None:
+        from vnpy_ashare.domain.market.breadth import MarketBreadthSnapshot
+        from vnpy_ashare.domain.market.environment import MarketEnvironmentSnapshot
+
+        eod = MarketBreadthSnapshot(
+            up=1200,
+            down=800,
+            flat=100,
+            limit_up=40,
+            limit_down=5,
+            total_amount=8e11,
+            sample_size=2100,
+            updated_at="2026-10-14",
+        )
+        env = MarketEnvironmentSnapshot(
+            fear_greed_index=45.0,
+            fear_greed_label="中性",
+            north_money=12.0,
+            north_trade_date="20261014",
+        )
+        with (
+            patch(
+                "vnpy_ashare.quotes.market.market_overview_loaders.load_quote_rows_for_market",
+                return_value=([], None),
+            ),
+            patch(
+                "vnpy_ashare.quotes.market.market_overview_loaders._fetch_sorted_indices",
+                side_effect=RuntimeError("TickFlow 403"),
+            ),
+            patch(
+                "vnpy_ashare.quotes.market.market_overview_loaders.peek_cached_indices",
+                return_value=None,
+            ),
+            patch(
+                "vnpy_ashare.quotes.market.market_overview_loaders.load_market_environment",
+                return_value=env,
+            ),
+            patch(
+                "vnpy_ashare.quotes.market.market_overview_loaders._load_off_session_breadth",
+                return_value=eod,
+            ),
+            patch("vnpy_ashare.quotes.market.market_overview_loaders.store_market_overview_data"),
+            patch(
+                "vnpy_ashare.quotes.market.market_overview_loaders.resolve_latest_factor_trade_date",
+                return_value="20261014",
+            ),
+        ):
+            result = load_market_overview(intraday=True, force=True)
+        self.assertIsNotNone(result.breadth)
+        assert result.breadth is not None
+        self.assertEqual(result.breadth.up, 1200)
+        self.assertEqual(result.environment, env)
+        self.assertEqual(result.indices, [])
+
     def test_load_market_overview_force_skips_off_session_peek(self) -> None:
         cached = MarketOverviewData(
             indices=[],

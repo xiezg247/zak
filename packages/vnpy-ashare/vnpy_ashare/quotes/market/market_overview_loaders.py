@@ -68,6 +68,19 @@ def _fetch_sorted_indices() -> list[tuple[str, QuoteSnapshot]]:
     return indices
 
 
+def _safe_sorted_indices(*, intraday: bool) -> list[tuple[str, QuoteSnapshot]]:
+    """TickFlow 无权限时不拖垮整页概览，尽量用缓存指数。"""
+    try:
+        indices = _fetch_sorted_indices()
+        if indices:
+            store_cached_indices(indices)
+            return indices
+    except Exception:
+        pass
+    cached = peek_cached_indices(intraday=intraday)
+    return list(cached) if cached else []
+
+
 def load_sector_ranks(rows: QuoteRowsLike, *, top_n: int = SECTOR_TOP_N) -> list[SectorRankItem]:
     """按申万 L2 行业平均涨幅排序，返回 Top N。"""
     if not rows:
@@ -189,8 +202,7 @@ def load_market_overview(*, intraday: bool = True, force: bool = False) -> Marke
     allow_network = intraday or force
     factor_date = resolve_latest_factor_trade_date()
     rows, updated_at = load_quote_rows_for_market(allow_network=allow_network, force=force)
-    indices = _fetch_sorted_indices()
-    store_cached_indices(indices)
+    indices = _safe_sorted_indices(intraday=intraday)
     environment = load_market_environment(force=force, factor_trade_date=factor_date)
 
     if not intraday:
@@ -214,10 +226,35 @@ def load_market_overview(*, intraday: bool = True, force: bool = False) -> Marke
         store_market_overview_data(data)
         return data
 
+    # 盘中：Redis 实时优先；无行或广度为空时用 Tushare 收盘广度（成交额走日终合计）
+    breadth = load_breadth(rows, updated_at=updated_at)
+    eod_fallback = False
+    if breadth is None or not rows:
+        eod_breadth = _load_off_session_breadth(trade_date=factor_date, force=force)
+        if eod_breadth is not None:
+            breadth = eod_breadth
+            eod_fallback = True
+            if not updated_at:
+                updated_at = eod_breadth.updated_at
+    elif breadth.total_amount <= 0:
+        # 有涨跌样本但缺成交额时，补日终两市成交额
+        eod_breadth = _load_off_session_breadth(trade_date=factor_date, force=force)
+        if eod_breadth is not None and eod_breadth.total_amount > 0:
+            breadth = breadth.model_copy(update={"total_amount": eod_breadth.total_amount})
+
+    sectors = load_sector_ranks(rows)
+    if not sectors and eod_fallback:
+        # 收盘行可能仅有 change_pct；再试一次完整 Tushare 快照行
+        from vnpy_ashare.quotes.market.quote_source import quote_rows_from_tushare_fallback
+
+        eod_rows, _ = quote_rows_from_tushare_fallback()
+        if eod_rows:
+            sectors = load_sector_ranks(eod_rows)
+
     data = MarketOverviewData(
         indices=indices,
-        breadth=load_breadth(rows, updated_at=updated_at),
-        sectors=load_sector_ranks(rows),
+        breadth=breadth,
+        sectors=sectors,
         environment=environment,
     )
     store_market_overview_data(data)

@@ -146,17 +146,36 @@ class MarketOverviewController(QtCore.QObject):
     def apply_market_snapshot(self, rows: list[dict[str, Any]], *, updated_at: str | None = None) -> None:
         intraday = is_ashare_trading_session()
         breadth, sectors = build_overview_from_market_rows(rows, updated_at=updated_at)
-        session_note = f"{ashare_market_phase_label()} · " if not intraday and breadth is not None else ""
-        if breadth is not None and intraday:
+        session_note = ""
+        if breadth is not None:
+            if not intraday:
+                session_note = f"{ashare_market_phase_label()} · "
+            else:
+                from vnpy_ashare.quotes.market.market_overview_loaders import _is_intraday_snapshot_timestamp
+
+                if not _is_intraday_snapshot_timestamp(updated_at or breadth.updated_at):
+                    session_note = "实时不可用 · 收盘快照 · "
             self._panel.apply_breadth(breadth, session_note=session_note)
             self._apply_emotion_cycle(breadth)
         if sectors:
             self._panel.apply_sectors(sectors)
         sync_market_overview_partial(
-            breadth=breadth if intraday else None,
+            breadth=breadth,
             sectors=sectors or None,
         )
         self._publish_ai_context()
+
+    def _overview_session_note(self, data: MarketOverviewData, *, intraday: bool) -> str:
+        if data.breadth is None:
+            return ""
+        if not intraday:
+            return f"{ashare_market_phase_label()} · "
+        # 盘中但 breadth 为日终日期（无时分）→ 实时不可用的收盘回退
+        from vnpy_ashare.quotes.market.market_overview_loaders import _is_intraday_snapshot_timestamp
+
+        if not _is_intraday_snapshot_timestamp(data.breadth.updated_at):
+            return "实时不可用 · 收盘快照 · "
+        return ""
 
     def _apply_overview(
         self,
@@ -167,11 +186,10 @@ class MarketOverviewController(QtCore.QObject):
     ) -> None:
         if intraday is None:
             intraday = is_ashare_trading_session()
-        session_note = ""
-        if not intraday and data.breadth is not None:
-            session_note = f"{ashare_market_phase_label()} · "
+        session_note = self._overview_session_note(data, intraday=intraday)
         self._panel.apply_data(data, session_note=session_note)
-        if data.breadth is not None and intraday and not from_peek:
+        # 盘中收盘回退也要刷新情绪芯片（否则一直停在「—」）
+        if data.breadth is not None and not from_peek:
             self._apply_emotion_cycle(data.breadth)
         sync_market_overview_context(data)
         self._publish_ai_context()
