@@ -95,4 +95,8 @@ def main() -> None:
     profiler.finish("startup until window visible")
     main_window.schedule_initial_page()
 
-    qapp.exec()
+    try:
+        qapp.exec()
+    except KeyboardInterrupt:
+        # SIGINT 正常应由 qt_app 处理器 quit；兜底避免脏 traceback
+        qapp.quit()

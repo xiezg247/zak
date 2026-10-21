@@ -4,12 +4,9 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from vnpy.trader.ui import QtCore, QtWidgets
-
-if TYPE_CHECKING:
-    pass
 
 IDLE_PREWARM_MS = 3000
 IDLE_RETRY_MS = 1000
@@ -30,14 +27,17 @@ def touch_user_activity(win: Any) -> None:
     win._last_user_activity_at = time.monotonic()
 
 
-def bind_idle_activity_tracking(win: Any) -> None:
-    if getattr(win, "_idle_activity_bound", False):
-        return
-    win._idle_activity_bound = True
-    touch_user_activity(win)
+class _IdleActivityFilter(QtCore.QObject):
+    """应用级空闲追踪；SIGINT 在此回调中出现时改为优雅退出，避免脏 traceback。"""
 
-    class _ActivityFilter(QtCore.QObject):
-        def eventFilter(self, obj: QtCore.QObject, event: QtCore.QEvent) -> bool:  # noqa: ARG002
+    def __init__(self, win: Any) -> None:
+        parent = win if isinstance(win, QtCore.QObject) else None
+        super().__init__(parent)
+        self._win = win
+
+    def eventFilter(self, obj: QtCore.QObject, event: QtCore.QEvent) -> bool:  # noqa: ARG002
+        try:
+            win = self._win
             event_type = event.type()
             if event_type in _ACTIVITY_EVENTS:
                 touch_user_activity(win)
@@ -49,11 +49,23 @@ def bind_idle_activity_tracking(win: Any) -> None:
                     win._last_mouse_move_at = now
                     touch_user_activity(win)
             return False
+        except KeyboardInterrupt:
+            app = QtWidgets.QApplication.instance()
+            if app is not None:
+                app.quit()
+            return False
+
+
+def bind_idle_activity_tracking(win: Any) -> None:
+    if getattr(win, "_idle_activity_bound", False):
+        return
+    win._idle_activity_bound = True
+    touch_user_activity(win)
 
     app = QtWidgets.QApplication.instance()
     if app is None:
         return
-    win._idle_activity_filter = _ActivityFilter(win)
+    win._idle_activity_filter = _IdleActivityFilter(win)
     app.installEventFilter(win._idle_activity_filter)
 
 
@@ -80,16 +92,21 @@ def run_when_idle(
     started_at = scheduled_at if scheduled_at is not None else time.monotonic()
 
     def _attempt() -> None:
-        elapsed_ms = (time.monotonic() - started_at) * 1000
-        if elapsed_ms < not_before_ms:
-            QtCore.QTimer.singleShot(
-                max(int(not_before_ms - elapsed_ms), 1),
-                _attempt,
-            )
-            return
-        if not is_user_idle(win, idle_ms):
-            QtCore.QTimer.singleShot(retry_ms, _attempt)
-            return
-        callback()
+        try:
+            elapsed_ms = (time.monotonic() - started_at) * 1000
+            if elapsed_ms < not_before_ms:
+                QtCore.QTimer.singleShot(
+                    max(int(not_before_ms - elapsed_ms), 1),
+                    _attempt,
+                )
+                return
+            if not is_user_idle(win, idle_ms):
+                QtCore.QTimer.singleShot(retry_ms, _attempt)
+                return
+            callback()
+        except KeyboardInterrupt:
+            app = QtWidgets.QApplication.instance()
+            if app is not None:
+                app.quit()
 
     _attempt()
